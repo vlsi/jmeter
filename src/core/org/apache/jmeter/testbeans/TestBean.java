@@ -144,13 +144,13 @@ public abstract class TestBean extends AbstractTestElement
     {
         Object[] param= new Object[1];
         
-        for (PropertyIterator i= propertyIterator(); i.hasNext(); )
+        for (PropertyIterator jprops= propertyIterator(); jprops.hasNext(); )
         {
             // Obtain a value of the appropriate type for this property. 
-            JMeterProperty property= i.next();
-            PropertyDescriptor descriptor= (PropertyDescriptor)descriptors.get(property.getName()); 
+            JMeterProperty jprop= jprops.next();
+            PropertyDescriptor descriptor= (PropertyDescriptor)descriptors.get(jprop.getName()); 
             Class type= descriptor.getPropertyType();
-            Object value= unwrapProperty(property, type);
+            Object value= unwrapProperty(jprop, type);
 
             // Set the bean's property to the value we just obtained:
             try
