@@ -61,14 +61,10 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditorSupport;
 import java.io.File;
-import java.util.Vector;
 
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 
@@ -83,55 +79,32 @@ import org.apache.log.Logger;
  * because JMeter is now too dumb to handle File objects (there's no
  * FileProperty).
  */
-public class FileEditor extends PropertyEditorSupport implements ActionListener
+public class FileEditor extends WrapperEditor implements ActionListener
 {
     private static Logger log= LoggingManager.getLoggerForClass();
 
-    private static Object UNDEFINED= new Object()
-    {
-        public String toString()
-        {
-            return "Undefined"; // TODO: should be a resource.
-        }
-    };
-    // The above is a funny hack: if you use a plain String, 
-    // entering the text of the string in the editor will make the
-    // combo revert to that option -- which actually amounts to
-    // making that string 'reserved'. I preferred to avoid this by
-    // using a different type, but an object that has the same
-    // .toString().
-    // TODO: use a renderer that paints
-    // the field distinct from when the same string is typed in.
-
-    /**
-     * The editor's combo box. 
-     */
-    private JComboBox combo= null;
-
+	// Implementation big picture: implementing this requires both a
+	// wrapped editor (to implement the text<==>File conversion)
+	// and a 'wrapping' one to provide the "Browse..." button.
+	// This class implements the wrapping one, the SimpleFileEditor
+	// defined below implements the wrapped one. Hope it's clear.
+	
 	/**
-	 * The editor panel.
+	 * The editor's panel.
 	 */
 	private JPanel panel= null;
 
     public FileEditor()
     {
-		// Build the list of available values for this property:
-		Vector options= new Vector();
-
-		// The only predefined value is "undefined" (null).
-		options.add(UNDEFINED);
-
-		// Create the combo box we will use to edit this property:
-		combo= new JComboBox(options);
-		combo.setEditable(true);
-		
+    	super(new SimpleFileEditor(), File.class, null);
+    	
 		// Create a button to trigger the file chooser:
 		JButton button= new JButton("Browse...");
 		button.addActionListener(this);
 		
-		// Put both in a panel:
+		// Create a panel containing the combo and the button:
 		panel= new JPanel(new BorderLayout(5,0));
-		panel.add(combo, BorderLayout.CENTER);
+		panel.add(super.getCustomEditor(), BorderLayout.CENTER);
 		panel.add(button, BorderLayout.LINE_END);
     }
 
@@ -141,107 +114,6 @@ public class FileEditor extends PropertyEditorSupport implements ActionListener
     public Component getCustomEditor()
     {
         return panel;
-    }
-
-    /**
-     * @see java.beans.PropertyEditor#getValue()
-     * @see org.apache.jmeter.testelement.property.JMeterProperty
-     */
-    public Object getValue()
-    {
-        Object value= combo.getSelectedItem();
-		if (value == UNDEFINED)
-		{
-			value= null;
-		}
-		else {
-			String text= (String) value;
-			if (combo.getSelectedIndex() > 0
-				|| text.indexOf("${") == -1)
-			{
-				// if it's not a JMeter 'expression'...
-				value= new File(text).getPath();
-					// TODO: remove the ".getPath()" as soon as JMeter is
-					// capable of handling File objects (maybe when we get rid
-					// of JMeterProperties...)
-			}
-		}
-        return value;
-    }
-
-	/* (non-Javadoc)
-	 * @see java.beans.PropertyEditor#setValue(java.lang.Object)
-	 */
-	public void setValue(Object value)
-	{
-		if (value == null)
-		{
-			value= UNDEFINED;
-		}
-		else if (value instanceof File)
-		{
-			value= ((File)value).getPath();
-		}
-		else
-		{
-			// Not a type specific to the property, so it is a String...
-			// ... but, just in case, I'll check:
-			if (! (value instanceof String))
-			{
-				log.error("When editing a file property, got value of type "+value.getClass());
-				throw new Error("String expected, got "+value.getClass());
-					// programming error, so bail out.
-			} 
-		}
-		combo.setSelectedItem(value);
-		firePropertyChange();
-	}
-
-	/* (non-Javadoc)
-	 * @see java.beans.PropertyEditor#getAsText()
-	 */
-	public String getAsText()
-	{
-		String text;
-		
-		Object value= combo.getSelectedItem();
-		if (value == UNDEFINED)
-		{
-			text= null;
-		}
-		else {
-			text= (String) value;
-			if (combo.getSelectedIndex() > 0
-				|| text.indexOf("${") == -1)
-			{
-				text= new File(text).getPath();
-			}
-		}
-		return text;
-	}
-
-	/* (non-Javadoc)
-	 * @see java.beans.PropertyEditor#setAsText(java.lang.String)
-	 */
-	public void setAsText(String text) throws IllegalArgumentException
-	{
-		if (text == null)
-		{
-			combo.setSelectedItem(UNDEFINED);
-		}
-		else 
-		{
-			combo.setSelectedItem(text);
-		}
-		firePropertyChange();
-	}
-
-    /* (non-Javadoc)
-     * @see java.beans.PropertyEditor#supportsCustomEditor()
-     */
-    public boolean supportsCustomEditor()
-    {
-        return true;
     }
 
     /* (non-Javadoc)
@@ -255,20 +127,32 @@ public class FileEditor extends PropertyEditorSupport implements ActionListener
 
 		setValue(file);
     }
- 
-	/* (non-Javadoc)
-	 * @see java.awt.event.ItemListener#itemStateChanged(java.awt.event.ItemEvent)
-	 *//*
-	public void itemStateChanged(ItemEvent e)
+    
+	private static class SimpleFileEditor extends PropertyEditorSupport
 	{
-		if (e.getStateChange() == ItemEvent.SELECTED)
-		{
-			if (e.getItem() == EDIT) {
-				combo.setEditable(true);
-				combo.setSelectedItem("");
-				combo.getEditor().getEditorComponent().requestFocus();
-			} 
-			else if (combo.getSelectedIndex() >= 0) combo.setEditable(false); 
-		}
-	}*/
+        /* (non-Javadoc)
+         * @see java.beans.PropertyEditor#getAsText()
+         */
+        public String getAsText()
+        {
+            return ((File)super.getValue()).getPath();
+        }
+
+        /* (non-Javadoc)
+         * @see java.beans.PropertyEditor#setAsText(java.lang.String)
+         */
+        public void setAsText(String text) throws IllegalArgumentException
+        {
+            setValue(new File(text));
+        }
+        
+        /*
+         * Oh, I forgot: JMeter doesn't support File properties yet. Need to work
+         * on this as a String :-(
+         */
+        public Object getValue()
+        {
+        	return getAsText();
+        }
+	}
 }

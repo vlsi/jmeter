@@ -279,16 +279,15 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 					+ value);
 		}
 
+		combo.setEditable(true);
 		if (value == null)
 		{
 			value= UNDEFINED;
-			combo.setEditable(false);
 		}
 		else if (type.isInstance(value))
 		{
 			editor.setValue(value);
 			value= editor.getAsText();
-			combo.setEditable(false);
 		}
 		else
 		{
@@ -301,9 +300,9 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 				throw new Error("String expected, got "+value.getClass());
 					// programming error, so bail out.
 			} 
-			combo.setEditable(true);
 		}
 		combo.setSelectedItem(value);
+		if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
 		firePropertyChange();
 	}
 
@@ -345,16 +344,16 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		{
 			log.debug(text == null ? "<-null" : "<-\"" + text + "\"");
 		}
+		combo.setEditable(true);
 		if (text == null)
 		{
-			combo.setEditable(false);
 			combo.setSelectedItem(UNDEFINED);
 		}
 		else 
 		{
-			combo.setEditable(true);
 			combo.setSelectedItem(text);
 		}
+		if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
 		firePropertyChange();
 	}
 
