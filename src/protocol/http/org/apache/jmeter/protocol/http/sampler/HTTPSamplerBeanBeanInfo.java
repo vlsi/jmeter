@@ -57,7 +57,6 @@
  */
 package org.apache.jmeter.protocol.http.sampler;
 
-
 import org.apache.jmeter.testbeans.gui.BeanInfoSupport;
 
 /**
@@ -69,5 +68,14 @@ public class HTTPSamplerBeanBeanInfo extends BeanInfoSupport {
 		super(HTTPSamplerBean.class);
 		
 		property("arguments").setPropertyEditorClass(HTTPArgumentsEditor.class);
+		
+		createPropertyGroup("webServer",
+			new String[] { "domain", "port" });
+		createPropertyGroup("httpRequest",
+			new String[] { "protocol", "method", "path", "arguments" });
+		createPropertyGroup("multipartRequest",
+			new String[] { "filename", "fileField", "mimeType" });
+		createPropertyGroup("options",
+			new String[] { "followRedirects", "useKeepAlive", "imageParser" }); 
 	}
 }
