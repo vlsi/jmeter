@@ -59,6 +59,9 @@ package org.apache.jmeter.testbeans.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -82,7 +85,6 @@ import org.apache.jmeter.config.ConfigElement;
 import org.apache.jmeter.control.Controller;
 import org.apache.jmeter.gui.AbstractJMeterGuiComponent;
 import org.apache.jmeter.gui.util.MenuFactory;
-import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.processor.PostProcessor;
 import org.apache.jmeter.processor.PreProcessor;
 import org.apache.jmeter.samplers.Sampler;
@@ -112,6 +114,8 @@ import org.apache.log.Logger;
  * <dd>Order in which the property will be shown in its group. A smaller
  * integer means higher up in the GUI. The default order is 0. Properties
  * of equal order are sorted alphabetically.</dd>
+ * <dt>tags: String[]</dt>
+ * <dd>List of values to be offered for the property.</dd>
  * </dl>
  * <p>
  * The following BeanDescriptor attributes are also understood:
@@ -402,30 +406,48 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         add(makeTitlePanel(), BorderLayout.NORTH);
         // TODO: add support for beanInfo.getBeanDescriptor().getCustomizerClass()
         // via a tabbed pannel -- e.g. "Properties" vs. "Custom"
-        // TODO: use a table instead of this bunch of panels
-        VerticalPanel mainPanel = new VerticalPanel();
+        // TODO: make property grouping visible, probably using etched titled borders:
+		/*groupPanel.setBorder(
+			BorderFactory.createTitledBorder(
+				BorderFactory.createEtchedBorder(),
+				group_name));*/
 
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        
+        GridBagConstraints cl= new GridBagConstraints(); // for labels
+		cl.gridx= 0;
+		cl.anchor= GridBagConstraints.LINE_END;
+		cl.insets= new Insets(0, 1, 0, 1);
+
+		GridBagConstraints ce= new GridBagConstraints(); // for editors
+		ce.fill= GridBagConstraints.BOTH;
+		ce.gridx= 1;
+		ce.weightx= 1.0;
+		ce.insets= new Insets(0, 1, 0, 1);
+		
         for (int i=0; i<editors.length; i++)
         {
             if (editors[i] == null) continue;
-            mainPanel.add(
-                createPropertyPanel(
-                    descriptors[i].getName(),
-                    editors[i].getCustomEditor()));            
+
+			JLabel label = new JLabel(descriptors[i].getName());
+			Component customEditor= editors[i].getCustomEditor();
+			label.setHorizontalAlignment(JLabel.TRAILING);
+			label.setLabelFor(customEditor);
+
+			cl.gridy= i;
+            mainPanel.add(label, cl);
+
+			ce.gridy= i;
+            ce.weighty= customEditor.getMaximumSize().height;
+            		// TODO: the above works in the current situation, but it's
+            		// just a hack. How to get each editor to report whether it
+            		// wants to grow bigger? Whether the property label should
+            		// be at the left or at the top of the editor? ...?
+            mainPanel.add(customEditor, ce);
         }
         add(mainPanel, BorderLayout.CENTER);
     }
 
-    private JPanel createPropertyPanel(String name, Component customEditor)
-    {
-        JPanel panel = new JPanel(new BorderLayout(5, 0));
-        JLabel label = new JLabel(name);
-        label.setLabelFor(customEditor);
-        panel.add(label, BorderLayout.WEST);
-        panel.add(customEditor, BorderLayout.CENTER);
-        return panel;
-    }
-    
     /**
      * Comparator used to sort properties for presentation in the GUI.
      */
