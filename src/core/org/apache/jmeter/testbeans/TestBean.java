@@ -62,6 +62,8 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.jmeter.control.NextIsNullException;
 import org.apache.jmeter.samplers.Sampler;
@@ -93,9 +95,9 @@ import org.apache.jmeter.testelement.property.TestElementProperty;
 public abstract class TestBean extends AbstractTestElement
 {
     /**
-     * Property name String to property setter method map.
+     * Property name to property descriptor method map.
      */
-    private static PropertyDescriptor[] descriptors= null;
+    private static Map descriptors= null;
 
     
     /**
@@ -112,9 +114,15 @@ public abstract class TestBean extends AbstractTestElement
         {
             try
             {
+            	// Obtain the property descriptors:
                 BeanInfo beanInfo= Introspector.getBeanInfo(this.getClass(),
                     TestBean.class);
-                descriptors= beanInfo.getPropertyDescriptors();
+                PropertyDescriptor[] desc= beanInfo.getPropertyDescriptors();
+                descriptors= new HashMap();
+                for (int i=0; i<desc.length; i++)
+                {
+                	descriptors.put(desc[i].getName(), desc[i]);
+                }
             }
             catch (IntrospectionException e)
             {
@@ -136,11 +144,12 @@ public abstract class TestBean extends AbstractTestElement
     {
         Object[] param= new Object[1];
         
-        for (int i=0; i<descriptors.length; i++)
+        for (PropertyIterator i= propertyIterator(); i.hasNext(); )
         {
             // Obtain a value of the appropriate type for this property. 
-            JMeterProperty property= getProperty(descriptors[i].getName());
-            Class type= descriptors[i].getPropertyType();
+            JMeterProperty property= i.next();
+            PropertyDescriptor descriptor= (PropertyDescriptor)descriptors.get(property.getName()); 
+            Class type= descriptor.getPropertyType();
             Object value= unwrapProperty(property, type);
 
             // Set the bean's property to the value we just obtained:
@@ -150,7 +159,7 @@ public abstract class TestBean extends AbstractTestElement
                     // We can't assign null to primitive types.
                 {
                     param[0]= value;
-                    descriptors[i].getWriteMethod().invoke(this, param);
+                    descriptor.getWriteMethod().invoke(this, param);
                 }
             }
             catch (IllegalArgumentException e)
