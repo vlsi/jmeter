@@ -319,8 +319,6 @@ I said above is true (so I won't need to reinstate this code).
 
     	guiEditor.setValue(text);
     	
-    	lastValidValue= text;
-    	
     	firePropertyChange();
     }
 
@@ -383,16 +381,23 @@ I said above is true (so I won't need to reinstate this code).
 		// TODO: if (NOT A TAG: && noEdit) shouldNeverHappen();
     
 		guiEditor.setValue(value);
-    
-		lastValidValue= value;
 
 		firePropertyChange();
 	}
 
     public void propertyChange(PropertyChangeEvent event)
     {
-		if (! isValidValue(guiEditor.getAsText()))
+    	String text= guiEditor.getAsText();
+		if (isValidValue(text))
 		{
+			lastValidValue= text;
+		}
+		else
+		{
+			if (log.isDebugEnabled())
+			{
+				log.debug("Invalid value. Reverting to last valid value.");
+			}
 			// TODO: warn the user. Maybe with a pop-up? A bell?
     
 			// Revert to the previously unselected (presumed valid!) value:
