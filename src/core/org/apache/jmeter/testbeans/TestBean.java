@@ -148,11 +148,10 @@ public abstract class TestBean extends AbstractTestElement
         {
             // Obtain a value of the appropriate type for this property. 
             JMeterProperty jprop= jprops.next();
-            PropertyDescriptor descriptor= (PropertyDescriptor)descriptors.get(jprop.getName()); 
-            if (descriptor == null) {//TODO HACK
-            	log.error("Null desc for "+jprop.getName());
-            	continue;
-            }
+            PropertyDescriptor descriptor= (PropertyDescriptor)descriptors.get(jprop.getName());
+
+            if (descriptor == null) continue; // ignore auxiliary properties like gui_class 
+
             Class type= descriptor.getPropertyType();
             Object value= unwrapProperty(jprop, type);
 
