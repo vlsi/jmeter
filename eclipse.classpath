@@ -23,7 +23,7 @@
     <classpathentry kind="src" path="src/examples"/>
     <classpathentry kind="src" output="build/htmlparser" path="src/htmlparser"/>
     <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-    <classpathentry kind="lib" path="lib/excalibur-campatibility-1.1.jar"/>
+    <classpathentry kind="lib" path="lib/excalibur-compatibility-1.1.jar"/>
     <classpathentry kind="lib" path="lib/excalibur-i18n-1.1.jar"/>
     <classpathentry kind="lib" path="lib/excalibur-logger-1.1.jar"/>
     <classpathentry kind="lib" path="lib/avalon-framework-4.1.4.jar"/>
@@ -35,5 +35,10 @@
     <classpathentry kind="lib" path="lib/commons-collections.jar"/>
     <classpathentry kind="lib" path="lib/soap.jar"/>
     <classpathentry kind="lib" path="lib/jdom-b9.jar"/>
+    <classpathentry kind="lib" path="lib/xalan.jar"/>
+	<classpathentry kind="lib" path="lib/xercesImpl.jar"/>
+	<classpathentry kind="lib" path="lib/xml-apis.jar"/>
+	<classpathentry kind="lib" path="lib/commons-httpclient-2.0.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging.jar"/>
     <classpathentry kind="output" path="build/default"/>
 </classpath>

@@ -187,8 +187,9 @@ public class HttpRequestHdr
     	// Damn! A whole new GUI just to instantiate a test element?
     	// Isn't there a beter way? 
         HttpTestSampleGui tempGui = new HttpTestSampleGui();
-        tempGui.configure(createSampler());
-        HTTPSampler result = (HTTPSampler) tempGui.createTestElement();
+        HTTPSampler result = createSampler();
+        tempGui.configure(result);
+        tempGui.modifyTestElement(result);
         result.setFollowRedirects(false);
         result.setUseKeepAlive(true);
         return result;
@@ -227,7 +228,7 @@ public class HttpRequestHdr
         sampler.setMethod(method);
         log.debug("Proxy: method server: " + sampler.getMethod());
         sampler.setPath(serverUrl());
-        log.debug("Proxy: setting path: " + sampler.getEncodedPath());
+        log.debug("Proxy: setting path: " + sampler.getPath());
         if (numberRequests){
         	requestNumber++;
 			sampler.setName(requestNumber + " " + sampler.getPath());
