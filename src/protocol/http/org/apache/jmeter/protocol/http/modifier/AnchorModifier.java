@@ -36,7 +36,7 @@ import org.apache.jmeter.junit.JMeterTestCase;
 import org.apache.jmeter.processor.PreProcessor;
 import org.apache.jmeter.protocol.http.parser.HtmlParsingUtils;
 import org.apache.jmeter.protocol.http.sampler.HTTPSampleResult;
-import org.apache.jmeter.protocol.http.sampler.HTTPSampler;
+import org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.save.SaveService;
@@ -75,10 +75,10 @@ public class AnchorModifier
     	JMeterContext context = getThreadContext();
         Sampler sam = context.getCurrentSampler();
         SampleResult res = context.getPreviousResult();
-        HTTPSampler sampler = null;
+        HTTPSamplerBase sampler = null;
         HTTPSampleResult result = null;
         if (res == null 
-            || !(sam instanceof HTTPSampler)
+            || !(sam instanceof HTTPSamplerBase)
             || !(res instanceof HTTPSampleResult))
         {
             log.info("Can't apply HTML Link Parser when the previous"
@@ -87,7 +87,7 @@ public class AnchorModifier
         }
         else
         {
-            sampler = (HTTPSampler) sam;
+            sampler = (HTTPSamplerBase) sam;
             result = (HTTPSampleResult) res;
         }
         List potentialLinks = new ArrayList();
@@ -116,12 +116,12 @@ public class AnchorModifier
         addFormUrls(html, result, sampler, potentialLinks);
         if (potentialLinks.size() > 0)
         {
-            HTTPSampler url =
-                (HTTPSampler) potentialLinks.get(
+            HTTPSamplerBase url =
+                (HTTPSamplerBase) potentialLinks.get(
                     rand.nextInt(potentialLinks.size()));
             sampler.setDomain(url.getDomain());
             sampler.setPath(url.getPath());
-            if (url.getMethod().equals(HTTPSampler.POST))
+            if (url.getMethod().equals(HTTPSamplerBase.POST))
             {
                 PropertyIterator iter = sampler.getArguments().iterator();
                 while (iter.hasNext())
@@ -185,7 +185,7 @@ public class AnchorModifier
     private void addFormUrls(
         Document html,
         HTTPSampleResult result,
-        HTTPSampler config,
+        HTTPSamplerBase config,
         List potentialLinks)
     {
         NodeList rootList = html.getChildNodes();
@@ -200,10 +200,10 @@ public class AnchorModifier
         Iterator iter = urls.iterator();
         while (iter.hasNext())
         {
-            HTTPSampler newUrl = (HTTPSampler) iter.next();
+            HTTPSamplerBase newUrl = (HTTPSamplerBase) iter.next();
             try
             {
-                newUrl.setMethod(HTTPSampler.POST);
+                newUrl.setMethod(HTTPSamplerBase.POST);
                 if (HtmlParsingUtils.isAnchorMatched(newUrl, config))
                 {
                     potentialLinks.add(newUrl);
@@ -219,9 +219,14 @@ public class AnchorModifier
     private void addAnchorUrls(
         Document html,
         HTTPSampleResult result,
-        HTTPSampler config,
+        HTTPSamplerBase config,
         List potentialLinks)
     {
+    	String base="";
+    	NodeList baseList = html.getElementsByTagName("base");
+    	if (baseList.getLength()>0){
+    		base=baseList.item(0).getAttributes().getNamedItem("href").getNodeValue();
+    	}
         NodeList nodeList = html.getElementsByTagName("a");
         for (int i = 0; i < nodeList.getLength(); i++)
         {
@@ -235,10 +240,10 @@ public class AnchorModifier
             String hrefStr = namedItem.getNodeValue();
             try
             {
-                HTTPSampler newUrl =
+                HTTPSamplerBase newUrl =
                     HtmlParsingUtils.createUrlFromAnchor(
-                        hrefStr, result.getURL());
-                newUrl.setMethod(HTTPSampler.GET);
+                        hrefStr, new URL(result.getURL(),base));
+                newUrl.setMethod(HTTPSamplerBase.GET);
                 log.debug("possible match: " + newUrl);
                 if (HtmlParsingUtils.isAnchorMatched(newUrl, config))
                 {
@@ -270,8 +275,8 @@ public class AnchorModifier
 
         public void testProcessingHTMLFile(String HTMLFileName) throws Exception
         {
-            HTTPSampler config =
-                (HTTPSampler) SaveService
+            HTTPSamplerBase config =
+                (HTTPSamplerBase) SaveService
                     .loadSubTree(
                         new FileInputStream(
                             System.getProperty("user.dir")
@@ -279,8 +284,8 @@ public class AnchorModifier
                     .getArray()[0];
             config.setRunningVersion(true);
             HTTPSampleResult result = new HTTPSampleResult();
-            HTTPSampler context =
-                (HTTPSampler) SaveService
+            HTTPSamplerBase context =
+                (HTTPSamplerBase) SaveService
                     .loadSubTree(
                         new FileInputStream(
                             System.getProperty("user.dir")
@@ -296,13 +301,13 @@ public class AnchorModifier
                     .getBytes());
             result.setSampleLabel(context.toString());
             result.setSamplerData(context.toString());
-            result.setURL(new URL("http://nagoya.apache.org/fakepage.html"));
+            result.setURL(new URL("http://issues.apache.org/fakepage.html"));
             jmctx.setPreviousResult(result);
             AnchorModifier modifier = new AnchorModifier();
             modifier.setThreadContext(jmctx);
             modifier.process();
             assertEquals(
-                "http://nagoya.apache.org/bugzilla/buglist.cgi?"
+                "http://issues.apache.org/bugzilla/buglist.cgi?"
                     + "bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED"
                     + "&email1=&emailtype1=substring&emailassigned_to1=1"
                     + "&email2=&emailtype2=substring&emailreporter2=1"
@@ -317,7 +322,7 @@ public class AnchorModifier
                 config.toString());
             config.recoverRunningVersion();
             assertEquals(
-                "http://nagoya.apache.org/bugzilla/buglist.cgi?"
+                "http://issues.apache.org/bugzilla/buglist.cgi?"
                     + "bug_status=.*&bug_status=.*&bug_status=.*&email1="
                     + "&emailtype1=substring&emailassigned_to1=1&email2="
                     + "&emailtype2=substring&emailreporter2=1"
@@ -343,12 +348,12 @@ public class AnchorModifier
             testProcessingHTMLFile(
                 "/testfiles/jmeter_home_page_with_relative_links.html");
         }
-/* Feature not yet implemented. TODO: implement it.
+//* Feature not yet implemented. TODO: implement it.
         public void testModifySamplerWithBaseHRef() throws Exception
         {
             testProcessingHTMLFile(
                 "/testfiles/jmeter_home_page_with_base_href.html");
         }
-*/
+//*/
     }
 }

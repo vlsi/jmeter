@@ -38,11 +38,11 @@ public class RunningSample
     private static DecimalFormat errorFormatter = new DecimalFormat("#0.00%");
 
     private long counter;
-    private long runningSum;
-    private long max, min;
-    private long errorCount;
-    private long firstTime;
-    private long lastTime;
+    private volatile long runningSum;
+    private volatile long max, min;
+    private volatile long errorCount;
+    private volatile long firstTime;
+    private volatile long lastTime;
     private String label;
     private int index;
 
@@ -175,7 +175,7 @@ public class RunningSample
         if (rate < 1.0)
         {
             rate *= 60.0;
-            unit = "/hour";
+            unit = "hour";
         }
 
         String rval = rateFormatter.format(rate) + "/" + unit;

@@ -55,16 +55,6 @@ public class HTTPSampleResult extends SampleResult
         setCookies(res.getCookies());
     }
 
-    private URL location;
-    
-    public void setURL(URL location) {
-        this.location= location;
-    }
-    
-    public URL getURL() {
-        return location;
-    }
-    
     private String method;
     
     public void setHTTPMethod(String method) {
@@ -92,7 +82,7 @@ public class HTTPSampleResult extends SampleResult
      */
     public boolean isRedirect()
     {
-        final String[] REDIRECT_CODES= { "301", "302", "303", "304" };
+        final String[] REDIRECT_CODES= { "301", "302", "303" }; // NOT 304!
         String code= getResponseCode();
         for (int i= 0; i < REDIRECT_CODES.length; i++)
         {
@@ -110,7 +100,7 @@ public class HTTPSampleResult extends SampleResult
     {
         StringBuffer sb= new StringBuffer();
         sb.append(getHTTPMethod());
-        URL u= getURL();
+        URL u= super.getURL();
         if (u != null)
         {
             sb.append(' ');

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.PropertyResourceBundle;
 
@@ -67,19 +68,40 @@ public class PackageTest extends TestCase
     	return new PropertyResourceBundle(ras);
     }
 
+    private static Object [] DUMMY_PARAMS = new Object[]{"1","2","3","4","5","6","7","8","9"}; 
     //	Read resource file saving the keys
-    private void readRF(String res, List l) throws Exception
+    private int readRF(String res, List l) throws Exception
     {
+    	int fails =0 ;
 		InputStream ras = this.getClass().getResourceAsStream(res);
 		BufferedReader fileReader =
 		new BufferedReader(new InputStreamReader(ras));
        	String s;
         while((s=fileReader.readLine())!=null)
         {
-           	if (s.length() > 0)  {
-           		l.add(s.substring(0,s.indexOf('=')));
+           	if (s.length() > 0 && !s.startsWith("#"))  {
+           		l.add(s.substring(0,s.indexOf('='))); // Store the key
+           		/*
+           		 *  Now check for invalid message format:
+           		 *  if string contains {0} and ' there may  be a problem,
+           		 *  so do a format with dummy parameters and check if there
+           		 *  is a { in the output.
+           		 *  A bit crude, but should be enough for now.
+           		 */
+    			if (s.indexOf("{0}") > 0 && s.indexOf("'") > 0)
+    			{
+    				String m = java.text.MessageFormat.format(s,DUMMY_PARAMS);
+    				if (m.indexOf("{") > 0) {
+    					fails++;
+    					System.out.println("Incorrect message format ? (input/output): ");
+    				    System.out.println(s);
+    				    System.out.println(m);
+    				}
+    			}
+
            	}
        	} 
+        return fails;
     }
     
     // Helper method to construct resource name
@@ -87,19 +109,23 @@ public class PackageTest extends TestCase
     	if (lang.length()==0){
 			return "messages.properties";
     	} else {
-			return "messages_"+lang.toLowerCase()+".properties";
+			return "messages_"+lang.toLowerCase(Locale.ENGLISH)+".properties";
     	}
     }
 	
+	private void check(String resname) throws Exception
+	{
+		check(resname, true);// check that there aren't any extra entries
+	}
 	/*
 	 * perform the checks on the resources
 	 * 
 	 */
-	private void check(String resname) throws Exception
+	private void check(String resname, boolean checkUnexpected) throws Exception
 	{
 		ArrayList alf = new ArrayList(500);// holds keys from file
 		String res = getResName(resname);
-		readRF(res,alf);
+		subTestFailures += readRF(res,alf);
 		Collections.sort(alf);
 		
 		// Look for duplicate keys in the file
@@ -117,7 +143,7 @@ public class PackageTest extends TestCase
 		{
 			defaultPRB = getRAS(res);
 		}
-		else
+		else if (checkUnexpected)
 		{
 			// Check all the keys are in the default props file
 			Enumeration enum = getRAS(res).getKeys();
@@ -151,6 +177,8 @@ public class PackageTest extends TestCase
 		ts.addTest(new PackageTest("atestDE"));
 		ts.addTest(new PackageTest("atestNO"));
 		ts.addTest(new PackageTest("atestJA"));
+		ts.addTest(new PackageTest("atestCN"));
+		ts.addTest(new PackageTest("atestFR"));
 		return ts;
 	}
 
@@ -171,9 +199,17 @@ public class PackageTest extends TestCase
 	{
 		check("JA");
 	}
+    public void atestCN() throws Exception
+	{
+		check("CN");
+	}
 	public void atestNO() throws Exception
 	{
 		check("NO");
+	}
+	public void atestFR() throws Exception
+	{
+		check("FR",false);//Don't report unexpected rows (for 2.0 branch only!)
 	}
 	public void atestDefault() throws Exception
 	{

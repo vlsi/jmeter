@@ -47,7 +47,7 @@ import org.apache.log.Logger;
  */
 public abstract class AbstractTestElement implements TestElement, Serializable
 {
-    protected static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggingManager.getLoggerForClass();
 
     private Map propMap = Collections.synchronizedMap(new HashMap());
     private Set temporaryProperties;
@@ -457,7 +457,7 @@ public abstract class AbstractTestElement implements TestElement, Serializable
 	public void setThreadName(String inthreadName) {
 		if (threadName != null)
 		{
-			if (inthreadName != threadName)
+			if (!threadName.equals(inthreadName))
 			throw new RuntimeException("Attempting to reset the thread name");
 		}
 		this.threadName = inthreadName;
@@ -473,5 +473,10 @@ public abstract class AbstractTestElement implements TestElement, Serializable
 	 * @see org.apache.jmeter.testelement.TestElement#threadStarted()
 	 */
 	public void threadStarted() {
+	}
+	
+	// Default implementation
+	public boolean canRemove(){
+		return true;
 	}
 }

@@ -20,6 +20,7 @@ package org.apache.jmeter.samplers;
 
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -45,7 +46,13 @@ import org.apache.log.output.io.WriterTarget;
  */
 public class SampleResult implements Serializable
 {
-    /**
+	// Bug 33196 - encoding ISO-8859-1 is only suitable for Western countries
+	// However the suggested System.getProperty("file.encoding") is Cp1252 on Windows
+	// So use a new property with the original value as default
+    private static final String DEFAULT_ENCODING =
+		JMeterUtils.getPropDefault("sampleresult.default.encoding","ISO-8859-1");
+	
+	/**
      * Data type value indicating that the response data is text.
      *
      * @see #getDataType
@@ -61,17 +68,19 @@ public class SampleResult implements Serializable
      */
     public final static String BINARY = "bin";
 
-	/* empty array which can be returned instead of null */
+	/* empty arrays which can be returned instead of null */
 	private static final byte [] EMPTY_BA = new byte [0];
+	private static final SampleResult [] EMPTY_SR = new SampleResult[0];
+	private static final AssertionResult [] EMPTY_AR = new AssertionResult[0];
 
-    private byte[] responseData;
+    private byte[] responseData = EMPTY_BA;
     private String responseCode;
     private String label;
     private String samplerData;
     private String threadName;
     private String responseMessage="";
     private String responseHeaders=""; // Never return null
-    private String contentType; // e.g. text/html; charset=utf-8
+    private String contentType=""; // e.g. text/html; charset=utf-8
     private String requestHeaders="";
     private long timeStamp = 0;// the time stamp - can be start or end
     private long startTime = 0;
@@ -97,6 +106,14 @@ public class SampleResult implements Serializable
     private static final boolean startTimeStamp = 
         JMeterUtils.getPropDefault("sampleresult.timestamp.start",false);
 
+    static{
+    	if (startTimeStamp){
+        	log.info("Note: Sample TimeStamps are START times");
+    	} else {
+        	log.info("Note: Sample TimeStamps are END times");   		
+    	}
+		log.info("sampleresult.default.encoding is set to "+DEFAULT_ENCODING);
+    }
     public SampleResult()
     {
     	time = 0;
@@ -279,13 +296,13 @@ public class SampleResult implements Serializable
      * Gets the assertion results associated with this sample.
      *
      * @return an array containing the assertion results for this sample.
-     *         Returns null if there are no assertion results.
+     *         Returns empty array if there are no assertion results.
      */
     public AssertionResult[] getAssertionResults()
     {
         if (assertionResults == null)
         {
-            return null;
+            return EMPTY_AR;
         }
         return (AssertionResult[]) assertionResults.toArray(
             new AssertionResult[0]);
@@ -305,13 +322,13 @@ public class SampleResult implements Serializable
      * Gets the subresults associated with this sample.
      *
      * @return an array containing the subresults for this sample. Returns
-     *         null if there are no subresults.
+     *         an empty array if there are no subresults.
      */
     public SampleResult[] getSubResults()
     {
         if (subResults == null)
         {
-            return null;
+            return EMPTY_SR;
         }
         return (SampleResult[]) subResults.toArray(new SampleResult[0]);
     }
@@ -419,7 +436,7 @@ public class SampleResult implements Serializable
         }
         else
         {
-            return "ISO-8859-1";// 8859-1 is not a valid Java data encoding ..
+            return DEFAULT_ENCODING;
         }
     }
 
@@ -496,7 +513,7 @@ public class SampleResult implements Serializable
     }
 
     /**
-     * @return the content type - text or bin
+     * @return the content type - e.g. text/html [;charset=utf-8 ]
      */
     public String getContentType()
     {
@@ -670,8 +687,10 @@ public class SampleResult implements Serializable
 			res.sampleResume();
 			Thread.sleep(100);
 			res.sampleEnd();
-			assertTrue(res.getTime()  >= 200);
-			assertFalse(res.getTime() >= 290); // we hope!
+			long sampleTime = res.getTime();
+			if ((sampleTime < 200) || (sampleTime > 290)) {
+				fail("Accumulated time ("+sampleTime+") was not between 200 and 290 ms");
+			}
 		}
 
 		private static Formatter fmt=new RawFormatter();
@@ -696,4 +715,14 @@ public class SampleResult implements Serializable
 		}
         // TODO some more invalid sequence tests needed
     }
+
+	private URL location;
+
+	public void setURL(URL location) {
+	    this.location= location;
+	}
+
+	public URL getURL() {
+	    return location;
+	}
 }

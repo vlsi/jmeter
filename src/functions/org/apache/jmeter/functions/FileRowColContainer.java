@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import org.apache.jmeter.junit.JMeterTestCase;
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
@@ -45,7 +46,8 @@ public class FileRowColContainer
 
     private String fileName; // name of the file
     
-    public static final String DELIMITER = ","; // Default delimiter
+    public static final String DELIMITER =
+    	JMeterUtils.getPropDefault("csvread.delimiter",",");// delimiter defaults to ","
     
     /** Keeping track of which row is next to be read. */
     private int nextRow;
@@ -60,7 +62,7 @@ public class FileRowColContainer
 	public FileRowColContainer(String file,String delim)
 	throws IOException,FileNotFoundException
 	{
-		log.debug("FDC("+file+","+delim+")");
+		log.debug("FRCC("+file+","+delim+")");
 		fileName = file;
 		delimiter = delim;
 		nextRow = 0;
@@ -70,7 +72,7 @@ public class FileRowColContainer
 	public FileRowColContainer(String file)
 	throws IOException,FileNotFoundException
 	{
-		log.debug("FDC("+file+")");
+		log.debug("FRCC("+file+")["+DELIMITER+"]");
 		fileName = file;
 		delimiter = DELIMITER;
 		nextRow = 0;
@@ -161,19 +163,57 @@ public class FileRowColContainer
     private static ArrayList splitLine(String theLine,String delim)
     {
         ArrayList result = new ArrayList();
-        StringTokenizer tokener = new StringTokenizer(theLine,delim);
+        StringTokenizer tokener = new StringTokenizer(theLine,delim,true);
+        /* the beginning of the line is a "delimiter" so that 
+           ,a,b,c returns "" "a" "b" "c" */
+        boolean lastWasDelim = true;
         while(tokener.hasMoreTokens())
         {
             String token = tokener.nextToken();
-            result.add(token);
+            if(token.equals(delim))
+            {
+              if(lastWasDelim)
+              {
+                // two delimiters in a row; add an empty String
+                result.add("");
+              }
+              lastWasDelim = true;
+            }
+            else
+            {
+              lastWasDelim = false;
+              result.add(token);
+            }
+        }
+        if (lastWasDelim) // Catch the trailing delimiter
+        {
+        	result.add("");
         }
         return result;
     }
+    
+    /**
+     * @return the file name for this class
+     */
+    public String getFileName()
+    {
+        return fileName;
+    }
+
+	/**
+	 * @return Returns the delimiter.
+	 */
+	final String getDelimiter() {
+		return delimiter;
+	}
+
+	///////////////////////////// TEST CASES /////////////////////////////////////////
+    
     public static class Test extends JMeterTestCase
     {
 
 		static{
-//			LoggingManager.setPriority("DEBUG","jmeter");
+			LoggingManager.setPriority("DEBUG","jmeter.functions.FileRowColContainer");
 //			LoggingManager.setTarget(new PrintWriter(System.out));
 		}
 
@@ -246,13 +286,81 @@ public class FileRowColContainer
 			assertEquals("b2",f.getColumn(myRow,1));
 			assertEquals("c2",f.getColumn(myRow,2));
 		}
-    }
-    /**
-     * @return the file name for this class
-     */
-    public String getFileName()
-    {
-        return fileName;
-    }
 
+		public void testColumnsComma() throws Exception
+		{
+			FileRowColContainer f = new FileRowColContainer("testfiles/test.csv",",");
+			assertNotNull(f);
+			assertTrue("Not empty",f.fileData.size() > 0);
+
+			int myRow=f.nextRow();
+			assertEquals(0,myRow);
+			assertEquals("a1",f.getColumn(myRow,0));
+			assertEquals("d1",f.getColumn(myRow,3));
+
+			try {
+				f.getColumn(myRow,4);
+				fail("Expected out of bounds");
+			}
+			catch (IndexOutOfBoundsException e)
+			{
+			}
+			myRow=f.nextRow();
+			assertEquals(1,myRow);
+			assertEquals("b2",f.getColumn(myRow,1));
+			assertEquals("c2",f.getColumn(myRow,2));
+		}
+
+		public void testColumnsTab() throws Exception
+		{
+			FileRowColContainer f = new FileRowColContainer("testfiles/test.tsv","\t");
+			assertNotNull(f);
+			assertTrue("Not empty",f.fileData.size() > 0);
+
+			int myRow=f.nextRow();
+			assertEquals(0,myRow);
+			assertEquals("a1",f.getColumn(myRow,0));
+			assertEquals("d1",f.getColumn(myRow,3));
+
+			try {
+				f.getColumn(myRow,4);
+				fail("Expected out of bounds");
+			}
+			catch (IndexOutOfBoundsException e)
+			{
+			}
+			myRow=f.nextRow();
+			assertEquals(1,myRow);
+			assertEquals("b2",f.getColumn(myRow,1));
+			assertEquals("c2",f.getColumn(myRow,2));
+		}
+
+		public void testEmptyCols() throws Exception
+		{
+			FileRowColContainer f = new FileRowColContainer("testfiles/testempty.csv");
+			assertNotNull(f);
+			assertEquals("Expected 4 lines",4,f.fileData.size());
+
+			int myRow=f.nextRow();
+			assertEquals(0,myRow);
+			assertEquals("",f.getColumn(myRow,0));
+			assertEquals("d1",f.getColumn(myRow,3));
+
+			myRow=f.nextRow();
+			assertEquals(1,myRow);
+			assertEquals("",f.getColumn(myRow,1));
+			assertEquals("c2",f.getColumn(myRow,2));
+
+			myRow=f.nextRow();
+			assertEquals(2,myRow);
+			assertEquals("b3",f.getColumn(myRow,1));
+			assertEquals("",f.getColumn(myRow,2));
+
+			myRow=f.nextRow();
+			assertEquals(3,myRow);
+			assertEquals("b4",f.getColumn(myRow,1));
+			assertEquals("c4",f.getColumn(myRow,2));
+			assertEquals("",f.getColumn(myRow,3));
+		}
+    }
 }

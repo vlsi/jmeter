@@ -68,23 +68,23 @@ public class ResultCollector
         Remoteable,
         NoThreadClone
 {
-    private static final String TESTRESULTS_START = "<testResults>";
-    private static final String TESTRESULTS_END = "</testResults>";
-	private static final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+    private static final String TESTRESULTS_START = "<testResults>";//$NON-NLS-1$
+    private static final String TESTRESULTS_END = "</testResults>";//$NON-NLS-1$
+	private static final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";//$NON-NLS-1$
 	private static final int MIN_XML_FILE_LEN = 
 			XML_HEADER.length() + TESTRESULTS_START.length() + TESTRESULTS_END.length();
 	transient private static Logger log = LoggingManager.getLoggerForClass();
-    public final static String FILENAME = "filename";
-    private static boolean functionalMode = false;
-    public static final String ERROR_LOGGING = "ResultCollector.error_logging";
+    public final static String FILENAME = "filename"; //$NON-NLS-1$
+    transient private static boolean functionalMode = false;
+    public static final String ERROR_LOGGING = "ResultCollector.error_logging";//$NON-NLS-1$
     // protected List results = Collections.synchronizedList(new ArrayList());
     //private int current;
     transient private DefaultConfigurationSerializer serializer;
     //private boolean inLoading = false;
-    transient private PrintWriter out;
-    private boolean inTest = false;
-    private static Map files = new HashMap();
-    private Set hosts = new HashSet();
+    transient private volatile PrintWriter out;
+    transient private boolean inTest = false;
+    transient private static Map files = new HashMap();
+    transient private Set hosts = new HashSet();
 
     /**
      * No-arg constructor.
@@ -145,7 +145,7 @@ public class ResultCollector
         hosts.add(host);
         try
         {
-            initializeFileOutput();
+            initializeFileOutput();//TODO - move to first sample??
         }
         catch (Exception e)
         {
@@ -156,12 +156,12 @@ public class ResultCollector
 
     public void testEnded()
     {
-        testEnded("local");
+        testEnded("local");//$NON-NLS-1$
     }
 
     public void testStarted()
     {
-        testStarted("local");
+        testStarted("local");//$NON-NLS-1$
     }
 
     public void loadExistingFile()
@@ -219,7 +219,7 @@ public class ResultCollector
     {
         if (SaveService.getOutputFormat() == SaveService.SAVE_AS_XML)
         {
-            pw.print("\n");
+            pw.print("\n");//$NON-NLS-1$
             pw.print(TESTRESULTS_END);
         }
     }
@@ -245,7 +245,7 @@ public class ResultCollector
                     new OutputStreamWriter(
                         new BufferedOutputStream(
                             new FileOutputStream(filename, trimmed)),
-                        "UTF-8"),
+                        "UTF-8"),//$NON-NLS-1$
                     true);
             files.put(filename, writer);
         }
@@ -262,7 +262,7 @@ public class ResultCollector
     	RandomAccessFile raf = null;
         try
         {
-        	raf = new RandomAccessFile(filename,"rw");
+        	raf = new RandomAccessFile(filename,"rw");//$NON-NLS-1$
         	long len = raf.length();
         	if (len < MIN_XML_FILE_LEN)
         	{
@@ -328,9 +328,15 @@ public class ResultCollector
             tempOut,
             SaveService.getConfiguration(result, getFunctionalMode()));
         String serVer = tempOut.toString();
-
-        return serVer.substring(
-            serVer.indexOf(System.getProperty("line.separator")));
+        int index = serVer.indexOf(System.getProperty("line.separator"));
+        if(index > -1)
+        {
+            return serVer.substring(index);
+        }
+        else
+        {
+            return serVer;
+        }
     }
 
     private void readSamples(Configuration testResults)
@@ -451,7 +457,7 @@ public class ResultCollector
         return marked;
     }
 
-    private void initializeFileOutput()
+    private synchronized void initializeFileOutput()
         throws IOException, ConfigurationException, SAXException
     {
 

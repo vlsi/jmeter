@@ -31,6 +31,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.Locale;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
@@ -70,8 +71,12 @@ public class CookieManager
     // TestElements are cloned for each thread, so
     // we use an instance variable.
     private SimpleDateFormat dateFormat =
-        new SimpleDateFormat("EEEE, dd-MMM-yy HH:mm:ss zzz");
+        new SimpleDateFormat("EEEE, dd-MMM-yy HH:mm:ss zzz",Locale.US);
 
+	// See bug 33796
+	private static final boolean DELETE_NULL_COOKIES =
+		JMeterUtils.getPropDefault("CookieManager.delete_null_cookies",true);// $NON-NLS-1$
+	
     public CookieManager()
     {
 		// The cookie specification requires that the timezone be GMT.
@@ -210,21 +215,27 @@ public class CookieManager
      */
     public void add(Cookie c)
     {
-    	JMeterContext context = getThreadContext();
-        getCookies().addItem(c);
-        if(context.isSamplingStarted())
-        {
-            context.getVariables().put(c.getName(),c.getValue());
-        }
+		String cv = c.getValue();
+		if (DELETE_NULL_COOKIES && (null == cv || "".equals(cv))){
+			removeCookieNamed(c.getName());
+		} else {
+	    	JMeterContext context = getThreadContext();
+	        getCookies().addItem(c);
+	        if(context.isSamplingStarted())
+	        {
+	            context.getVariables().put(c.getName(),c.getValue());
+	        }
+		}
     }
 
-    /**
-     * Add an empty cookie.
-     */
-    public void add()
-    {
-        getCookies().addItem(new Cookie());
-    }
+//NOT USED - did it make sense to create an empty cookie, anyway?
+//    /**
+//     * Add an empty cookie.
+//     */
+//    public void add()
+//    {
+//        getCookies().addItem(new Cookie());
+//    }
     
     /**
      * Remove all the cookies.
@@ -359,12 +370,8 @@ public class CookieManager
                 {
                     String expires = nvp.substring(index + 1);
                     Date date = dateFormat.parse(expires);
-                    if (date.getTime() > System.currentTimeMillis())
-                        //TODO: why this conditional? If it's expired, it's
-                        // expired!
-                    {
-                        newCookie.setExpires(date.getTime());
-                    }
+                    //Always set expiry date - see Bugzilla id 29493
+                    newCookie.setExpires(date.getTime());
                 }
                 catch (ParseException pe)
                 {

@@ -18,8 +18,8 @@
 
 package org.apache.jmeter.functions;
 
+import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,16 +27,17 @@ import java.util.List;
 import org.apache.jmeter.engine.util.CompoundVariable;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.samplers.Sampler;
+import org.apache.jmeter.threads.JMeterContext;
+import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.JMeterVariables;
+import org.apache.jmeter.util.BeanShellInterpreter;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
+import org.apache.jorphan.util.JMeterException;
 import org.apache.log.Logger;
 
 /**
  * A function which understands BeanShell
- *
- * ALPHA CODE - liable to change without notice!
- * =============================================
  * 
  * @version    $Revision$ Updated on: $Date$
  */
@@ -44,10 +45,11 @@ import org.apache.log.Logger;
 public class BeanShell extends AbstractFunction implements Serializable
 {
 
-	protected static Logger log = LoggingManager.getLoggerForClass();
+	private static Logger log = LoggingManager.getLoggerForClass();
 
     private static final List desc = new LinkedList();
-    private static final String KEY = "__BeanShell";
+    private static final String KEY = "__BeanShell";  //$NON-NLS-1$
+    public static final String INIT_FILE = "beanshell.function.init";  //$NON-NLS-1$
 
 	
     static {
@@ -55,7 +57,8 @@ public class BeanShell extends AbstractFunction implements Serializable
         desc.add(JMeterUtils.getResString("function_name_param"));//$NON-NLS1$
     }
 
-    private Object[] values;
+    transient private Object[] values;
+	transient private BeanShellInterpreter bshInterpreter=null;
 
     public BeanShell()
     {
@@ -75,7 +78,13 @@ public class BeanShell extends AbstractFunction implements Serializable
         throws InvalidVariableException
     {
 
-        JMeterVariables vars = getVariables();
+    	if (bshInterpreter == null) // did we find BeanShell?
+    	{
+    		throw new InvalidVariableException("BeanShell not found");
+    	}
+    	
+    	JMeterContext jmctx = JMeterContextService.getContext();
+        JMeterVariables vars = jmctx.getVariables();
 
         String script  = ((CompoundVariable) values[0]).execute();
         String varName = "";
@@ -91,20 +100,23 @@ public class BeanShell extends AbstractFunction implements Serializable
         {
 
 			// Pass in some variables
-        	if (currentSampler != null) {
-				setObj.invoke(instance, new Object[] {"Sampler",currentSampler});
+        	if (currentSampler != null)
+        	{
+				bshInterpreter.set("Sampler",currentSampler);  //$NON-NLS-1$
         	}
 			
 			if (previousResult != null)
 			{
-				setObj.invoke(instance, new Object[] {"SampleResult",previousResult});
+				bshInterpreter.set("SampleResult",previousResult);  //$NON-NLS-1$
 			}
-				
-			setObj.invoke(instance, new Object[] {"log",log});
-			setObj.invoke(instance, new Object[] {"t",this});
+			
+			// Allow access to context and variables directly
+			bshInterpreter.set("ctx",jmctx);  //$NON-NLS-1$
+			bshInterpreter.set("vars",vars); //$NON-NLS-1$
+			bshInterpreter.set("threadName",Thread.currentThread().getName());  //$NON-NLS-1$
 			
             // Execute the script
-            Object bshOut = eval.invoke(instance, new Object[]{script});
+            Object bshOut = bshInterpreter.eval(script);
 			if (bshOut != null) {
 				resultStr = bshOut.toString();
 			}
@@ -115,7 +127,7 @@ public class BeanShell extends AbstractFunction implements Serializable
         }
 		catch (Exception ex) // Mainly for bsh.EvalError
 		{
-			log.warn("",ex);
+			log.warn("Error running BSH script",ex);
 		}
 
         log.debug("Output="+resultStr);
@@ -131,39 +143,6 @@ public class BeanShell extends AbstractFunction implements Serializable
     	log.info(s);
     }
 
-	transient private Object instance;
-	transient private Method setObj;
-	transient private Method eval;
-
-//TODO move to common class (in jorphan?) so can be shared with other BSH modules
-
-    private void setupBeanShell()
-    {    
-		ClassLoader loader = Thread.currentThread().getContextClassLoader();
-
-	try
-	{
-		Class Interpreter = loader.loadClass("bsh.Interpreter");
-		instance = Interpreter.newInstance();
-		Class string = String.class;
-		Class object = Object.class;
-			
-		eval = Interpreter.getMethod(
-				"eval",
-				new Class[] {string});
-		setObj = Interpreter.getMethod(
-				"set",
-				new Class[] {string,object});
-	}
-	catch(ClassNotFoundException e ){
-		log.error("Beanshell Interpreter not found");
-	}
-	catch (Exception e)
-	{
-		log.error("Problem starting BeanShell server ",e);
-	}
-
-	}
 	
     /* (non-Javadoc)
      * @see org.apache.jmeter.functions.Function#setParameters(Collection)
@@ -176,11 +155,22 @@ public class BeanShell extends AbstractFunction implements Serializable
 
         if (values.length < 1 || values.length > 2)
         {
-            throw new InvalidVariableException("Wrong number of variables");
+            throw new InvalidVariableException(
+            		"Expecting 1 or 2 parameters, but found "+values.length);//$NON-NLS-1$
         }
         
-        setupBeanShell();
-
+		try {
+			bshInterpreter = new BeanShellInterpreter();
+			try {
+				bshInterpreter.init(JMeterUtils.getProperty(INIT_FILE),	log);
+			} catch (IOException e) {
+				log.warn("Can't init interpreter");
+			} catch (JMeterException e) {
+				log.warn("Can't init interpreter");
+			}
+		} catch (ClassNotFoundException e) {
+			throw new InvalidVariableException("BeanShell not found");
+		}
     }
 
     /* (non-Javadoc)

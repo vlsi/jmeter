@@ -51,7 +51,8 @@ public class ResultSaver
     // File name sequence number 
     private static long sequenceNumber = 0;    
     
-	public static final String FILENAME = "FileSaver.filename";
+	public static final String FILENAME = "FileSaver.filename"; // $NON-NLS-1$
+	public static final String ERRORS_ONLY = "FileSaver.errorsonly"; // $NON-NLS-1$
 
     private static synchronized long nextNumber(){
     	return ++sequenceNumber;
@@ -100,11 +101,8 @@ public class ResultSaver
 		SampleResult s = e.getResult();
 		saveSample(s);
 		SampleResult []sr = s.getSubResults();
-		if (sr != null){
-			for (int i = 0; i < sr.length; i++){
-				saveSample(sr[i]);
-			}
-
+		for (int i = 0; i < sr.length; i++){
+			saveSample(sr[i]);
 		}
     }
 
@@ -112,6 +110,9 @@ public class ResultSaver
 	 * @param s SampleResult to save
 	 */
 	private void saveSample(SampleResult s) {
+		// Should we save successful samples?
+		if (s.isSuccessful() && getErrorsOnly()) return;
+		
 		nextNumber();
 		String fileName=makeFileName(s.getContentType());
 		log.debug("Saving "+s.getSampleLabel()+" in "+fileName);
@@ -121,24 +122,38 @@ public class ResultSaver
 		try {
 			pw = new FileOutputStream(out);
 			pw.write(s.getResponseData());
-			pw.close();
 		} catch (FileNotFoundException e1) {
 			log.error("Error creating sample file for "+s.getSampleLabel(),e1);
 		} catch (IOException e1) {
 			log.error("Error saving sample "+s.getSampleLabel(),e1);
 		}
+		finally
+		{
+			try {
+				if (pw != null) pw.close();
+			} catch (IOException e) {}
+		}
 	}
 	/**
 	 * @return fileName composed of fixed prefix, a number,
 	 * and a suffix derived from the contentType
+	 * e.g. Content-Type: text/html;charset=ISO-8859-1
 	 */
 	private String makeFileName(String contentType) {
-		String suffix;
-		int i = contentType.indexOf("/");
-		if (i == -1){
-			suffix="unknown";
-		} else {
-			suffix=contentType.substring(i+1);
+		String suffix="unknown";
+		if (contentType!=null){
+			int i = contentType.indexOf("/");
+			if (i != -1){
+				int j = contentType.indexOf(";");
+				if (j != -1)
+				{
+					suffix=contentType.substring(i+1,j);					
+				} 
+				else
+				{
+					suffix=contentType.substring(i+1);
+				}
+			}
 		}
 		return getFilename()+sequenceNumber+"."+suffix;
 	}
@@ -160,5 +175,9 @@ public class ResultSaver
 	private String getFilename()
 	{
 		return getPropertyAsString(FILENAME);
+	}
+	private boolean getErrorsOnly()
+	{
+		return getPropertyAsBoolean(ERRORS_ONLY);
 	}
 }
