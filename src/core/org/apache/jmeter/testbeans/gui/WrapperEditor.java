@@ -67,12 +67,12 @@ import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 import java.beans.PropertyEditorSupport;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.Vector;
 
 import javax.swing.JComboBox;
 import javax.swing.text.JTextComponent;
 
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
@@ -98,8 +98,10 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 {
     private static Logger log= LoggingManager.getLoggerForClass();
 
-    private static Object UNDEFINED= new UniqueObject("Undefined"); //TODO: should be a resource
-    private static Object EDIT= new UniqueObject("Edit");//TODO: this should be a resource
+    private static Object UNDEFINED=
+    	new UniqueObject(JMeterUtils.getResString("property_undefined"));
+    private static Object EDIT=
+    	new UniqueObject(JMeterUtils.getResString("property_edit"));
 
 	/**
 	 * Base PropertyEditor for the property at hand. Most methods in this class
@@ -115,10 +117,9 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 	private Class type;
 	
 	/**
-	 * The list of options to be offered by this editor in adition to those
-	 * defined in the wrapped editor.
+	 * The list of options to be offered by this editor.
 	 */
-	private String[] additionalTags;
+	private String[] tags;
 
 	/**
 	 * True iif the editor should not accept (nor produce) a null value.
@@ -190,7 +191,15 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
     {
 		this.editor= editor;
 		this.type= type;
-		this.additionalTags= additionalTags;
+		String[] editorTags= editor.getTags();
+		if (editorTags == null) this.tags= additionalTags;
+		else if (additionalTags == null) this.tags= editorTags;
+		else {
+			this.tags= new String[editorTags.length+additionalTags.length];
+			int j= 0;
+			for (int i=0; i<editorTags.length; i++) this.tags[j++]= editorTags[i];
+			for (int i=0; i<additionalTags.length; i++) this.tags[j++]= additionalTags[i];
+		}
 		this.noUndefined= noUndefined;
 		this.noEdit= noEdit;
 		this.defaultValue= defaultValue;
@@ -207,7 +216,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		{
 			options.addAll(Arrays.asList(tags));
 		}
-            
+
 		// The last option is to edit a value manually:
 		if (! noEdit) options.add(EDIT);
 		
@@ -233,16 +242,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
      */
     public String[] getTags()
     {
-        String[] tags= editor.getTags();
-		
-		if (tags == null) return additionalTags;
-		else if (additionalTags == null) return tags;
-		else {
-			LinkedList l= new LinkedList();
-			l.addAll(Arrays.asList(tags));
-			l.addAll(Arrays.asList(additionalTags));
-			return (String[])l.toArray(new String[0]);
-		}
+    	return tags;
     }
 
     /**
@@ -270,11 +270,9 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 				}
 				catch (IllegalArgumentException e)
 				{
-					// TODO: how to warn the user?
-					// Maybe we should do this check earlier in the edit
-					// process, maybe upon ItemChangeEvents?
-					// URGENT: this can return null on noUndefined editors!!!!
-					value= null;
+					// This should never happen, since we've assessed
+					// value validity in the itemStateChanged event handler. 
+					throw new Error(e);
 				}
 			}
 		}
@@ -501,6 +499,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 			else if (! isValidValue((String)e.getItem()))
 			{
 				// TODO: warn the user. Maybe with a pop-up? A bell?
+
 				// Revert to the previously unselected (presumed valid!) value:
 				combo.setSelectedItem(lastValidValue);
 				if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
