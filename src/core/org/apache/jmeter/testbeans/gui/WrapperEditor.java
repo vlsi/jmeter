@@ -94,8 +94,7 @@ import org.apache.log.Logger;
  * For PropertyEditors without a custom editor, the provided GUI is a combo
  * box with:
  * <ul>
- * <li>An option for "undefined" (corresponding to the null value, not the
- *      NullProperty).
+ * <li>An option for "undefined" (corresponding to the null value or NullProperty).
  * <li>An option for each value returned by the getTags() method on the wrapped
  * 	editor.
  * <li>The possibility to write your own value, which will be parsed by the
@@ -289,12 +288,8 @@ class WrapperEditor implements PropertyEditor
 			}
         }
 
-		if (value != null)
-		{
-			result= TestBean.wrapInProperty(value);
-			result.setName(name);
-		}
-		else result= null;
+		result= TestBean.wrapInProperty(value);
+		result.setName(name);
         
         if (log.isDebugEnabled())
         {
@@ -489,7 +484,7 @@ class WrapperEditor implements PropertyEditor
 				
 			testSetGet(e, new BooleanProperty("B", true));
 			testSetGet(e, new BooleanProperty("B", false));
-			testSetGet(e, null);
+			testSetGet(e, new NullProperty("B"));
 			testSetGet(e, new StringProperty("B", "${var}"));
 			
 			e.setValue(new StringProperty("B", "true"));
@@ -516,7 +511,7 @@ class WrapperEditor implements PropertyEditor
 			assertEquals(new BooleanProperty("B", true), e.getValue());
 			
 			e.setAsText("invalid");
-			assertEquals(null, e.getValue());
+			assertEquals(new NullProperty("B"), e.getValue());
 		}
 		public void testSetGetAsTextOnString() throws Exception
 		{
@@ -528,10 +523,10 @@ class WrapperEditor implements PropertyEditor
 			testSetGetAsText(e, "");
 			testSetGetAsText(e, null);
 			testSetGetAsText(e, "${var}");
-			
+
 			// Check "Undefined" does not become a "reserved word":
 			e.setAsText(UNDEFINED.toString());
-			assertNotNull(e.getValue());
+			assertNotNull(e.getAsText());
 		}
 	}
 }
