@@ -182,7 +182,7 @@ public abstract class TestBean extends AbstractTestElement
      *              types, or the value returned by property.getObjectValue
      * @deprecated
      */
-    public static Object unwrapProperty(JMeterProperty property, Class type)
+    private static Object unwrapProperty(JMeterProperty property, Class type)
     {
         // TODO: Awful, but there will be time to improve... maybe using
         // property editors? Or just having each property know its
