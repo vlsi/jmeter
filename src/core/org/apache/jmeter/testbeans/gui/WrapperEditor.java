@@ -288,8 +288,14 @@ class WrapperEditor implements PropertyEditor
 			}
         }
 
-		result= TestBean.wrapInProperty(value);
-		result.setName(name);
+		if (value == null)
+		{
+			result= null;
+		}
+		else {
+			result= TestBean.wrapInProperty(value);
+			result.setName(name);
+		}
         
         if (log.isDebugEnabled())
         {
@@ -319,9 +325,6 @@ class WrapperEditor implements PropertyEditor
 		}
 		if (value instanceof JMeterProperty)
 		{
-			/*value= TestBean.unwrapProperty(
-				(JMeterProperty)value,
-				type);*/
 			value= ((JMeterProperty)value).getObjectValue();
 		}
 		if (editor.supportsCustomEditor())

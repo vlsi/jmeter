@@ -87,6 +87,7 @@ import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testbeans.TestBean;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.property.JMeterProperty;
+import org.apache.jmeter.testelement.property.PropertyIterator;
 import org.apache.jmeter.timers.Timer;
 import org.apache.jmeter.visualizers.Visualizer;
 import org.apache.jorphan.logging.LoggingManager;
@@ -241,15 +242,40 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
     {
         super.configure(element);
         
-        for (int i=0; i<descriptors.length; i++)
+        for (PropertyIterator jprops= element.propertyIterator();
+        		jprops.hasNext(); )
         {
-            if (editors[i] == null) continue;
-            String name= descriptors[i].getName(); 
-            JMeterProperty value= element.getProperty(name);
-            editors[i].setValue(value);
+        	JMeterProperty jprop= jprops.next();
+
+			String name= jprop.getName(); 
+        	int i= descriptorIndex(jprop.getName());
+        	
+        	if (i == -1) continue; // ignore auxiliary properties like gui_class 
+            if (editors[i] == null) continue; // ignore non-editable properties
+            
+            editors[i].setValue(jprop);
         }
     }
 
+	/**
+	 * Find the index of the property of the given name.
+	 * 
+	 * @param name the name of the property
+	 * @return the index of that property in the descriptors array, or -1 if 
+	 * 			there's no property of this name.
+	 */
+	private int descriptorIndex(String name)
+	{
+		for (int i=0; i<descriptors.length; i++)
+		{
+			if (descriptors[i].getName().equals(name))
+			{
+				return i;
+			}
+		}
+		return -1;
+	}
+	
     public TestElement createTestElement()
     {
         try
@@ -281,7 +307,8 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
             if (editors[i] == null) continue;
             JMeterProperty value=
                 (JMeterProperty)editors[i].getValue();
-            element.setProperty(value);
+            if (value != null) element.setProperty(value);
+            else element.removeProperty(descriptors[i].getName());
         }
     }
 
