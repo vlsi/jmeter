@@ -59,15 +59,16 @@ package org.apache.jmeter.testbeans.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Rectangle;
+
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
-import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
+
+import java.lang.reflect.InvocationTargetException;
+
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -75,11 +76,6 @@ import java.util.List;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
-import javax.swing.JTextField;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
 
 import org.apache.jmeter.assertions.Assertion;
 import org.apache.jmeter.config.ConfigElement;
@@ -91,10 +87,8 @@ import org.apache.jmeter.processor.PostProcessor;
 import org.apache.jmeter.processor.PreProcessor;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testbeans.TestBean;
-import org.apache.jmeter.testelement.AbstractTestElement;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.property.JMeterProperty;
-import org.apache.jmeter.testelement.property.StringProperty;
 import org.apache.jmeter.timers.Timer;
 import org.apache.jmeter.visualizers.Visualizer;
 import org.apache.jorphan.logging.LoggingManager;
@@ -128,7 +122,7 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
     private PropertyDescriptor[] descriptors;
 
     /**
-     * Property editors:
+     * Property editors -- or null if the property can't be edited.
      */
     private PropertyEditor[] editors;
 
@@ -141,20 +135,21 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
     public TestBeanGUI(Class testBeanClass)
     {
         super();
-        
+
         // A quick verification, just in case:
-        if (TestBean.class.isAssignableFrom(testBeanClass))
+        if (! TestBean.class.isAssignableFrom(testBeanClass))
         {
             Error e= new Error();
             log.error("This should never happen!", e);
             throw e; // Programming error: bail out.
         }
-        
+
+        this.testBeanClass= testBeanClass;
+                
         // Get the beanInfo:
         try
         {
-            beanInfo= Introspector.getBeanInfo(testBeanClass,
-                AbstractTestElement.class);
+            beanInfo= Introspector.getBeanInfo(testBeanClass, TestBean.class);
             descriptors= beanInfo.getPropertyDescriptors();
         }
         catch (IntrospectionException e)
@@ -163,14 +158,32 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
                 e);
             throw new Error(e); // Programming error. Don't continue.
         }
-        
+
         // Obtain the propertyEditors:
         editors= new PropertyEditor[descriptors.length];
         for (int i=0; i<descriptors.length; i++)
         {
             String name= descriptors[i].getDisplayName();
+
+            // Don't get editors for hidden or non-read-write properties:
+            if (descriptors[i].isHidden()
+                || descriptors[i].getReadMethod() == null
+                || descriptors[i].getWriteMethod() == null)
+            {
+                log.debug("No editor for property "+name);
+                editors[i]= null;
+                continue;
+            }
+
             PropertyEditor propertyEditor;
             Class editorClass= descriptors[i].getPropertyEditorClass();
+            
+            if (log.isDebugEnabled())
+            {
+                log.debug("Property "+name
+                        +" has editor class "+editorClass);
+            }
+            
             if (editorClass != null)
             {
                 try
@@ -190,10 +203,23 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
             }
             else
             {
-                propertyEditor= 
-                    PropertyEditorManager.findEditor(descriptors[i].getPropertyType());
+                Class c= descriptors[i].getPropertyType();
+                propertyEditor= PropertyEditorManager.findEditor(c);
             }
 
+            if (log.isDebugEnabled())
+            {
+                log.debug("Property "+name
+                        +" has property editor "+propertyEditor);
+            }
+            
+            if (propertyEditor == null)
+            {
+                log.debug("No editor for property "+name);
+                editors[i]= null;
+                continue;
+            }
+            
             propertyEditor=
                 new WrapperEditor(propertyEditor, descriptors[i]);
             
@@ -203,6 +229,39 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         
         // Initialize the GUI:
         init();
+
+        // Initialize the property editors with the bean's default values:
+        // TODO: remove this when the WrapperEditor will have support for "default value".
+        try
+        {
+            TestBean defaults= (TestBean)testBeanClass.newInstance();
+            for (int i=0; i<descriptors.length; i++)
+            {
+                if (editors[i] == null) continue;
+                editors[i].setValue(
+                    descriptors[i].getReadMethod().invoke(defaults, null));
+            }
+        }
+        catch (InstantiationException e)
+        {
+            log.error("Can't initialize property editors.", e);
+            throw new Error(e); // programming error: bail out.
+        }
+        catch (IllegalAccessException e)
+        {
+            log.error("Can't initialize property editors.", e);
+            throw new Error(e); // programming error: bail out.
+        }
+        catch (IllegalArgumentException e)
+        {
+            log.error("Can't initialize property editors.", e);
+            throw new Error(e); // programming error: bail out.
+        }
+        catch (InvocationTargetException e)
+        {
+            log.error("Can't initialize property editors.", e);
+            throw new Error(e); // programming error: bail out.
+        }
     }
 
     public String getStaticLabel() {
@@ -219,6 +278,7 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         
         for (int i=0; i<descriptors.length; i++)
         {
+            if (editors[i] == null) continue;
             String name= descriptors[i].getName(); 
             JMeterProperty value= element.getProperty(name);
             editors[i].setValue(value);
@@ -253,6 +313,7 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         configureTestElement(element);
         for (int i=0; i<editors.length; i++)
         {
+            if (editors[i] == null) continue;
             JMeterProperty value=
                 (JMeterProperty)editors[i].getValue();
             element.setProperty(value);
@@ -274,7 +335,7 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
     public Collection getMenuCategories()
     {
         List menuCategories= new LinkedList();
-        
+
         // TODO: there must be a nicer way...
         if (Assertion.class.isAssignableFrom(testBeanClass))
         {
@@ -320,12 +381,14 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
 
         setBorder(makeBorder());
         add(makeTitlePanel(), BorderLayout.NORTH);
-        //TODO: add support for beanInfo.getBeanDescriptor().getCustomizerClass()
-        // via a tabbed pannel "Properties" vs. "Custom"
+        // TODO: add support for beanInfo.getBeanDescriptor().getCustomizerClass()
+        // via a tabbed pannel -- e.g. "Properties" vs. "Custom"
+        // TODO: use a table instead of this bunch of panels
         VerticalPanel mainPanel = new VerticalPanel();
 
         for (int i=0; i<editors.length; i++)
         {
+            if (editors[i] == null) continue;
             mainPanel.add(
                 createPropertyPanel(
                     descriptors[i].getName(),
@@ -344,206 +407,4 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         return panel;
     }
     
-    private class WrapperEditor
-        implements PropertyEditor, DocumentListener
-    {
-        PropertyEditor editor;
-        PropertyDescriptor descriptor;
-
-        /**
-         * The swing component doing the actual GUI work.
-         */
-        Component component;
-
-        /**
-         * Copy of component if it's a text field.
-         */
-        JTextField field= null;
-     
-        WrapperEditor(PropertyEditor editor, PropertyDescriptor descriptor)
-        {
-            this.editor= editor;
-            this.descriptor= descriptor;
-
-            if (editor.supportsCustomEditor())
-            {
-                component= editor.getCustomEditor();
-            }
-            else
-            {
-                field= new JTextField();
-                field.getDocument().addDocumentListener(this);
-                component= field;
-            }
-        }
-
-        /* (non-Javadoc)
-         * @see javax.swing.event.DocumentListener#changedUpdate(javax.swing.event.DocumentEvent)
-         */
-        public void changedUpdate(DocumentEvent e)
-        {
-            storeText(e);
-        }
-
-        /* (non-Javadoc)
-         * @see javax.swing.event.DocumentListener#insertUpdate(javax.swing.event.DocumentEvent)
-         */
-        public void insertUpdate(DocumentEvent e)
-        {
-            storeText(e);
-        }
-
-        /* (non-Javadoc)
-         * @see javax.swing.event.DocumentListener#removeUpdate(javax.swing.event.DocumentEvent)
-         */
-        public void removeUpdate(DocumentEvent e)
-        {
-            storeText(e);
-        }
-
-        public void storeText(DocumentEvent e)
-        {
-            Document d= e.getDocument();
-            String text;
-            try
-            {
-                text= d.getText(0, d.getLength());
-            }
-            catch (BadLocationException e1)
-            {
-                log.error("This can't happen!", e1);
-                throw new Error(e1); // Bail out.
-            }
-            editor.setAsText(text);
-        }
-        
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#addPropertyChangeListener(java.beans.PropertyChangeListener)
-         */
-        public void addPropertyChangeListener(PropertyChangeListener listener)
-        {
-            editor.addPropertyChangeListener(listener);
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#getAsText()
-         */
-        public String getAsText()
-        {
-            return editor.getAsText();
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#getCustomEditor()
-         */
-        public Component getCustomEditor()
-        {
-            return component;
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#getJavaInitializationString()
-         */
-        public String getJavaInitializationString()
-        {
-            return editor.getJavaInitializationString();
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#getTags()
-         */
-        public String[] getTags()
-        {
-            return editor.getTags();
-        }
-
-        /**
-         * This bean editor always returns a JMeterProperty.
-         * 
-         * @see java.beans.PropertyEditor#getValue()
-         * @see org.apache.jmeter.testelement.property.JMeterProperty
-         */
-        public Object getValue()
-        {
-            String name= descriptor.getName();
-            
-            if (field != null)
-            {
-                return new StringProperty(name, editor.getAsText());
-            }
-            else
-            {
-                JMeterProperty p= (JMeterProperty)editor.getValue();
-                p.setName(name);
-                return p;
-            }
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#isPaintable()
-         */
-        public boolean isPaintable()
-        {
-            return editor.isPaintable();
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#paintValue(java.awt.Graphics, java.awt.Rectangle)
-         */
-        public void paintValue(Graphics gfx, Rectangle box)
-        {
-            editor.paintValue(gfx, box);
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#removePropertyChangeListener(java.beans.PropertyChangeListener)
-         */
-        public void removePropertyChangeListener(PropertyChangeListener listener)
-        {
-            editor.removePropertyChangeListener(listener);
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#setAsText(java.lang.String)
-         */
-        public void setAsText(String text) throws IllegalArgumentException
-        {
-            if (field != null)
-            {
-                field.setText(text);
-                // The property change event will cause the text to be stored in the
-                // editor.
-            }
-            else
-            if (editor.supportsCustomEditor())
-            {
-                editor.setAsText(text);
-            }
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#setValue(java.lang.Object)
-         */
-        public void setValue(Object value)
-        {
-            if (field != null)
-            {
-                field.setText(value.toString());
-                // The property change event will cause the text to be stored in the
-                // editor.
-            }
-            else
-            {
-                editor.setValue(value);
-            }
-        }
-
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#supportsCustomEditor()
-         */
-        public boolean supportsCustomEditor()
-        {
-            return true;
-        }
-    }
 }

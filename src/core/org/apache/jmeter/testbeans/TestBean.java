@@ -68,11 +68,18 @@ import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testelement.AbstractTestElement;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.TestElementTraverser;
+import org.apache.jmeter.testelement.property.BooleanProperty;
 import org.apache.jmeter.testelement.property.CollectionProperty;
+import org.apache.jmeter.testelement.property.DoubleProperty;
+import org.apache.jmeter.testelement.property.FloatProperty;
+import org.apache.jmeter.testelement.property.IntegerProperty;
 import org.apache.jmeter.testelement.property.JMeterProperty;
+import org.apache.jmeter.testelement.property.LongProperty;
 import org.apache.jmeter.testelement.property.MapProperty;
 import org.apache.jmeter.testelement.property.NullProperty;
 import org.apache.jmeter.testelement.property.PropertyIterator;
+import org.apache.jmeter.testelement.property.StringProperty;
+import org.apache.jmeter.testelement.property.TestElementProperty;
 
 /**
  * This is an experimental class. An attempt to address the complexity of
@@ -106,7 +113,7 @@ public abstract class TestBean extends AbstractTestElement
             try
             {
                 BeanInfo beanInfo= Introspector.getBeanInfo(this.getClass(),
-                    AbstractTestElement.class);
+                    TestBean.class);
                 descriptors= beanInfo.getPropertyDescriptors();
             }
             catch (IntrospectionException e)
@@ -125,55 +132,17 @@ public abstract class TestBean extends AbstractTestElement
      * This is package-scoped to limit its usage to this package in expectation
      * of this functionality being moved somewhere else later on.
      */
-    void prepare()
+    protected void prepare()
     {
         Object[] param= new Object[1];
         
         for (int i=0; i<descriptors.length; i++)
         {
-            
             // Obtain a value of the appropriate type for this property. 
-            // TODO: Awful, but there will be time to improve... maybe using
-            // property editors? Or just having each property know its
-            // proper type? Or pre-building a type-to-valuegetter map?
             JMeterProperty property= getProperty(descriptors[i].getName());
             Class type= descriptors[i].getPropertyType();
-            Object value;
-            if (property instanceof NullProperty)
-            {
-                // Because we work through primitive types, we need to handle
-                // the null case differently.
-                value= null;
-            }
-            else if (type == boolean.class || type == Boolean.class)
-            {
-                value= new Boolean(property.getBooleanValue());
-            }
-            else if (type == double.class || type == Double.class)
-            {
-                value= new Double(property.getDoubleValue());
-            }
-            else if (type == float.class || type == Float.class)
-            {
-                value= new Float(property.getFloatValue());
-            }
-            else if (type == int.class || type == Integer.class)
-            {
-                value= new Integer(property.getIntValue());
-            }
-            else if (type == long.class || type == Long.class)
-            {
-                value= new Long(property.getLongValue());
-            }
-            else if (type == String.class)
-            {
-                value= property.getStringValue();
-            }
-            else
-            {
-                value= property.getObjectValue();
-            }
-            
+            Object value= unwrapProperty(property, type);
+
             // Set the bean's property to the value we just obtained:
             try
             {
@@ -200,6 +169,120 @@ public abstract class TestBean extends AbstractTestElement
                 throw new Error(e); // Programming error: bail out.
             }
         }
+    }
+    
+    /**
+     * Utility method to obtain the value of a property in the given type.
+     * <p>
+     * I plan to get rid of this sooner than later, so please don't use it much.
+     * 
+     * @param property Property to get the value of.
+     * @param type     Type of the result.
+     * @return an object of the given type if it is one of the known supported
+     *              types, or the value returned by property.getObjectValue
+     */
+    public static Object unwrapProperty(JMeterProperty property, Class type)
+    {
+        // TODO: Awful, but there will be time to improve... maybe using
+        // property editors? Or just having each property know its
+        // proper type? Or pre-building a type-to-valuegetter map?
+        // Or maybe just getting rid of all this property mess and storing
+        // the original objects instead?
+        
+        Object value;
+        if (property instanceof NullProperty)
+        {
+            // Because we work through primitive types, we need to handle
+            // the null case differently.
+            value= null;
+        }
+        else if (type == boolean.class || type == Boolean.class)
+        {
+            value= new Boolean(property.getBooleanValue());
+        }
+        else if (type == double.class || type == Double.class)
+        {
+            value= new Double(property.getDoubleValue());
+        }
+        else if (type == float.class || type == Float.class)
+        {
+            value= new Float(property.getFloatValue());
+        }
+        else if (type == int.class || type == Integer.class)
+        {
+            value= new Integer(property.getIntValue());
+        }
+        else if (type == long.class || type == Long.class)
+        {
+            value= new Long(property.getLongValue());
+        }
+        else if (type == String.class)
+        {
+            value= property.getStringValue();
+        }
+        else
+        {
+            value= property.getObjectValue();
+        }
+        
+        return value;
+    }
+
+    /**
+     * Utility method to wrap an object in a property of an appropriate type.
+     * <p>
+     * I plan to get rid of this sooner than later, so please don't use it much.
+     * 
+     * @param value Object to be wrapped.
+     * @return an unnamed property holding the provided value.
+     */
+    public static JMeterProperty wrapInProperty(Object value)
+    {
+        // TODO: Awful, again...
+        
+        if (value instanceof JMeterProperty)
+        {
+            return (JMeterProperty)value;
+        }
+        
+        JMeterProperty property;
+        if (value == null)
+        {
+            property= new NullProperty();
+        }
+        else if (value instanceof Boolean)
+        {
+            property= new BooleanProperty();
+        }
+        else if (value instanceof Double)
+        {
+            property= new DoubleProperty();
+        }
+        else if (value instanceof Float)
+        {
+            property= new FloatProperty();
+        }
+        else if (value instanceof Integer)
+        {
+            property= new IntegerProperty();
+        }
+        else if (value instanceof Long)
+        {
+            property= new LongProperty();
+        }
+        else if (value instanceof String)
+        {
+            property= new StringProperty();
+        }
+        else if (value instanceof TestElement)
+        {
+        	property= new TestElementProperty();
+        }
+        else throw new Error("Ouch!");
+
+        property.setObjectValue(value);
+        
+        return property;
     }
 
     /*
@@ -272,8 +355,9 @@ public abstract class TestBean extends AbstractTestElement
     }
 
     /**
+     * This one is NOT deprecated.
+     * 
      * @see org.apache.jmeter.testelement.AbstractTestElement#getName()
-     * @deprecated
      */
     public String getName()
     {
