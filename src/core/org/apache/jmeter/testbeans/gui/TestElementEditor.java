@@ -106,8 +106,11 @@ public abstract class TestElementEditor extends PropertyEditorSupport {
 	 * @see java.beans.PropertyEditor#setValue(java.lang.Object)
 	 */
 	public void setValue(Object value) {
-		guiComponent.configure((TestElement)value);
-		firePropertyChange();
+		if (value != null)
+		{
+			guiComponent.configure((TestElement)value);
+			firePropertyChange();
+		}
 	}
 
 	/* (non-Javadoc)

@@ -67,8 +67,6 @@ import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 
-import java.lang.reflect.InvocationTargetException;
-
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -223,45 +221,12 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
             propertyEditor=
                 new WrapperEditor(propertyEditor, descriptors[i]);
             
-            //propertyEditor.addPropertyChangeListener(this);
+            propertyEditor.setValue(null);
             editors[i]= propertyEditor;
         }
         
         // Initialize the GUI:
         init();
-
-        // Initialize the property editors with the bean's default values:
-        // TODO: remove this when the WrapperEditor will have support for "default value".
-        try
-        {
-            TestBean defaults= (TestBean)testBeanClass.newInstance();
-            for (int i=0; i<descriptors.length; i++)
-            {
-                if (editors[i] == null) continue;
-                editors[i].setValue(
-                    descriptors[i].getReadMethod().invoke(defaults, null));
-            }
-        }
-        catch (InstantiationException e)
-        {
-            log.error("Can't initialize property editors.", e);
-            throw new Error(e); // programming error: bail out.
-        }
-        catch (IllegalAccessException e)
-        {
-            log.error("Can't initialize property editors.", e);
-            throw new Error(e); // programming error: bail out.
-        }
-        catch (IllegalArgumentException e)
-        {
-            log.error("Can't initialize property editors.", e);
-            throw new Error(e); // programming error: bail out.
-        }
-        catch (InvocationTargetException e)
-        {
-            log.error("Can't initialize property editors.", e);
-            throw new Error(e); // programming error: bail out.
-        }
     }
 
     public String getStaticLabel() {
