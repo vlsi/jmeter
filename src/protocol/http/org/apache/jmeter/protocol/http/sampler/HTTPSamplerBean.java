@@ -86,7 +86,6 @@ import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.samplers.Sampler;
 
 import org.apache.jmeter.testbeans.TestBean;
-import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.property.CollectionProperty;
 import org.apache.jmeter.testelement.property.PropertyIterator;
 
@@ -199,18 +198,18 @@ public class HTTPSamplerBean extends TestBean implements Sampler
     /*
      * Public properties:
      */
-    private String fileField= "";
+    private String fileField= ""; // TODO: is this valid? Choose a sensible default or check it's non-null.
     private File filename= null;
-    private String protocol= "";
+    private String protocol= "http";
     private String path= "";
     private String encodedPath= "";
     private boolean followRedirects= true;
-    private String Method= "";
+    private String Method= "GET";
     private boolean useKeepAlive= false;
     private int port= UNSPECIFIED_PORT;
-    private String domain= "";
+    private String domain= ""; // TODO: choose a sensible default or check it's non-null.
     private Arguments arguments= null;
-    private String mimeType= "";
+    private String mimeType= ""; // TODO: is this valid? Choose a sensible one or check it's non-null.
     private boolean imageParser= false;
 
     /*
@@ -248,26 +247,6 @@ public class HTTPSamplerBean extends TestBean implements Sampler
             arg.setAlwaysEncoded(false);
         }
         this.getArguments().addArgument(arg);
-    }
-
-    public void addTestElement(TestElement el)
-    {
-        if (el instanceof CookieManager)
-        {
-            setCookieManager((CookieManager)el);
-        }
-        else if (el instanceof HeaderManager)
-        {
-            setHeaderManager((HeaderManager)el);
-        }
-        else if (el instanceof AuthManager)
-        {
-            setAuthManager((AuthManager)el);
-        }
-        else
-        {
-            super.addTestElement(el);
-        }
     }
 
     /**
