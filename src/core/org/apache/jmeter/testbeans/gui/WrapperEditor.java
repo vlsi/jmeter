@@ -71,7 +71,6 @@ import javax.swing.JComboBox;
 
 import org.apache.jmeter.testbeans.TestBean;
 import org.apache.jmeter.testelement.property.JMeterProperty;
-import org.apache.jmeter.testelement.property.NullProperty;
 import org.apache.jmeter.testelement.property.BooleanProperty;
 import org.apache.jmeter.testelement.property.StringProperty;
 import org.apache.jorphan.logging.LoggingManager;
@@ -487,7 +486,7 @@ class WrapperEditor implements PropertyEditor
 				
 			testSetGet(e, new BooleanProperty("B", true));
 			testSetGet(e, new BooleanProperty("B", false));
-			testSetGet(e, new NullProperty("B"));
+			testSetGet(e, null);
 			testSetGet(e, new StringProperty("B", "${var}"));
 			
 			e.setValue(new StringProperty("B", "true"));
@@ -514,7 +513,7 @@ class WrapperEditor implements PropertyEditor
 			assertEquals(new BooleanProperty("B", true), e.getValue());
 			
 			e.setAsText("invalid");
-			assertEquals(new NullProperty("B"), e.getValue());
+			assertEquals(null, e.getValue());
 		}
 		public void testSetGetAsTextOnString() throws Exception
 		{
