@@ -73,6 +73,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 
 import org.apache.jmeter.gui.util.FileDialoger;
+import org.apache.jorphan.logging.LoggingManager;
+import org.apache.log.Logger;
 
 /**
  * A property editor for File properties.
@@ -83,6 +85,8 @@ import org.apache.jmeter.gui.util.FileDialoger;
  */
 public class FileEditor implements PropertyEditor, ActionListener
 {
+	protected static Logger log= LoggingManager.getLoggerForClass();
+
     /**
 	 * The editor's panel.
 	 */
@@ -144,7 +148,7 @@ public class FileEditor implements PropertyEditor, ActionListener
      */
     public Component getCustomEditor()
     {
-        return editor.getCustomEditor();
+        return panel;
     }
 
     /**
@@ -246,6 +250,14 @@ public class FileEditor implements PropertyEditor, ActionListener
 		public Object getValue()
 		{
 			return getAsText(); // should be super.getValue();
+		}
+		
+		/**
+		 * Tsk, tsk... I need to handle Strings when setting too.
+		 */
+		public void setValue(Object file)
+		{
+			setAsText((String)file);
 		}
 	}
 }
