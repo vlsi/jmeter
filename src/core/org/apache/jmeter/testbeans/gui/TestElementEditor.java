@@ -84,13 +84,14 @@ public abstract class TestElementEditor extends PropertyEditorSupport {
 		super();
 		
 		this.guiClass= guiClass;
+		
+		guiComponent= GuiPackage.getInstance().getGui(null, guiClass, null);
 	}
 
 	/* (non-Javadoc)
 	 * @see java.beans.PropertyEditor#getCustomEditor()
 	 */
 	public Component getCustomEditor() {
-		guiComponent= GuiPackage.getInstance().getGui(null, guiClass, null);
 		return (Component)guiComponent;
 	}
 
