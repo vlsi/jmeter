@@ -242,7 +242,7 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         editors= new PropertyEditor[descriptors.length];
         for (int i=0; i<descriptors.length; i++)
         {
-            String name= descriptors[i].getDisplayName();
+            String name= descriptors[i].getName();
 
             // Don't get editors for hidden or non-read-write properties:
             if (descriptors[i].isHidden()
@@ -301,8 +301,14 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
             
             if (! propertyEditor.supportsCustomEditor())
             {
-				propertyEditor=
-					new WrapperEditor(propertyEditor, descriptors[i]);
+				propertyEditor= createWrapperEditor(
+					propertyEditor, descriptors[i]);
+
+				if (log.isDebugEnabled())
+				{
+					log.debug("Editor for property "+name
+							+" is wrapped in "+propertyEditor);
+				}
             }
             
 			editors[i]= propertyEditor;
@@ -320,6 +326,83 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         // Initialize the GUI:
         init();
     }
+
+	/**
+	 * Find the default typeEditor and a suitable guiEditor for the given
+	 * property descriptor, and combine them in a WrapperEditor.
+	 * 
+	 * @param typeEditor
+	 * @param descriptor
+	 * @return
+	 */
+	private WrapperEditor createWrapperEditor(
+			PropertyEditor typeEditor, PropertyDescriptor descriptor)
+	{
+		String[] editorTags= typeEditor.getTags();
+		String[] additionalTags= (String[])descriptor.getValue("tags");
+		String[] tags= null;
+		if (editorTags == null) tags= additionalTags;
+		else if (additionalTags == null) tags= editorTags;
+		else {
+			tags= new String[editorTags.length+additionalTags.length];
+			int j= 0;
+			for (int i=0; i<editorTags.length; i++) tags[j++]= editorTags[i];
+			for (int i=0; i<additionalTags.length; i++) tags[j++]= additionalTags[i];
+		}
+		
+		boolean noUndefined=
+			Boolean.TRUE.equals(descriptor.getValue("noUndefined"));
+		boolean noEdit=
+			Boolean.TRUE.equals(descriptor.getValue("noEdit"));
+
+		PropertyEditor guiEditor;
+		if (noUndefined && tags==null)
+		{
+			guiEditor= new FieldStringEditor();
+		}
+		else
+		{
+			ComboStringEditor e= new ComboStringEditor();
+			e.setNoUndefined(noUndefined);
+			e.setNoEdit(noEdit);
+			e.setTags(tags);
+			
+			guiEditor= e;
+		}
+
+		WrapperEditor wrapper= new WrapperEditor(
+			typeEditor, guiEditor,
+			!noUndefined, // acceptsNull
+			!noEdit // acceptsExpressions TODO: can be finer
+			);
+
+		Object defaultValue= descriptor.getValue("default");
+		
+		if (guiEditor instanceof ComboStringEditor && !noEdit)
+		{
+			// Provide an initial edit value:
+			if (tags != null)
+			{
+				((ComboStringEditor)guiEditor).setInitialEditValue(tags[0]);
+			}
+			else
+			{
+				// 'expressions' are currently always valid on
+				// editable fields: TODO: could be finer
+				((ComboStringEditor)guiEditor).setInitialEditValue("${}");
+			}
+			// TODO: I don't like this solution. We could make a
+			// more convenient approach if we knew whether the property
+			// accepts expressions or not, whether it accepts any 
+			// values beyond the provided tags or not, etc... 
+			// ... plus we could define a "initialEditValue" property descriptor
+			// attribute to explicitly specify which value should be used. 
+		}
+
+		wrapper.setValue(defaultValue);
+
+		return wrapper;
+	}
 
 	/**
 	 * Set the value of the i-th property, properly reporting a possible failure.
@@ -595,6 +678,11 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         {
             if (editors[i] == null) continue;
 
+			if (log.isDebugEnabled())
+			{
+				log.debug("Laying property "+descriptors[i].getName());
+			}
+			
 			String g= group(descriptors[i]);
 			if (! currentGroup.equals(g))
 			{

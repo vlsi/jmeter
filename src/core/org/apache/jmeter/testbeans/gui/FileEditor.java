@@ -59,8 +59,12 @@ package org.apache.jmeter.testbeans.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyEditor;
 import java.beans.PropertyEditorSupport;
 import java.io.File;
 
@@ -69,8 +73,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 
 import org.apache.jmeter.gui.util.FileDialoger;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
 
 /**
  * A property editor for File properties.
@@ -79,42 +81,34 @@ import org.apache.log.Logger;
  * because JMeter is now too dumb to handle File objects (there's no
  * FileProperty).
  */
-public class FileEditor extends WrapperEditor implements ActionListener
+public class FileEditor implements PropertyEditor, ActionListener
 {
-    private static Logger log= LoggingManager.getLoggerForClass();
-
-	// Implementation big picture: implementing this requires both a
-	// wrapped editor (to implement the text<==>File conversion)
-	// and a 'wrapping' one to provide the "Browse..." button.
-	// This class implements the wrapping one, the SimpleFileEditor
-	// defined below implements the wrapped one. Hope it's clear.
-	
-	/**
+    /**
 	 * The editor's panel.
 	 */
-	private JPanel panel= null;
+	private JPanel panel;
+
+	/**
+	 * The editor handling the text field inside:
+	 */
+	PropertyEditor editor;
 
     public FileEditor()
     {
-    	super(new SimpleFileEditor(), File.class,
-    		null, false, false, new File(""));
-    	
 		// Create a button to trigger the file chooser:
 		JButton button= new JButton("Browse...");
 		button.addActionListener(this);
-		
+
+		// Get a WrapperEditor to provide the field or combo:
+		editor= new WrapperEditor(
+			new SimpleFileEditor(),
+			new ComboStringEditor(),
+			true, true);
+
 		// Create a panel containing the combo and the button:
 		panel= new JPanel(new BorderLayout(5,0));
-		panel.add(super.getCustomEditor(), BorderLayout.CENTER);
+		panel.add(editor.getCustomEditor(), BorderLayout.CENTER);
 		panel.add(button, BorderLayout.LINE_END);
-    }
-
-    /* (non-Javadoc)
-     * @see java.beans.PropertyEditor#getCustomEditor()
-     */
-    public Component getCustomEditor()
-    {
-        return panel;
     }
 
     /* (non-Javadoc)
@@ -128,32 +122,130 @@ public class FileEditor extends WrapperEditor implements ActionListener
 
 		setValue(file);
     }
-    
+
+    /**
+     * @param listener
+     */
+    public void addPropertyChangeListener(PropertyChangeListener listener)
+    {
+        editor.addPropertyChangeListener(listener);
+    }
+
+    /**
+     * @return
+     */
+    public String getAsText()
+    {
+        return editor.getAsText();
+    }
+
+    /**
+     * @return
+     */
+    public Component getCustomEditor()
+    {
+        return editor.getCustomEditor();
+    }
+
+    /**
+     * @return
+     */
+    public String getJavaInitializationString()
+    {
+        return editor.getJavaInitializationString();
+    }
+
+    /**
+     * @return
+     */
+    public String[] getTags()
+    {
+        return editor.getTags();
+    }
+
+    /**
+     * @return
+     */
+    public Object getValue()
+    {
+        return editor.getValue();
+    }
+
+    /**
+     * @return
+     */
+    public boolean isPaintable()
+    {
+        return editor.isPaintable();
+    }
+
+    /**
+     * @param gfx
+     * @param box
+     */
+    public void paintValue(Graphics gfx, Rectangle box)
+    {
+        editor.paintValue(gfx, box);
+    }
+
+    /**
+     * @param listener
+     */
+    public void removePropertyChangeListener(PropertyChangeListener listener)
+    {
+        editor.removePropertyChangeListener(listener);
+    }
+
+    /**
+     * @param text
+     * @throws java.lang.IllegalArgumentException
+     */
+    public void setAsText(String text) throws IllegalArgumentException
+    {
+        editor.setAsText(text);
+    }
+
+    /**
+     * @param value
+     */
+    public void setValue(Object value)
+    {
+        editor.setValue(value);
+    }
+
+    /**
+     * @return
+     */
+    public boolean supportsCustomEditor()
+    {
+        return editor.supportsCustomEditor();
+    }
+
 	private static class SimpleFileEditor extends PropertyEditorSupport
 	{
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#getAsText()
-         */
-        public String getAsText()
-        {
-            return ((File)super.getValue()).getPath();
-        }
+		/* (non-Javadoc)
+		 * @see java.beans.PropertyEditor#getAsText()
+		 */
+		public String getAsText()
+		{
+			return ((File)super.getValue()).getPath();
+		}
 
-        /* (non-Javadoc)
-         * @see java.beans.PropertyEditor#setAsText(java.lang.String)
-         */
-        public void setAsText(String text) throws IllegalArgumentException
-        {
-            setValue(new File(text));
-        }
+		/* (non-Javadoc)
+		 * @see java.beans.PropertyEditor#setAsText(java.lang.String)
+		 */
+		public void setAsText(String text) throws IllegalArgumentException
+		{
+			super.setValue(new File(text));
+		}
         
-        /*
-         * Oh, I forgot: JMeter doesn't support File properties yet. Need to work
-         * on this as a String :-(
-         */
-        public Object getValue()
-        {
-        	return getAsText();
-        }
+		/*
+		 * Oh, I forgot: JMeter doesn't support File properties yet. Need to work
+		 * on this as a String :-(
+		 */
+		public Object getValue()
+		{
+			return getAsText(); // should be super.getValue();
+		}
 	}
 }

@@ -2,7 +2,7 @@
  * ====================================================================
  * The Apache Software License, Version 1.1
  *
- * Copyright (c) 2003 The Apache Software Foundation.  All rights
+ * Copyright (c) 2004 The Apache Software Foundation.  All rights
  * reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,192 +58,188 @@
 package org.apache.jmeter.testbeans.gui;
 
 import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Rectangle;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.beans.PropertyDescriptor;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyEditor;
-import java.beans.PropertyEditorManager;
 import java.beans.PropertyEditorSupport;
-import java.util.Arrays;
-import java.util.Vector;
-
-import javax.swing.JComboBox;
-import javax.swing.text.JTextComponent;
-
-import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 /**
- * This class implements a property editor that provides a suitable GUI
- * component (custom editor) for simple property editors that don't have one
- * of their own. The resulting editor will be able to handle values of the
- * type of the property and Strings containing JMeter variables.
+ * This is an implementation of a full-fledged property editor, providing
+ * both object-text transformation and an editor GUI (a custom editor
+ * component), from two simpler property editors providing only one
+ * of these functionalities each, namely:
+ * <dl>
+ * <dt>typeEditor<dt>
+ * <dd>Provides suitable object-to-string and string-to-object
+ * transformation for the property's type. That is: it's a simple editor
+ * that only need to support the set/getAsText and set/getValue methods.</dd>
+ * <dt>guiEditor</dt>
+ * <dd>Provides a suitable GUI for the property, but works on
+ * [possibly null] String values. That is: it supportsCustomEditor, but
+ * get/setAsText and get/setValue are indentical.</dd>
+ * </dl>
  * <p>
- * The provided GUI is a combo box with:
- * <ul>
- * <li>An option for "undefined" (corresponding to the null value or NullProperty).
- * <li>An option for each value returned by the getTags() method on the wrapped
- * 	editor or from the "tags" attribute of the property descriptor.
- * <li>The possibility to write your own value, which will be parsed by the
- *		wrapped editor to convert into the edited type unless (and this is an
- *		heuristic) it contains the string "${", in which case it will be
- *		assumed to be an 'expression' containing JMeter variables and will
- *		not be parsed at all, but just handled as a string.
- * </ul>
+ * The resulting editor provides optional support for null values (you
+ * can choose whether <b>null</b> is to be a valid property value).
+ * It also provides optional support for JMeter 'expressions' (you can
+ * choose whether they make valid property values).
  */
-class WrapperEditor extends PropertyEditorSupport implements ItemListener
+class WrapperEditor extends PropertyEditorSupport
+		implements PropertyChangeListener
 {
-    private static Logger log= LoggingManager.getLoggerForClass();
-
-    private static Object UNDEFINED=
-    	new UniqueObject(JMeterUtils.getResString("property_undefined"));
-    private static Object EDIT=
-    	new UniqueObject(JMeterUtils.getResString("property_edit"));
+    protected static Logger log= LoggingManager.getLoggerForClass();
 
 	/**
-	 * Base PropertyEditor for the property at hand. Most methods in this class
-	 * are delegated from this one.
+	 * The type's property editor.
 	 */
-    private PropertyEditor editor;
-
-	/**
-	 * The type of the objects that will be assigned to or obtained from this
-	 * property. That is: the type of the property or, if this is a primitive 
-	 * type (e.g. int), the corresponding wrapping type (e.g. Integer).
-	 */
-	private Class type;
+	PropertyEditor typeEditor;
 	
 	/**
-	 * The list of options to be offered by this editor.
+	 * The gui property editor
 	 */
-	private String[] tags;
+	PropertyEditor guiEditor;
 
 	/**
-	 * True iif the editor should not accept (nor produce) a null value.
+	 * Whether to allow <b>null</b> as a property value.
 	 */
-	private boolean noUndefined;
+	boolean acceptsNull;
 	
 	/**
-	 * True iif the editor should not accept (nor produce) any non-null
-	 * values different from the provided tags.
+	 * Whether to allow JMeter 'expressions' as property values.
 	 */
-	private boolean noEdit;
+	boolean acceptsExpressions;
 
     /**
-     * The editor's combo box. 
-     */
-    private JComboBox combo= null;
+   	 * Keep track of the last valid value in the editor, so that we can
+   	 * revert to it if the user enters an invalid value.
+   	 */
+    private String lastValidValue= null;
 
-	/**
-	 * The edited property's default value.
-	 */
-	private Object defaultValue;
+/*
+I formerly used this method to obtain a type against which I could
+validate property values, e.g. in isValidProperty. Later I found that
+simple propertyEditors can do this in a simpler way -- they throw
+InvalidValueException if the value is not of the appropriate type.
 
-	/**
-	 * Create an editor wrapping one which does not provide a custom editor.
-	 * 
-	 * @param editor A property editor which doesn't have a custom editor.
-	 * @param descriptor the descriptor for the property being edited.
-	 */
-    WrapperEditor(PropertyEditor editor, PropertyDescriptor descriptor)
-    {        
-		this(
-			editor,
-			objectType(descriptor.getPropertyType()),
-			(String[])descriptor.getValue("tags"),
-			Boolean.TRUE.equals(descriptor.getValue("noUndefined")),
-			Boolean.TRUE.equals(descriptor.getValue("noEdit")),
-			descriptor.getValue("default"));
-    }
-    
+TODO: remove this code once I'm reasonably convinced that what
+I said above is true (so I won't need to reinstate this code).
+
     private static Class objectType(Class type)
     {
-		// Sorry for this -- I have not found a better way:
+    	// Sorry for this -- I have not found a better way:
         if (! type.isPrimitive()) return type;
-		else if (type == boolean.class) return Boolean.class;
-		else if (type == char.class) return Character.class;
-		else if (type == byte.class) return Byte.class;
-		else if (type == short.class) return Short.class;
-		else if (type == int.class) return Integer.class;
-		else if (type == long.class) return Long.class;
-		else if (type == float.class) return Float.class;
-		else if (type == double.class) return Double.class;
-		else if (type == void.class) return Void.class;
-		else
-		{
-			log.error("Class "+type+" is an unknown primitive type.");
-			throw new Error("Class "+type+" is an unknown primitive type");
-				// programming error: bail out.
-		}
+    	else if (type == boolean.class) return Boolean.class;
+    	else if (type == char.class) return Character.class;
+    	else if (type == byte.class) return Byte.class;
+    	else if (type == short.class) return Short.class;
+    	else if (type == int.class) return Integer.class;
+    	else if (type == long.class) return Long.class;
+    	else if (type == float.class) return Float.class;
+    	else if (type == double.class) return Double.class;
+    	else if (type == void.class) return Void.class;
+    	else
+    	{
+    		log.error("Class "+type+" is an unknown primitive type.");
+    		throw new Error("Class "+type+" is an unknown primitive type");
+    			// programming error: bail out.
+    	}
     }
-
-    /**
-     * @param editor
-     * @param type
-     * @param strings
-     */
-    protected WrapperEditor(
-    	PropertyEditor editor, Class type, String[] additionalTags,
-    	boolean noUndefined, boolean noEdit, Object defaultValue)
-    {
-		this.editor= editor;
-		this.type= type;
-		String[] editorTags= editor.getTags();
-		if (editorTags == null) this.tags= additionalTags;
-		else if (additionalTags == null) this.tags= editorTags;
-		else {
-			this.tags= new String[editorTags.length+additionalTags.length];
-			int j= 0;
-			for (int i=0; i<editorTags.length; i++) this.tags[j++]= editorTags[i];
-			for (int i=0; i<additionalTags.length; i++) this.tags[j++]= additionalTags[i];
-		}
-		this.noUndefined= noUndefined;
-		this.noEdit= noEdit;
-		this.defaultValue= defaultValue;
-
-		// Build the list of available values for this property:
-		Vector options= new Vector();
-
-		// The first available value is "undefined" (null).
-		if (! noUndefined) options.add(UNDEFINED);
-
-		// Add the list of property-specific values:
-		String[] tags= getTags();
-		if (tags != null)
-		{
-			options.addAll(Arrays.asList(tags));
-		}
-
-		// The last option is to edit a value manually:
-		if (! noEdit) options.add(EDIT);
+*/
+	public WrapperEditor(
+			PropertyEditor typeEditor, PropertyEditor guiEditor,
+			boolean acceptsNull, boolean acceptsExpressions) {
+		super();
+		this.typeEditor= typeEditor;
+		this.guiEditor= guiEditor;
+		this.acceptsNull= acceptsNull;
+		this.acceptsExpressions= acceptsExpressions;
 		
-		// Create the combo box we will use to edit this property:
-		combo= new JComboBox(options);
-		combo.addItemListener(this);
-		combo.setEditable(false);
+		guiEditor.addPropertyChangeListener(this);
+	}
+
+    public boolean supportsCustomEditor()
+    {
+        return true;
     }
 
-    /* (non-Javadoc)
-     * @see java.beans.PropertyEditor#getCustomEditor()
-     */
-    public Component getCustomEditor()
-    {
-        return combo;
-    }
+	public Component getCustomEditor()
+	{
+		return guiEditor.getCustomEditor();
+	}
 
     /**
-     * Get the list of tags returned by the wrapped editor, plus those in the
-     * "tags" attribute of the property descriptor.
-     * 
-     * @see java.beans.PropertyEditor#getTags()
-     */
-    public String[] getTags()
+ 	 * Determine whether a string is a valid value for the property.
+   	 * 
+   	 * @param text the value to be checked
+   	 * @return true iif text is a valid value
+   	 */
+    private boolean isValidValue(String text)
     {
-    	return tags;
+		if (text == null) return acceptsNull;
+
+    	if (acceptsExpressions && isExpression(text)) return true;
+
+    	// Not an expression (isn't or can't be), not null.
+    	try
+    	{
+    		typeEditor.setAsText(text);
+    	}
+    	catch (IllegalArgumentException e1)
+    	{
+    		// setAsText failed: not valid
+    		return false;
+    	}
+    	// setAsText succeeded: valid
+    	return true;
     }
+
+	/**
+	 * This method is used to do some low-cost defensive programming:
+	 * it is called when a condition that the program logic should prevent
+	 * from happening occurs. I hope this will help early detection of
+	 * logical bugs in property value handling.
+	 * 
+	 * @throws Error always throws an error.
+	 */
+	private final void shouldNeverHappen() throws Error
+	{
+		throw new Error(); // Programming error: bail out.
+	}
+
+	/**
+	 * Same as shouldNeverHappen(), but provide a source exception.
+	 * 
+	 * @param e the exception that helped identify the problem
+	 * @throws Error always throws one.
+	 */
+	private final void shouldNeverHappen(Exception e) throws Error
+	{
+		throw new Error(e); // Programming error: bail out.
+	}
+
+	/**
+	 * Check if a string is a valid JMeter 'expression'.
+	 * <p>
+	 * The current implementation is very basic: it just accepts any
+	 * string containing "${" as a valid expression. TODO: improve.
+	 */
+	private final boolean isExpression(String text)
+	{
+		return text.indexOf("${") != -1;
+	}
+
+	/**
+	 * Same as isExpression(String).
+	 * 
+	 * @param text
+	 * @return true iif text is a String and isExpression(text).
+	 */
+	private final boolean isExpression(Object text)
+	{
+		return text instanceof String && isExpression((String)text);
+	}
 
     /**
      * @see java.beans.PropertyEditor#getValue()
@@ -251,32 +247,36 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
      */
     public Object getValue()
     {
-        Object value= combo.getSelectedItem();
-        
-		if (value == UNDEFINED)
+        String text= (String)guiEditor.getValue();
+    
+		Object value;
+
+		if (text == null)
 		{
+			if (!acceptsNull) shouldNeverHappen();
 			value= null;
 		}
-		else {
-			String text= (String) value;
-			if (combo.getSelectedIndex() > 0
-				|| text.indexOf("${") == -1)
-			{
-				// if it's not a JMeter 'expression'...
-				try
-				{
-					editor.setAsText(text);
-					value= editor.getValue();
-				}
-				catch (IllegalArgumentException e)
-				{
-					// This should never happen, since we've assessed
-					// value validity in the itemStateChanged event handler. 
-					throw new Error(e);
-				}
-			}
-		}
-
+    	else
+    	{
+    		if (acceptsExpressions && isExpression(text))
+    		{
+    			value= text;
+    		}
+    		else
+    		{
+    			// not an expression (isn't or can't be), not null.
+    			try
+    			{
+    				typeEditor.setAsText(text);
+    			}
+    			catch (IllegalArgumentException e)
+    			{
+    				shouldNeverHappen(e);
+    			}
+				value= typeEditor.getValue();
+    		}
+    	}
+    
         if (log.isDebugEnabled())
         {
             log.debug(
@@ -288,353 +288,115 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
         return value;
     }
 
-	/* (non-Javadoc)
-	 * @see java.beans.PropertyEditor#setValue(java.lang.Object)
-	 */
-	public void setValue(Object value)
-	{
-		if (log.isDebugEnabled())
-		{
-			log.debug(
-				"<-"
-					+ (value != null ? value.getClass().getName() : "NULL")
-					+ ":"
-					+ value);
-		}
+    public void setValue(Object value)
+    {
+    	String text;
 
-		combo.setEditable(true);
-		if (value == null)
-		{
-			if (noUndefined) throw new IllegalArgumentException();
-			value= UNDEFINED;
-		}
-		else if (type.isInstance(value))
-		{
-			editor.setValue(value);
-			value= editor.getAsText();
-		}
-		else
-		{
-			if (noEdit) throw new IllegalArgumentException();
-			// Not a type specific to the property, so it is a String...
-			// ... but, just in case, I'll check:
-			if (! (value instanceof String))
-			{
-				log.error("When editing property of type "+type
-					+", got value of type "+value.getClass());
-				throw new Error("String expected, got "+value.getClass());
-					// programming error, so bail out.
-			} 
-		}
-		combo.setSelectedItem(value);
-		if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
-		firePropertyChange();
-	}
+    	if (log.isDebugEnabled())
+    	{
+    		log.debug(
+    			"<-"
+    				+ (value != null ? value.getClass().getName() : "NULL")
+    				+ ":"
+    				+ value);
+    	}
+    
+    	if (value == null)
+    	{
+    		if (!acceptsNull) throw new IllegalArgumentException();
+    		text= null;
+    	}
+    	else if (acceptsExpressions && isExpression(value))
+    	{
+    		text= (String)value;
+    	}
+    	else
+    	{
+			// Not an expression (isn't or can't be), not null.
+    		typeEditor.setValue(value); // may throw IllegalArgumentExc.
+    		text= typeEditor.getAsText();
+    	}
 
-	/* (non-Javadoc)
-	 * @see java.beans.PropertyEditor#getAsText()
-	 */
-	public String getAsText()
-	{
-		String text;
-		
-		Object value= combo.getSelectedItem();
-		if (value == UNDEFINED)
+    	guiEditor.setValue(text);
+    	
+    	lastValidValue= text;
+    	
+    	firePropertyChange();
+    }
+
+    public String getAsText()
+    {
+    	String text= guiEditor.getAsText();
+    
+		if (text == null)
 		{
-			text= null;
+			if (!acceptsNull) shouldNeverHappen();
 		}
-		else {
-			text= (String) value;
-			if (combo.getSelectedIndex() > 0
-				|| text.indexOf("${") == -1)
+    	else if (!acceptsExpressions || !isExpression(text))
+    	{
+    		// not an expression (can't be or isn't), not null.
+			try
 			{
-				// if it's not a JMeter 'expression'...
-				editor.setAsText(text);
-				text= editor.getAsText();
+				typeEditor.setAsText(text);
 			}
-		}
-		if (log.isDebugEnabled())
-		{
-			log.debug("->\"" + text + "\"");
-		}
-		return text;
-	}
+			catch (IllegalArgumentException e)
+			{
+				shouldNeverHappen(e);
+			}
+			text= typeEditor.getAsText();
+    	}
+    
+    	if (log.isDebugEnabled())
+    	{
+    		log.debug("->\"" + text + "\"");
+    	}
+    	return text;
+    }
 
-	/* (non-Javadoc)
-	 * @see java.beans.PropertyEditor#setAsText(java.lang.String)
-	 */
-	public void setAsText(String text) throws IllegalArgumentException
-	{
+    public void setAsText(String text) throws IllegalArgumentException
+    {
 		if (log.isDebugEnabled())
 		{
 			log.debug(text == null ? "<-null" : "<-\"" + text + "\"");
 		}
-		combo.setEditable(true);
+    		
+		String value;
+    		
 		if (text == null)
 		{
-			if (noUndefined) throw new IllegalArgumentException();
-			combo.setSelectedItem(UNDEFINED);
+			if (!acceptsNull) shouldNeverHappen();
+			value= null;
 		}
 		else 
 		{
-			combo.setSelectedItem(text);
+			if (acceptsExpressions && isExpression(text))
+			{
+				value= text;
+			}
+			else
+			{
+				typeEditor.setAsText(text); // may throw IllegalArgumentException
+				value= typeEditor.getAsText();
+			}
 		}
 
-		if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
-		else if (noEdit) throw new IllegalArgumentException();
-		
+		// TODO: if (NOT A TAG: && noEdit) shouldNeverHappen();
+    
+		guiEditor.setValue(value);
+    
+		lastValidValue= value;
+
 		firePropertyChange();
 	}
 
-    /* (non-Javadoc)
-     * @see java.beans.PropertyEditor#isPaintable()
-     */
-    public boolean isPaintable()
+    public void propertyChange(PropertyChangeEvent event)
     {
-        return editor.isPaintable();
-    }
-
-    /* (non-Javadoc)
-     * @see java.beans.PropertyEditor#paintValue(java.awt.Graphics, java.awt.Rectangle)
-     */
-    public void paintValue(Graphics gfx, Rectangle box)
-    {
-        editor.paintValue(gfx, box);
-    }
-
-    /* (non-Javadoc)
-     * @see java.beans.PropertyEditor#supportsCustomEditor()
-     */
-    public boolean supportsCustomEditor()
-    {
-        return true;
-    }
+		if (! isValidValue(guiEditor.getAsText()))
+		{
+			// TODO: warn the user. Maybe with a pop-up? A bell?
     
-    /**
-     * Keep track of the item that was just unselected... we will need it:
-     */
-	private Object lastValidValue= null;
-
-	/**
-	 * True iif we're currently processing an itemStateChanged event.
-	 */
-	private boolean processingItemEvent= false;
-
-	/* (non-Javadoc)
-	 * @see java.awt.event.ItemListener#itemStateChanged(java.awt.event.ItemEvent)
-	 */
-	public void itemStateChanged(ItemEvent e)
-	{
-		if (log.isDebugEnabled())
-		{
-			log.debug("itemStatChanged:"
-				+" processingItemEvent= "+processingItemEvent
-				+" event= "+e);
+			// Revert to the previously unselected (presumed valid!) value:
+			guiEditor.setAsText(lastValidValue);
 		}
-
-		// Avoid reentrancy, or things become really messy.
-		if (processingItemEvent) return;
-		processingItemEvent= true;
-	
-		if (e.getStateChange() == ItemEvent.DESELECTED)
-		{
-			lastValidValue= e.getItem();
-		}
-		else if (e.getStateChange() == ItemEvent.SELECTED)
-		{
-			if (e.getItem() == EDIT) {
-				combo.setEditable(true);
-				combo.getEditor().getEditorComponent().requestFocus();
-
-				// Obtain the editor so that we can properly initialize it for
-				// the editing (convenient selection & caret position):
-				JTextComponent textEditor= null;
-				Component c= combo.getEditor().getEditorComponent();
-				if (c instanceof JTextComponent) textEditor= (JTextComponent)c;
-
-				// We need a *valid* value to start the editing....
-
-				if (defaultValue != null)
-				{
-					// The default value looks like the best choice to me.
-					// At least it's something the property author can control:
-					combo.setSelectedItem(defaultValue);
-					if (textEditor != null) textEditor.selectAll();
-				}
-				else if (isValidValue(""))
-				{
-					// The empty string is not a bad choice, either:
-					combo.setSelectedItem("");
-				}
-				else if (lastValidValue != UNDEFINED)
-				{
-					// The previously selected item may be useful...
-
-					combo.setSelectedItem(lastValidValue);
-					if (textEditor != null) textEditor.selectAll();
-				}
-				else if (getTags() != null)
-				{
-					// Close to last resort... the first tag:
-					combo.setSelectedItem(getTags()[0]);
-					if (textEditor != null) textEditor.selectAll();
-				}
-				else
-				{
-					// Last resort: 'expressions' are always valid on
-					// editable fields:
-					combo.setSelectedItem("${}");
-					// Position the cursor inside the brackets, if possible:
-					if (textEditor != null) textEditor.setCaretPosition(2);
-				}
-				// TODO: I don't really like this solution. We could make a
-				// more convenient approach if we knew whether the property
-				// accepts expressions or not, and whether it accepts any 
-				// values beyond the provided tags or not. 
-			} 
-			else if (combo.getSelectedIndex() >= 0) 
-			{
-				combo.setEditable(false);
-			}
-			else if (! isValidValue((String)e.getItem()))
-			{
-				// TODO: warn the user. Maybe with a pop-up? A bell?
-
-				// Revert to the previously unselected (presumed valid!) value:
-				combo.setSelectedItem(lastValidValue);
-				if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
-			}
-		}
-			
-		processingItemEvent= false;
-	}
-	
-	/**
-	 * Determine whether a string is a valid value for the property.
-	 * 
-	 * @param text the value to be checked
-	 * @return true iif text is a valid value
-	 */
-	private boolean isValidValue(String text)
-	{
-		if (text.indexOf("${") != -1 && ! noEdit)
-		{
-			// JMeter 'expressions' are valid on editable fields.
-			return true;
-		}
-
-		// if it's not a JMeter 'expression' ...
-		try
-		{
-			editor.setAsText(text);
-		}
-		catch (IllegalArgumentException e1)
-		{
-			// setAsText failed: not valid
-			return false;
-		}
-		// setAsText succeeded: valid
-		return true;
-	}
-
-	/**
-	 * This is a funny hack: if you use a plain String, 
-	 * entering the text of the string in the editor will make the
-	 * combo revert to that option -- which actually amounts to
-	 * making that string 'reserved'. I preferred to avoid this by
-	 * using a different type having a controlled .toString().
-	 */
-	private static class UniqueObject
-	{
-		private String s;
-		
-		UniqueObject(String s)
-		{
-			this.s= s;
-		}
-		
-		public String toString()
-		{
-			return s;
-		}
-	}
-	
-	public static class Test extends junit.framework.TestCase
-	{
-		public Test(String name)
-		{
-			super(name);
-		}
-		
-		private abstract class ABean {
-			public abstract void setB(boolean b);
-			public abstract boolean getB();
-			public abstract void setS(String b);
-			public abstract String getS();
-		}
-		
-		private void testSetGet(WrapperEditor e, Object value) throws Exception
-		{
-			e.setValue(value);
-			assertEquals(value, e.getValue());
-		}
-		private void testSetGetAsText(WrapperEditor e, String text) throws Exception
-		{
-			e.setAsText(text);
-			assertEquals(text, e.getAsText());
-		}
-		public void testSetGetOnSimpleEditor() throws Exception
-		{
-			WrapperEditor e= new WrapperEditor(
-				PropertyEditorManager.findEditor(boolean.class), 
-				new PropertyDescriptor("B", ABean.class));
-				
-			testSetGet(e, new Boolean(true));
-			testSetGet(e, new Boolean(false));
-			testSetGet(e, null);
-			testSetGet(e, "${var}");
-			
-			e.setValue("true");
-			assertEquals(new Boolean(true), e.getValue());
-
-			e.setValue("True");
-			assertEquals(new Boolean(true), e.getValue());
-		}
-		public void testSetGetAsTextOnSimpleEditor() throws Exception
-		{
-			WrapperEditor e= new WrapperEditor(
-				PropertyEditorManager.findEditor(boolean.class), 
-				new PropertyDescriptor("B", ABean.class));
-				
-			testSetGetAsText(e, "True");
-			testSetGetAsText(e, "False");
-			testSetGetAsText(e, null);
-			testSetGetAsText(e, "${var}");
-			
-			e.setAsText("true");
-			assertEquals(new Boolean(true), e.getValue());
-
-			e.setAsText("True");
-			assertEquals(new Boolean(true), e.getValue());
-			// don't separate these two sub-tests
-			e.setAsText("invalid");
-			assertEquals(new Boolean(true), e.getValue());
-				// reverts to las known good, that's the "true" above
-		}
-		public void testSetGetAsTextOnString() throws Exception
-		{
-			WrapperEditor e= new WrapperEditor(
-				PropertyEditorManager.findEditor(String.class), 
-				new PropertyDescriptor("S", ABean.class));
-				
-			testSetGetAsText(e, "any string");
-			testSetGetAsText(e, "");
-			testSetGetAsText(e, null);
-			testSetGetAsText(e, "${var}");
-
-			// Check "Undefined" does not become a "reserved word":
-			e.setAsText(UNDEFINED.toString());
-			assertNotNull(e.getAsText());
-		}
-	}
+    }
 }
