@@ -126,6 +126,19 @@ public abstract class BeanInfoSupport implements BeanInfo {
 			// Store the resource bundle as an attribute of the BeanDescriptor:
 			getBeanDescriptor().setValue("resourceBundle", resourceBundle);
 
+			// Localize the bean name
+			try
+			{
+				getBeanDescriptor().setDisplayName(
+					resourceBundle.getString("displayName"));
+			}
+			catch (MissingResourceException e)
+			{
+				log.debug(
+					"Localized display name not available for bean "
+					+beanClass.getName());
+			}
+			
 			// Localize the property names and descriptions:
 			PropertyDescriptor[] properties= getPropertyDescriptors();
 
