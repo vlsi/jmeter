@@ -86,8 +86,8 @@ public class HTTPSamplerBeanBeanInfo extends BeanInfoSupport {
 		property("method").setValue("tags", new String[] {"GET", "POST"});
 		property("port").setValue("tags", new String[] { "80", "443" });
 
-		// The following are added for demo purposes only. TODO: remove
-		property("followRedirects").setValue("noEdit", Boolean.TRUE);
+		// The following are added for demo purposes only.
+/*		property("followRedirects").setValue("noEdit", Boolean.TRUE);
 		property("useKeepAlive").setValue("noUndefined", Boolean.TRUE);
 		property("useKeepAlive").setValue("default", Boolean.FALSE);
 		property("method").setValue("noEdit", Boolean.TRUE);
@@ -96,5 +96,8 @@ public class HTTPSamplerBeanBeanInfo extends BeanInfoSupport {
 		property("fileField").setValue("noEdit", Boolean.TRUE);
 		property("fileField").setValue("noUndefined", Boolean.TRUE);
 		property("fileField").setValue("default", "");
-	}
+		property("port").setValue("noUndefined", Boolean.TRUE);
+		property("port").setValue("default", new Integer(0));
+		property("mimeType").setValue("tags", new String[] {"application/binary"});
+*/	}
 }
