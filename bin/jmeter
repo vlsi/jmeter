@@ -1,3 +1,0 @@
-#!/bin/sh
-
-java -classpath $CLASSPATH:ApacheJMeter.jar org.apache.jmeter.JMeter
