@@ -438,11 +438,13 @@ public final class MenuFactory
                 }
                 catch (Throwable e)
                 {
+                    log.info("Could not instantiate "+name, e);
                     continue;
                 }
                 if (elementsToSkip.contains(name)
                     || elementsToSkip.contains(item.getStaticLabel()))
                 {
+                    log.debug("Skipping "+name);
                     continue;
                 }
                 else
@@ -452,6 +454,7 @@ public final class MenuFactory
                 Collection categories = item.getMenuCategories();
                 if (categories == null)
                 {
+                    log.debug(name+" participates in no menus.");
                     continue;
                 }
                 if (categories.contains(TIMERS))
