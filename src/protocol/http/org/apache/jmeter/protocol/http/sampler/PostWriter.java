@@ -32,7 +32,6 @@ import org.apache.jmeter.config.Argument;
 import org.apache.jmeter.testelement.property.PropertyIterator;
 
 /**
- * @author Michael Stover
  * @version $Revision$
  */
 
@@ -40,7 +39,7 @@ public class PostWriter
 {
     protected final static String BOUNDARY =
         "---------------------------7d159c1302d0y0";
-    protected final static byte[] CRLF = { 0x0d, 0x0A };//TODO: make private?
+    private final static byte[] CRLF = { 0x0d, 0x0A };
     //protected static int fudge = -20;
     protected static final String encoding = "iso-8859-1";
 
@@ -100,7 +99,7 @@ public class PostWriter
         if ((filename != null) && (filename.trim().length() > 0))
         {
             connection.setRequestProperty(
-                "Content-type",
+                "Content-Type",
                 "multipart/form-data; boundary=" + BOUNDARY);
             connection.setDoOutput(true);
             connection.setDoInput(true);
@@ -111,10 +110,10 @@ public class PostWriter
         {
             String postData = sampler.getQueryString();
             connection.setRequestProperty(
-                "Content-length",
+                "Content-Length",
                 "" + postData.length());
             connection.setRequestProperty(
-                "Content-type",
+                "Content-Type",
                 "application/x-www-form-urlencoded");
             connection.setDoOutput(true);
         }

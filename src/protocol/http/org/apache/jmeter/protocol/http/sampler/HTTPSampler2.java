@@ -22,17 +22,15 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import java.util.Iterator;
+import java.util.Date;
 
 import org.apache.commons.httpclient.ConnectMethod;
 import org.apache.commons.httpclient.DefaultMethodRetryHandler;
-import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HostConfiguration;
 import org.apache.commons.httpclient.HttpConnection;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.HttpMethodBase;
 import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.NTCredentials;
 import org.apache.commons.httpclient.methods.EntityEnclosingMethod;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
@@ -43,11 +41,10 @@ import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.http.control.AuthManager;
 import org.apache.jmeter.protocol.http.control.CookieManager;
 import org.apache.jmeter.protocol.http.control.HeaderManager;
-import org.apache.jmeter.protocol.http.parser.HTMLParseException;
-import org.apache.jmeter.protocol.http.parser.HTMLParser;
 
 import org.apache.jmeter.testelement.property.CollectionProperty;
 import org.apache.jmeter.testelement.property.PropertyIterator;
+import org.apache.jmeter.util.JMeterUtils;
 
 import org.apache.jorphan.logging.LoggingManager;
 
@@ -104,39 +101,6 @@ public class HTTPSampler2 extends HTTPSamplerBase
 //        /*postWriter.*/
 //    	setHeaders(post, this);
     }
-    
-//    protected final static String BOUNDARY =
-//        "---------------------------7d159c1302d0y0";
-//    //protected final static byte[] CRLF = { 0x0d, 0x0A };
-//
-//    public void setHeaders(HttpMethod method, HTTPSampler2 sampler)
-//    throws IOException
-//    {
-//
-//    // If filename was specified then send the post using multipart syntax
-//    String filename = sampler.getFileField();
-//    if ((filename != null) && (filename.trim().length() > 0))
-//    {
-//    	method.setRequestHeader(
-//            "Content-type",
-//            "multipart/form-data; boundary=" + BOUNDARY);
-////        connection.setDoOutput(true);
-////        connection.setDoInput(true);
-//    }
-//
-//    // No filename specified, so send the post using normal syntax
-//    else
-//    {
-//        String postData = sampler.getQueryString();
-//    	method.setRequestHeader(
-//            "Content-length",
-//            "" + postData.length());
-//    	method.setRequestHeader(
-//            "Content-type",
-//            "application/x-www-form-urlencoded");
-////        connection.setDoOutput(true);
-//    }
-//}
 
     /**
      * Send POST data from <code>Entry</code> to the open connection.
@@ -181,7 +145,7 @@ public class HTTPSampler2 extends HTTPSamplerBase
 	            + encode(filename)
 	            + "\"");
             // Specify content type and encoding
-            post.setRequestHeader("Content-type", sampler.getMimetype());
+            post.setRequestHeader("Content-Type", sampler.getMimetype());
             post.setRequestBody(new FileInputStream(input));
         }
     }
@@ -263,10 +227,11 @@ public class HTTPSampler2 extends HTTPSamplerBase
         	//httpMethod;
         	new DefaultMethodRetryHandler();
         }
-        
 
-        // TODO make this a JMeter property
-        httpMethod.setHttp11(!System.getProperty("http.version","1.1").equals("1.0"));
+        httpMethod.setHttp11(!JMeterUtils.getPropDefault("httpclient.version","1.1").equals("1.0"));
+
+        // Set the timeout (if non-zero)
+        httpConn.setSoTimeout(JMeterUtils.getPropDefault("httpclient.timeout",0));
 
         httpState = new HttpState();
         if (httpConn.isProxied() && httpConn.isSecure()) {
@@ -338,7 +303,7 @@ public class HTTPSampler2 extends HTTPSamplerBase
         throws IOException
     {
         StringBuffer headerBuf= new StringBuffer();
-        Header rh[]=method.getResponseHeaders();
+        org.apache.commons.httpclient.Header rh[] = method.getResponseHeaders();
 		headerBuf.append(method.getStatusLine());//header[0] is not the status line... 
         headerBuf.append("\n");
 
@@ -406,7 +371,8 @@ public class HTTPSampler2 extends HTTPSamplerBase
                 PropertyIterator i= headers.iterator();
                 while (i.hasNext())
                 {
-                    Header header= (Header)i.next().getObjectValue();
+                    org.apache.jmeter.protocol.http.control.Header header =
+                    	(org.apache.jmeter.protocol.http.control.Header)i.next().getObjectValue();
                     String n=header.getName();
                     String v=header.getValue();
                     method.setRequestHeader(n,v);
@@ -519,7 +485,7 @@ public class HTTPSampler2 extends HTTPSamplerBase
 
             // Now collect the results into the HTTPSampleResult:
 
-            res.setSampleLabel(httpMethod.getPath());// Pick up Actual path (after redirects)
+            res.setSampleLabel(httpMethod.getURI().toString());// Pick up Actual path (after redirects)
             res.setResponseData(responseData);
 
             res.setResponseCode(Integer.toString(statusCode));
@@ -527,8 +493,14 @@ public class HTTPSampler2 extends HTTPSamplerBase
 
             res.setResponseMessage(httpMethod.getStatusText());
 
-            String ct= httpMethod.getResponseHeader("Content-type").getValue();
-            res.setContentType(ct);// e.g. text/html; charset=ISO-8859-1
+            String ct=null;
+            org.apache.commons.httpclient.Header h = 
+            	httpMethod.getResponseHeader("Content-Type");
+            if (h!=null)// Can be missing, e.g. on redirect
+            {
+                ct= h.getValue();
+                res.setContentType(ct);// e.g. text/html; charset=ISO-8859-1
+            }
             if (ct != null)
             {
             	// Extract charset and store as DataEncoding
@@ -577,7 +549,7 @@ public class HTTPSampler2 extends HTTPSamplerBase
                 }
 
                 if (isImageParser()
-                    && res.getDataType().equals(HTTPSampleResult.TEXT)
+                    && (HTTPSampleResult.TEXT).equals(res.getDataType())
                     && res.isSuccessful())
                 {
                     if (frameDepth > MAX_FRAME_DEPTH)
@@ -705,83 +677,6 @@ public class HTTPSampler2 extends HTTPSamplerBase
     }
 
     /**
-     * Download the resources of an HTML page.
-     * <p>
-     * If createContainerResult is true, the returned result will contain one 
-     * subsample for each request issued, including the original one that was 
-     * passed in. It will otherwise look exactly like that original one.
-     * <p>
-     * If createContainerResult is false, one subsample will be added to the
-     * provided result for each requests issued.
-     * 
-     * @param res           result of the initial request - must contain an HTML
-     *                      response
-     * @param createContainerResult whether to create a "container" or just
-     *                      use the provided <code>res</code> for that purpose
-     * @param frameDepth    Depth of this target in the frame structure.
-     *                      Used only to prevent infinite recursion.
-     * @return              "Container" result with one subsample per request
-     *                      issued
-     */
-    private HTTPSampleResult downloadPageResources(
-        HTTPSampleResult res,
-        boolean createContainerResult,
-        int frameDepth)
-    {
-        Iterator urls= null;
-        try
-        {
-            urls=
-                HTMLParser.getParser().getEmbeddedResourceURLs(
-                    res.getResponseData(),
-                    res.getURL());
-        }
-        catch (HTMLParseException e)
-        {
-            // Don't break the world just because this failed:
-            res.addSubResult(errorResult(e, null, 0));
-            res.setSuccessful(false);
-        }
-
-        // Iterate through the URLs and download each image:
-        if (urls != null && urls.hasNext())
-        {
-            if (createContainerResult)
-            {
-                res= new HTTPSampleResult(res);
-            }
-
-            while (urls.hasNext())
-            {
-                Object binURL= urls.next();
-                try
-                {
-                    HTTPSampleResult binRes=
-                        sample(
-                            (URL)binURL,
-                            GET,
-                            false,
-                            frameDepth + 1);
-                    res.addSubResult(binRes);
-                    res.setSuccessful(
-                        res.isSuccessful() && binRes.isSuccessful());
-                }
-                catch (ClassCastException e)
-                {
-                    res.addSubResult(
-                        errorResult(
-                            new Exception(binURL + " is not a correct URI"),
-                            null,
-                            0));
-                    res.setSuccessful(false);
-                    continue;
-                }
-            }
-        }
-        return res;
-    }
-
-    /**
      * From the <code>HttpState</code>, store all the "set-cookie"
      * key-pair values in the cookieManager of the <code>UrlConfig</code>.
      *
@@ -799,6 +694,7 @@ public class HTTPSampler2 extends HTTPSamplerBase
         	org.apache.commons.httpclient.Cookie [] c = state.getCookies();
             for (int i= 0; i < c.length ; i++)
             {
+            	   Date exp = c[i].getExpiryDate();// might be absent
                    cookieManager.add(
                    		new org.apache.jmeter.protocol.http.control.
 						Cookie(c[i].getName(),
@@ -806,25 +702,11 @@ public class HTTPSampler2 extends HTTPSamplerBase
 								c[i].getDomain(),
 								c[i].getPath(),
 								c[i].getSecure(),
-								c[i].getExpiryDate().getTime()
+								exp != null ? exp.getTime()
+								: System.currentTimeMillis() + 1000 * 60 * 60 * 24 //cf CookieManager
 							  )
 						);
             }
-        }
-    }
-
-    public String toString()
-    {
-        try
-        {
-            return this.getUrl().toString()
-                + ((POST.equals(getMethod()))
-                    ? "\nQuery Data: " + getQueryString()
-                    : "");
-        }
-        catch (MalformedURLException e)
-        {
-            return "";
         }
     }
 

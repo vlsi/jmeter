@@ -76,7 +76,7 @@ public class PackageTest extends TestCase
        	String s;
         while((s=fileReader.readLine())!=null)
         {
-           	if (s.length() > 0)  {
+           	if (s.length() > 0 && !s.startsWith("#"))  {
            		l.add(s.substring(0,s.indexOf('=')));
            	}
        	} 
@@ -91,11 +91,15 @@ public class PackageTest extends TestCase
     	}
     }
 	
+	private void check(String resname) throws Exception
+	{
+		check(resname, true);// check that there aren't any extra entries
+	}
 	/*
 	 * perform the checks on the resources
 	 * 
 	 */
-	private void check(String resname) throws Exception
+	private void check(String resname, boolean checkUnexpected) throws Exception
 	{
 		ArrayList alf = new ArrayList(500);// holds keys from file
 		String res = getResName(resname);
@@ -117,7 +121,7 @@ public class PackageTest extends TestCase
 		{
 			defaultPRB = getRAS(res);
 		}
-		else
+		else if (checkUnexpected)
 		{
 			// Check all the keys are in the default props file
 			Enumeration enum = getRAS(res).getKeys();
@@ -151,6 +155,8 @@ public class PackageTest extends TestCase
 		ts.addTest(new PackageTest("atestDE"));
 		ts.addTest(new PackageTest("atestNO"));
 		ts.addTest(new PackageTest("atestJA"));
+		ts.addTest(new PackageTest("atestCN"));
+		ts.addTest(new PackageTest("atestFR"));
 		return ts;
 	}
 
@@ -171,9 +177,17 @@ public class PackageTest extends TestCase
 	{
 		check("JA");
 	}
+    public void atestCN() throws Exception
+	{
+		check("CN");
+	}
 	public void atestNO() throws Exception
 	{
 		check("NO");
+	}
+	public void atestFR() throws Exception
+	{
+		check("FR",false);//Don't report unexpected rows (for 2.0 branch only!)
 	}
 	public void atestDefault() throws Exception
 	{

@@ -1,5 +1,4 @@
 @echo off
-
 rem   $Id$
 rem   Copyright 2001-2004 The Apache Software Foundation
 rem 
@@ -15,27 +14,25 @@ rem   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 rem   See the License for the specific language governing permissions and
 rem   limitations under the License.
 
-if not "%ANT_HOME%" == "" goto java:
-echo ANT_HOME is not set, please set it
-goto eof:
+rem  ============================================
+rem
+rem  Drop a JMX file on this batch script, and it
+rem  will load it in the GUI.
+rem
+rem  Only the first parameter is used.
+rem  Only works for Win2k.
+rem
+rem  ============================================
 
-:java
-if not "%JAVA_HOME%" == "" goto start:
-echo JAVA_HOME not set, please set
-goto eof:
 
-:start
-set LOCALCLASSPATH=%JAVA_HOME%\lib\tools.jar;%ANT_HOME%\lib\ant.jar
-set OLDPATH=%PATH%
-set PATH=%JAVA_HOME%\bin;%PATH%
+if "%OS%"=="Windows_NT" goto WinNT
+echo "Sorry, this command file requires Windows NT/ 2000"
+goto END
+:WinNT
 
-rem All the jars are now resolved in build.xml
-rem for %%i in (".\lib\*.jar") do if not "%%i" == ".\lib\jorphan.jar" CALL lcp %%i
-rem for %%i in (".\ext\*.jar") do CALL lcp %%i
+rem change to the directory in which this script resides, i.e. bin
+cd %~dp0
 
-SET BUILDFILE=build.xml
-echo %LOCALCLASSPATH%
-java -classpath %LOCALCLASSPATH% org.apache.tools.ant.Main -buildfile %BUILDFILE% %1 %2 %3 %4 %5 %6
-set PATH=%OLDPATH%
+jmeter -t %1
 
-:eof
+:END

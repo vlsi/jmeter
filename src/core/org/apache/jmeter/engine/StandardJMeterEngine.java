@@ -21,6 +21,8 @@ package org.apache.jmeter.engine;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,7 +48,6 @@ import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 /**
- * @author     ?
  * @version    $Revision$ Updated on: $Date$
  */
 public class StandardJMeterEngine
@@ -55,18 +56,86 @@ public class StandardJMeterEngine
     transient private static Logger log = LoggingManager.getLoggerForClass();
     private transient Thread runningThread;
     private static long WAIT_TO_DIE = 5 * 1000; //5 seconds
-    transient Map allThreads;
-    boolean running = false;
-    boolean serialized = false;
-    boolean schcdule_run = false;
-    HashTree test;
-    transient SearchByClass testListeners;
-    String host = null;
-    transient ListenerNotifier notifier;
-
+    private transient Map allThreads;
+    private boolean running = false;
+    private boolean serialized = false;
+    private volatile boolean schcdule_run = false;
+    private HashTree test;
+    private transient SearchByClass testListeners;
+    private String host = null;
+    private transient ListenerNotifier notifier;
+    
+    // Allow engine and threads to be stopped from outside a thread
+    // e.g. from beanshell server
+    // Assumes that there is only one instance of the engine
+    // at any one time so it is not guaranteed to work ...
+    private static transient Map allThreadNames;
+    private static StandardJMeterEngine engine;
+	private static Map allThreadsSave;
+    public static void stopEngineNow()
+    {
+    	if (engine != null) // May be null if called from Unit test
+    	  engine.stopTest(true);
+    }
+    public static void stopEngine()
+    {
+    	if (engine != null)  // May be null if called from Unit test
+    		engine.stopTest(false);
+    }
+    public static boolean stopThread(String threadName)
+    {
+    	return stopThread(threadName,false);
+    }
+    public static boolean stopThreadNow(String threadName)
+    {
+    	return stopThread(threadName,true);
+    }
+    private static boolean stopThread(String threadName, boolean now)
+    {
+    	if (allThreadNames == null) return false;// e.g. not yet started
+    	JMeterThread thrd;
+		try {
+    	    thrd = (JMeterThread)allThreadNames.get(threadName);
+    	} catch (Exception e) {
+    		log.warn("stopThread: "+e);
+    		return false;
+    	}
+    	if (thrd!= null)
+    	{
+    		thrd.stop();
+    		if (now)
+    		{
+    		    Thread t = (Thread) allThreadsSave.get(thrd);
+    		    if (t != null)
+    		    {
+    		        t.interrupt();
+    		    }
+    			
+    		}
+    		return true;
+    	}
+    	else
+    	{
+    		return false;
+    	}
+    }
+    // End of code to allow engine to be controlled remotely
+    
+    /*
+     * Allow functions etc to register for testStopped notification
+     */
+    private static List testList = null;
+    public static synchronized void register(TestListener tl)
+    {
+    	testList.add(tl);
+    }
+    
     public StandardJMeterEngine()
     {
         allThreads = new HashMap();
+        engine=this;
+        allThreadNames = new HashMap();
+        allThreadsSave = allThreads;
     }
 
     public StandardJMeterEngine(String host)
@@ -144,29 +213,35 @@ public class StandardJMeterEngine
         Iterator iter = testListeners.getSearchResults().iterator();
         while (iter.hasNext())
         {
+        	TestListener it = (TestListener)iter.next();
+        	log.info("Notifying test listener: " + it.getClass().getName());
             if (host == null)
             {
-                ((TestListener) iter.next()).testStarted();
+                it.testStarted();
             }
             else
             {
-                ((TestListener) iter.next()).testStarted(host);
+                it.testStarted(host);
             }
         }
     }
 
     protected void notifyTestListenersOfEnd()
     {
+    	log.info("Notifying listeners of end of test");
+    	
         Iterator iter = testListeners.getSearchResults().iterator();
         while (iter.hasNext())
         {
+        	TestListener it = (TestListener)iter.next();
+        	log.info("Notifying test listener: " + it.getClass().getName());
             if (host == null)
             {
-                ((TestListener) iter.next()).testEnded();
+                it.testEnded();
             }
             else
             {
-                ((TestListener) iter.next()).testEnded(host);
+                it.testEnded(host);
             }
         }
         log.info("Test has ended");
@@ -202,22 +277,46 @@ public class StandardJMeterEngine
         stopThread.start();
     }
 
+    public synchronized void stopTest(boolean b)
+    {
+        Thread stopThread = new Thread(new StopTest(b));
+        stopThread.start();
+    }
+    
+    public void askThreadsToStop()
+    {
+    	engine.stopTest(false);
+    }
+    
     private class StopTest implements Runnable
     {
+    	boolean now;
+    	private StopTest(){
+    		now=true;
+    	}
+    	private StopTest(boolean b){
+    		now=b;
+    	}
         public void run()
         {
             if (running)
             {
                 running = false;
-                tellThreadsToStop();
+                if (now){
+                	tellThreadsToStop();
+                } else {
+                	stopAllThreads();
+                }
                 try
                 {
                     Thread.sleep(10 * allThreads.size());
                 }
                 catch (InterruptedException e)
                 {}
-                verifyThreadsStopped();
-                notifyTestListenersOfEnd();
+                boolean stopped=verifyThreadsStopped();
+                if (stopped || now){
+                    notifyTestListenersOfEnd();
+                }
             }
         }
     }
@@ -226,6 +325,7 @@ public class StandardJMeterEngine
     {
         log.info("Running the test!");
         running = true;
+        testList = new ArrayList();
 
         SearchByClass testPlan = new SearchByClass(TestPlan.class);
         getTestTree().traverse(testPlan);
@@ -240,13 +340,27 @@ public class StandardJMeterEngine
             serialized = true;
         }
         compileTree();
+        
+        /** 
+         * Notification of test listeners needs to happen after function replacement, but before
+         * setting RunningVersion to true.
+         */
+        testListeners = new SearchByClass(TestListener.class);
+        getTestTree().traverse(testListeners);
+        log.info("About to call test listeners");
+        Collection col = testListeners.getSearchResults();
+        col.addAll(testList);
+        testList=null;
+        notifyTestListenersOfStart();
+        
+        getTestTree().traverse(new TurnElementsOn());
+        
         List testLevelElements =
             new LinkedList(getTestTree().list(getTestTree().getArray()[0]));
         removeThreadGroups(testLevelElements);
         SearchByClass searcher = new SearchByClass(ThreadGroup.class);
-        testListeners = new SearchByClass(TestListener.class);
+        
         setMode();
-        getTestTree().traverse(testListeners);
         getTestTree().traverse(searcher);
         TestCompiler.initialize();
         //for each thread group, generate threads
@@ -263,10 +377,7 @@ public class StandardJMeterEngine
          */
         System.gc();
         
-        if (iter.hasNext())
-        {
-            notifyTestListenersOfStart();
-        }
+        
         notifier = new ListenerNotifier();
         
         schcdule_run = true;
@@ -308,7 +419,8 @@ public class StandardJMeterEngine
                 threads[i].setThreadNum(i);
                 threads[i].setInitialContext(JMeterContextService.getContext());
                 threads[i].setInitialDelay((int) (perThreadDelay * (float) i));
-                threads[i].setThreadName(groupName + (groupCount) + "-" + (i + 1));
+                String threadName = groupName + " " + groupCount + "-" + (i + 1);
+                threads[i].setThreadName(threadName);
 
                 scheduleThread(threads[i], group);
                 
@@ -318,8 +430,9 @@ public class StandardJMeterEngine
 				threads[i].setOnErrorStopThread(onErrorStopThread);
 				
                 Thread newThread = new Thread(threads[i]);
-                newThread.setName(threads[i].getThreadName());
+                newThread.setName(threadName);
                 allThreads.put(threads[i], newThread);
+                allThreadNames.put(threadName,threads[i]);
                 if (serialized
                     && !iter.hasNext()
                     && i == threads.length - 1) //last thread
@@ -364,7 +477,7 @@ public class StandardJMeterEngine
             
 			//set the endtime for the Thread
             if (group.getDuration() > 0){// Duration is  in seconds
-				thread.setEndTime(group.getDuration()*1000+(new Date().getTime()));
+				thread.setEndTime(group.getDuration()*1000+(thread.getStartTime()));
             } else {
 				thread.setEndTime(group.getEndTime());
             }
@@ -374,8 +487,9 @@ public class StandardJMeterEngine
         }
     }
 
-    private void verifyThreadsStopped()
+    private boolean verifyThreadsStopped()
     {
+    	boolean stoppedAll=true;
         Iterator iter = new HashSet(allThreads.keySet()).iterator();
         while (iter.hasNext())
         {
@@ -390,10 +504,12 @@ public class StandardJMeterEngine
                 {}
                 if (t.isAlive())
                 {
+                	stoppedAll=false;
                     log.info("Thread won't die: " + t.getName());
                 }
             }
         }
+        return stoppedAll;
     }
 
     private void tellThreadsToStop()
@@ -416,7 +532,7 @@ public class StandardJMeterEngine
         }
     }
     
-	public void askThreadsToStop()
+	private void stopAllThreads()
 	{
 		Iterator iter = new HashSet(allThreads.keySet()).iterator();
 		while (iter.hasNext())
@@ -424,7 +540,6 @@ public class StandardJMeterEngine
 			JMeterThread item = (JMeterThread) iter.next();
 			item.stop();
 		}
-		verifyThreadsStopped();
 	}
 
     // Remote exit

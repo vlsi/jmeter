@@ -432,10 +432,10 @@ public class HashTree implements Serializable, Map
      * @param key   key to be added
      * @param value value to be added as a key in the secondary node
      */
-    public void add(Object key, Object value)
+    public HashTree add(Object key, Object value)
     {
         add(key);
-        getTree(key).add(value);
+        return getTree(key).add(value);
     }
     
     /**
@@ -503,6 +503,11 @@ public class HashTree implements Serializable, Map
         }
     }
     
+    public HashTree add(Object[] treePath,Object value)
+    {
+        return add(Arrays.asList(treePath),value);
+    }
+    
     /**
      * Adds a series of nodes into the HashTree using the given path.  The
      * first argument is a List that represents a path to a specific node in
@@ -529,10 +534,10 @@ public class HashTree implements Serializable, Map
      * @param treePath   a list of objects representing a path
      * @param value  Object to add as a node to bottom-most node
      */
-    public void add(Collection treePath, Object value)
+    public HashTree add(Collection treePath, Object value)
     {
         HashTree tree = addTreePath(treePath);
-        tree.add(value);
+        return tree.add(value);
     }
     
     /**
@@ -1155,10 +1160,10 @@ public class HashTree implements Serializable, Map
 			assertFalse(tree2.equals(tree3));
 			assertFalse(tree2.equals(tree4));
 			
-			assertFalse(tree1.equals(null));
-			assertFalse(tree1.equals(null));
-			assertFalse(tree2.equals(null));
-			assertFalse(tree2.equals(null));
+			assertNotNull(tree1);
+			assertNotNull(tree1);
+			assertNotNull(tree2);
+			assertNotNull(tree2);
 
 			tree1.add("abcd",tree3);
 			assertFalse(tree1.equals(tree2));

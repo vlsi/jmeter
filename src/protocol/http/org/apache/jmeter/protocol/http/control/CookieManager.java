@@ -31,6 +31,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.Locale;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
@@ -70,7 +71,7 @@ public class CookieManager
     // TestElements are cloned for each thread, so
     // we use an instance variable.
     private SimpleDateFormat dateFormat =
-        new SimpleDateFormat("EEEE, dd-MMM-yy HH:mm:ss zzz");
+        new SimpleDateFormat("EEEE, dd-MMM-yy HH:mm:ss zzz",Locale.US);
 
     public CookieManager()
     {
@@ -359,12 +360,8 @@ public class CookieManager
                 {
                     String expires = nvp.substring(index + 1);
                     Date date = dateFormat.parse(expires);
-                    if (date.getTime() > System.currentTimeMillis())
-                        //TODO: why this conditional? If it's expired, it's
-                        // expired!
-                    {
-                        newCookie.setExpires(date.getTime());
-                    }
+                    //Always set expiry date - see Bugzilla id 29493
+                    newCookie.setExpires(date.getTime());
                 }
                 catch (ParseException pe)
                 {

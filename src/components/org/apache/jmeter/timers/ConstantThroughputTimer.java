@@ -36,7 +36,7 @@ public class ConstantThroughputTimer
         extends TestBean
         implements Timer, TestListener
 {
-	protected static final Logger log = LoggingManager.getLoggerForClass();
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
     /**
      * Target time for the start of the next request. The delay provided by
@@ -113,7 +113,7 @@ public class ConstantThroughputTimer
      * 
      * @see org.apache.jmeter.testelement.TestListener#testStarted()
      */
-    public void testStarted()
+    public synchronized void testStarted()//synch to protect targetTime
     {
     	log.debug("Test started - reset throughput calculation.");
     	targetTime= 0;

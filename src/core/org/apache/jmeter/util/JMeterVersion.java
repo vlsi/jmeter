@@ -41,8 +41,10 @@ public class JMeterVersion
 	 * pattern: VERSION = <quote>.*<quote>
 	 * 
 	 */
-	static final String VERSION = "1.9.20040324";
+	static final String VERSION = "2.0.2";
 
+	static final String COPYRIGHT = "Copyright (c) 1998-2004 The Apache Software Foundation";
+	
     private JMeterVersion() // Not instantiable
     {
         super();

@@ -26,6 +26,7 @@ import bsh.Interpreter;
    
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.testelement.AbstractTestElement;
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.jorphan.util.JOrphanUtils;
 import org.apache.log.Logger;
@@ -38,18 +39,34 @@ import org.apache.log.Logger;
 public class BeanShellAssertion extends AbstractTestElement
     implements Serializable, Assertion
 {
-	protected static Logger log = LoggingManager.getLoggerForClass();
+	private static Logger log = LoggingManager.getLoggerForClass();
 
     public static final String FILENAME   = "BeanShellAssertion.filename"; //$NON-NLS-1$
 	public static final String SCRIPT     = "BeanShellAssertion.query"; //$NON-NLS-1$
 	public static final String PARAMETERS = "BeanShellAssertion.parameters"; //$NON-NLS-1$
 
+	// can be specified in jmeter.properties
+	public static final String INIT_FILE = "beanshell.assertion.init"; //$NON-NLS-1$
+
     private Interpreter bshInterpreter;
 	
 	public BeanShellAssertion()
 	{
+		String init="";
 		try{
 			bshInterpreter = new Interpreter();
+			init = JMeterUtils.getPropDefault(INIT_FILE,null);
+			if (init != null)
+			{
+				try
+				{
+					 bshInterpreter.source(null);
+				} catch (IOException e){
+					log.warn("Error processing init file "+init+" "+e);
+				} catch (Exception e){
+					log.warn("Error processing init file "+init+" "+e);
+				}
+			}
 		} catch (NoClassDefFoundError e){
 			bshInterpreter=null;
 		}
@@ -81,25 +98,28 @@ public class BeanShellAssertion extends AbstractTestElement
         {
         	String request=getScript();
         	String fileName=getFilename();
-
-			bshInterpreter.set("FileName",getFilename());
-			bshInterpreter.set("Parameters",getParameters());// as a single line
-			bshInterpreter.set("bsh.args",JOrphanUtils.split(getParameters()," "));
+        	
+        	// Has to be done after construction, otherwise fails serialisation check
+        	bshInterpreter.set("log",log);  //$NON-NLS-1$
 			
-			bshInterpreter.set("Response",response);// Raw access to the response
-			bshInterpreter.set("ResponseData",response.getResponseData());
-			bshInterpreter.set("ResponseCode",response.getResponseCode());
-			bshInterpreter.set("ResponseMessage",response.getResponseMessage());
-			bshInterpreter.set("ResponseHeaders",response.getResponseHeaders());
-			bshInterpreter.set("RequestHeaders",response.getRequestHeaders());
-			bshInterpreter.set("SampleLabel",response.getSampleLabel());
-			bshInterpreter.set("SamplerData",response.getSamplerData());
-			bshInterpreter.set("Successful",response.isSuccessful());
+        	bshInterpreter.set("FileName",getFilename());//$NON-NLS-1$
+			bshInterpreter.set("Parameters",getParameters());// as a single line $NON-NLS-1$
+			bshInterpreter.set("bsh.args",//$NON-NLS-1$
+					JOrphanUtils.split(getParameters()," "));//$NON-NLS-1$
+			
+			bshInterpreter.set("Response",response);// Raw access to the response //$NON-NLS-1$
+			bshInterpreter.set("ResponseData",response.getResponseData());//$NON-NLS-1$
+			bshInterpreter.set("ResponseCode",response.getResponseCode());//$NON-NLS-1$
+			bshInterpreter.set("ResponseMessage",response.getResponseMessage());//$NON-NLS-1$
+			bshInterpreter.set("ResponseHeaders",response.getResponseHeaders());//$NON-NLS-1$
+			bshInterpreter.set("RequestHeaders",response.getRequestHeaders());//$NON-NLS-1$
+			bshInterpreter.set("SampleLabel",response.getSampleLabel());//$NON-NLS-1$
+			bshInterpreter.set("SamplerData",response.getSamplerData());//$NON-NLS-1$
+			bshInterpreter.set("Successful",response.isSuccessful());//$NON-NLS-1$
 
-			bshInterpreter.set("Result",result);// Raw access to the result
-
-			bshInterpreter.set("FailureMessage","");
-			bshInterpreter.set("Failure",false);
+			// The following are used to set the Result details on return from the script:
+			bshInterpreter.set("FailureMessage","");//$NON-NLS-1$ //$NON-NLS-2$
+			bshInterpreter.set("Failure",false);//$NON-NLS-1$
 
 			//Object bshOut;
 			
@@ -117,7 +137,7 @@ public class BeanShellAssertion extends AbstractTestElement
 			result.setError(false);
         }
 /*
- * To avoid class loading problems when bsh,jar is missing,
+ * To avoid class loading problems when the BSH jar is missing,
  * we don't try to catch this error separately
  * 		catch (bsh.EvalError ex)
 		{
@@ -128,10 +148,10 @@ public class BeanShellAssertion extends AbstractTestElement
  */
         // but we do trap this error to make tests work better
         catch(NoClassDefFoundError ex){
-			result.setError(true);
 			log.error("BeanShell Jar missing? "+ex.toString());
+			result.setError(true);
+			result.setFailureMessage("BeanShell Jar missing? "+ex.toString());
 			response.setStopThread(true); // No point continuing
-			result.setFailureMessage("");
         }
 		catch (IOException ex)
 		{
