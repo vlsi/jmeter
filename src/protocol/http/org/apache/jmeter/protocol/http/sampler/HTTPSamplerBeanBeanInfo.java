@@ -77,5 +77,8 @@ public class HTTPSamplerBeanBeanInfo extends BeanInfoSupport {
 			new String[] { "filename", "fileField", "mimeType" });
 		createPropertyGroup("options",
 			new String[] { "followRedirects", "useKeepAlive", "imageParser" }); 
+
+		property("protocol").setValue("tags", new String[] {"http", "https"});
+		property("method").setValue("tags", new String[] {"GET", "POST"});
 	}
 }
