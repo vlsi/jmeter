@@ -70,7 +70,5 @@ public class HTTPArgumentsEditor extends TestElementEditor {
 	 */
 	public HTTPArgumentsEditor() {
 		super(HTTPArgumentsPanel.class);
-		// TODO Auto-generated constructor stub
 	}
-
 }
