@@ -94,8 +94,15 @@ import org.apache.jmeter.processor.PreProcessor;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testbeans.TestBean;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.BooleanProperty;
+import org.apache.jmeter.testelement.property.DoubleProperty;
+import org.apache.jmeter.testelement.property.FloatProperty;
+import org.apache.jmeter.testelement.property.IntegerProperty;
 import org.apache.jmeter.testelement.property.JMeterProperty;
-import org.apache.jmeter.testelement.property.PropertyIterator;
+import org.apache.jmeter.testelement.property.LongProperty;
+import org.apache.jmeter.testelement.property.NullProperty;
+import org.apache.jmeter.testelement.property.StringProperty;
+import org.apache.jmeter.testelement.property.TestElementProperty;
 import org.apache.jmeter.timers.Timer;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jmeter.visualizers.Visualizer;
@@ -122,6 +129,16 @@ import org.apache.log.Logger;
  * <dt>tags: String[]</dt>
  * <dd>List of values to be offered for the property in addition to those
  * offered by its property editor.</dd>
+ * <dt>noUndefined: Boolean</dt>
+ * <dd>If true, the property should not be left undefined. A <b>default</b>
+ * attribute must be provided if this is set.</dd>
+ * <dd>noEdit: Boolean</dd>
+ * <dd>If true, the property content should not be edited manually, that is: it
+ * should always be one of the tags values.</dt>
+ * <dt>default: Object</dt>
+ * <dd>Initial value for the property's GUI. Must be provided and be non-null
+ * if <b>noUndefined</b> is set. Must be one of the provided tags (or null) if
+ * <b>noEdit</b> is set.
  * </dl>
  * <p>
  * The following BeanDescriptor attributes are also understood:
@@ -288,8 +305,10 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
 					new WrapperEditor(propertyEditor, descriptors[i]);
             }
             
-            propertyEditor.setValue(null);
-            editors[i]= propertyEditor;
+			editors[i]= propertyEditor;
+
+			// Initialize the editor with the provided default value or null:
+            setEditorValue(i, descriptors[i].getValue("default"));
         }
 
 		// Obtain message formats:
@@ -302,6 +321,31 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         init();
     }
 
+	/**
+	 * Set the value of the i-th property, properly reporting a possible failure.
+	 * 
+	 * @param i the index of the property in the descriptors and editors arrays
+	 * @param value the value to be stored in the editor
+	 * 
+	 * @throws IllegalArgumentException if the editor refuses the value
+	 */
+	private void setEditorValue(int i, Object value)
+		throws IllegalArgumentException
+	{
+		try
+		{
+			editors[i].setValue(value);
+		}
+		catch (IllegalArgumentException e)
+		{
+			log.error("Could not set value "
+				+ ( value == null ? "NULL" : value.getClass().getName() )
+				+ ":" + value
+				+" for property "+descriptors[i].getName());
+			throw e;
+		}
+	}
+
     public String getStaticLabel() {
         if (beanInfo == null) return "null";
         return beanInfo.getBeanDescriptor().getDisplayName();
@@ -313,20 +357,29 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
     public void configure(TestElement element)
     {
         super.configure(element);
-        
-        for (PropertyIterator jprops= element.propertyIterator();
-        		jprops.hasNext(); )
-        {
-        	JMeterProperty jprop= jprops.next();
 
-			String name= jprop.getName(); 
-        	int i= descriptorIndex(jprop.getName());
-        	
-        	if (i == -1) continue; // ignore auxiliary properties like gui_class 
-            if (editors[i] == null) continue; // ignore non-editable properties
-
-            editors[i].setValue(jprop.getObjectValue());
-        }
+		for (int i=0; i<editors.length; i++)
+		{
+			if (editors[i] == null) continue;
+			JMeterProperty jprop= element.getProperty(descriptors[i].getName());
+			try
+			{
+				setEditorValue(i, jprop.getObjectValue());
+			}
+			catch (IllegalArgumentException e)
+			{
+				// I guess this can happen as a result of a bad
+				// file read? In this case, it would be better to replace the
+				// incorrect value with anything valid, e.g. the default value
+				// for the property.
+				// But for the time being, I just prefer to be aware of any
+				// problems occuring here, most likely programming errors,
+				// so I'll bail out.
+				throw new Error("Bad property value.", e);
+				// TODO: review this and possibly change to:
+				// setEditorValue(i, descriptors[i].getValue("default"); 
+			}
+		}
     }
 
 	/**
@@ -384,12 +437,70 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
 				element.removeProperty(descriptors[i].getName());
 			}
 			else {
-				JMeterProperty jprop= TestBean.wrapInProperty(value);
+				JMeterProperty jprop= wrapInProperty(value);
 				jprop.setName(descriptors[i].getName());
 				element.setProperty(jprop);
 			}
         }
     }
+
+	/**
+	 * Utility method to wrap an object in a property of an appropriate type.
+	 * <p>
+	 * I plan to get rid of this sooner than later, so please don't use it much.
+	 * 
+	 * @param value Object to be wrapped.
+	 * @return an unnamed property holding the provided value.
+	 * @deprecated
+	 */
+	private static JMeterProperty wrapInProperty(Object value)
+	{
+		// TODO: Awful, again...
+        
+		if (value instanceof JMeterProperty)
+		{
+			return (JMeterProperty)value;
+		}
+        
+		JMeterProperty property;
+		if (value == null)
+		{
+			property= new NullProperty();
+		}
+		else if (value instanceof Boolean)
+		{
+			property= new BooleanProperty();
+		}
+		else if (value instanceof Double)
+		{
+			property= new DoubleProperty();
+		}
+		else if (value instanceof Float)
+		{
+			property= new FloatProperty();
+		}
+		else if (value instanceof Integer)
+		{
+			property= new IntegerProperty();
+		}
+		else if (value instanceof Long)
+		{
+			property= new LongProperty();
+		}
+		else if (value instanceof String)
+		{
+			property= new StringProperty();
+		}
+		else if (value instanceof TestElement)
+		{
+			property= new TestElementProperty();
+		}
+		else throw new Error("Ouch!");
+
+		property.setObjectValue(value);
+
+		return property;
+	}
 
     /* (non-Javadoc)
      * @see org.apache.jmeter.gui.JMeterGUIComponent#createPopupMenu()
@@ -449,12 +560,12 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
      */
     private void init()
     {
+		// TODO: add support for Bean Customizers
+
         setLayout(new BorderLayout(0, 5));
 
         setBorder(makeBorder());
         add(makeTitlePanel(), BorderLayout.NORTH);
-        // TODO: add support for beanInfo.getBeanDescriptor().getCustomizerClass()
-        // via a tabbed pannel -- e.g. "Properties" vs. "Custom"
 
         JPanel mainPanel = new JPanel(new GridBagLayout());
         

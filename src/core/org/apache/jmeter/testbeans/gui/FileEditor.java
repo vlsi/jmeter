@@ -96,7 +96,8 @@ public class FileEditor extends WrapperEditor implements ActionListener
 
     public FileEditor()
     {
-    	super(new SimpleFileEditor(), File.class, null);
+    	super(new SimpleFileEditor(), File.class,
+    		null, false, false, new File(""));
     	
 		// Create a button to trigger the file chooser:
 		JButton button= new JButton("Browse...");

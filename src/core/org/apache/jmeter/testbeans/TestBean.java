@@ -62,7 +62,9 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.jmeter.control.NextIsNullException;
@@ -70,18 +72,11 @@ import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testelement.AbstractTestElement;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.TestElementTraverser;
-import org.apache.jmeter.testelement.property.BooleanProperty;
 import org.apache.jmeter.testelement.property.CollectionProperty;
-import org.apache.jmeter.testelement.property.DoubleProperty;
-import org.apache.jmeter.testelement.property.FloatProperty;
-import org.apache.jmeter.testelement.property.IntegerProperty;
 import org.apache.jmeter.testelement.property.JMeterProperty;
-import org.apache.jmeter.testelement.property.LongProperty;
 import org.apache.jmeter.testelement.property.MapProperty;
 import org.apache.jmeter.testelement.property.NullProperty;
 import org.apache.jmeter.testelement.property.PropertyIterator;
-import org.apache.jmeter.testelement.property.StringProperty;
-import org.apache.jmeter.testelement.property.TestElementProperty;
 
 /**
  * This is an experimental class. An attempt to address the complexity of
@@ -156,33 +151,46 @@ public abstract class TestBean extends AbstractTestElement
             Object value= unwrapProperty(jprop, type);
 
             // Set the bean's property to the value we just obtained:
-            try
-            {
-                if (value != null || !type.isPrimitive())
-                    // We can't assign null to primitive types.
-                {
-                    param[0]= value;
-                    descriptor.getWriteMethod().invoke(this, param);
-                }
-            }
-            catch (IllegalArgumentException e)
-            {
-                log.error("This should never happen.", e);
-                throw new Error(e); // Programming error: bail out.
-            }
-            catch (IllegalAccessException e)
-            {
-                log.error("This should never happen.", e);
-                throw new Error(e); // Programming error: bail out.
-            }
-            catch (InvocationTargetException e)
-            {
-                log.error("This should never happen.", e);
-                throw new Error(e); // Programming error: bail out.
-            }
+			if (value != null || !type.isPrimitive())
+				// We can't assign null to primitive types.
+			{
+				param[0]= value;
+				invokeOrBailOut(descriptor.getWriteMethod(), param);
+			}
         }
     }
     
+    /**
+     * Utility method that invokes a method and does the error handling
+     * around the invocation.
+     * 
+     * @param method
+     * @param params
+     * @return the result of the method invocation.
+     */
+	private Object invokeOrBailOut(Method method, Object[] params)
+	{
+		try
+		{
+				 return method.invoke(this, params);
+		}
+		catch (IllegalArgumentException e)
+		{
+			log.error("This should never happen.", e);
+			throw new Error(e); // Programming error: bail out.
+		}
+		catch (IllegalAccessException e)
+		{
+			log.error("This should never happen.", e);
+			throw new Error(e); // Programming error: bail out.
+		}
+		catch (InvocationTargetException e)
+		{
+			log.error("This should never happen.", e);
+			throw new Error(e); // Programming error: bail out.
+		}
+	}
+
     /**
      * Utility method to obtain the value of a property in the given type.
      * <p>
@@ -241,64 +249,6 @@ public abstract class TestBean extends AbstractTestElement
         return value;
     }
 
-    /**
-     * Utility method to wrap an object in a property of an appropriate type.
-     * <p>
-     * I plan to get rid of this sooner than later, so please don't use it much.
-     * 
-     * @param value Object to be wrapped.
-     * @return an unnamed property holding the provided value.
-     * @deprecated
-     */
-    public static JMeterProperty wrapInProperty(Object value)
-    {
-        // TODO: Awful, again...
-        
-        if (value instanceof JMeterProperty)
-        {
-            return (JMeterProperty)value;
-        }
-        
-        JMeterProperty property;
-        if (value == null)
-        {
-            property= new NullProperty();
-        }
-        else if (value instanceof Boolean)
-        {
-            property= new BooleanProperty();
-        }
-        else if (value instanceof Double)
-        {
-            property= new DoubleProperty();
-        }
-        else if (value instanceof Float)
-        {
-            property= new FloatProperty();
-        }
-        else if (value instanceof Integer)
-        {
-            property= new IntegerProperty();
-        }
-        else if (value instanceof Long)
-        {
-            property= new LongProperty();
-        }
-        else if (value instanceof String)
-        {
-            property= new StringProperty();
-        }
-        else if (value instanceof TestElement)
-        {
-        	property= new TestElementProperty();
-        }
-        else throw new Error("Ouch!");
-
-        property.setObjectValue(value);
-        
-        return property;
-    }
-
     /*
      * ---------------------------------------------------------------------
      * All AbstractTestElement methods overriden just to mark them deprecate.
@@ -318,10 +268,29 @@ public abstract class TestBean extends AbstractTestElement
      * @see org.apache.jmeter.testelement.TestElement#addTestElement(org.apache.jmeter.testelement.TestElement)
      * @deprecated
      */
-    public void addTestElement(TestElement el)
-    {
-        super.addTestElement(el);
-    }
+	public void addTestElement(TestElement el)
+	{
+		// Scan all properties for a writable property of the appropriate type:
+		for (Iterator descs= descriptors.values().iterator();
+			descs.hasNext(); )
+		{
+			PropertyDescriptor desc= (PropertyDescriptor)descs.next();
+			if (desc.getPropertyType().isInstance(el)
+				&& desc.getPropertyEditorClass() == null)
+							// Note we ignore those for which we have an editor,
+							// in assumption that they are already provided via
+							// the GUI. Not very nice, but it's a solution.
+							// TODO: find a nicer way to specify which TestElement
+							// properties should be in the GUI and which should come
+							// from the tree structure.
+			{
+				invokeOrBailOut(desc.getWriteMethod(), new Object[] { el });
+				return; // We're done
+			}
+		}
+		// If we found no property for this one...
+		super.addTestElement(el);
+	}
 
     /**
      * @see org.apache.jmeter.testelement.TestElement#clear()

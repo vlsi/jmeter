@@ -71,6 +71,7 @@ import java.util.LinkedList;
 import java.util.Vector;
 
 import javax.swing.JComboBox;
+import javax.swing.text.JTextComponent;
 
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
@@ -119,10 +120,26 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 	 */
 	private String[] additionalTags;
 
+	/**
+	 * True iif the editor should not accept (nor produce) a null value.
+	 */
+	private boolean noUndefined;
+	
+	/**
+	 * True iif the editor should not accept (nor produce) any non-null
+	 * values different from the provided tags.
+	 */
+	private boolean noEdit;
+
     /**
      * The editor's combo box. 
      */
     private JComboBox combo= null;
+
+	/**
+	 * The edited property's default value.
+	 */
+	private Object defaultValue;
 
 	/**
 	 * Create an editor wrapping one which does not provide a custom editor.
@@ -135,7 +152,10 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		this(
 			editor,
 			objectType(descriptor.getPropertyType()),
-			(String[])descriptor.getValue("tags"));
+			(String[])descriptor.getValue("tags"),
+			Boolean.TRUE.equals(descriptor.getValue("noUndefined")),
+			Boolean.TRUE.equals(descriptor.getValue("noEdit")),
+			descriptor.getValue("default"));
     }
     
     private static Class objectType(Class type)
@@ -165,17 +185,21 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
      * @param strings
      */
     protected WrapperEditor(
-    	PropertyEditor editor, Class type, String[] additionalTags)
+    	PropertyEditor editor, Class type, String[] additionalTags,
+    	boolean noUndefined, boolean noEdit, Object defaultValue)
     {
 		this.editor= editor;
 		this.type= type;
 		this.additionalTags= additionalTags;
+		this.noUndefined= noUndefined;
+		this.noEdit= noEdit;
+		this.defaultValue= defaultValue;
 
 		// Build the list of available values for this property:
 		Vector options= new Vector();
 
 		// The first available value is "undefined" (null).
-		options.add(UNDEFINED);
+		if (! noUndefined) options.add(UNDEFINED);
 
 		// Add the list of property-specific values:
 		String[] tags= getTags();
@@ -185,7 +209,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		}
             
 		// The last option is to edit a value manually:
-		options.add(EDIT);
+		if (! noEdit) options.add(EDIT);
 		
 		// Create the combo box we will use to edit this property:
 		combo= new JComboBox(options);
@@ -249,6 +273,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 					// TODO: how to warn the user?
 					// Maybe we should do this check earlier in the edit
 					// process, maybe upon ItemChangeEvents?
+					// URGENT: this can return null on noUndefined editors!!!!
 					value= null;
 				}
 			}
@@ -282,6 +307,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		combo.setEditable(true);
 		if (value == null)
 		{
+			if (noUndefined) throw new IllegalArgumentException();
 			value= UNDEFINED;
 		}
 		else if (type.isInstance(value))
@@ -291,6 +317,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		}
 		else
 		{
+			if (noEdit) throw new IllegalArgumentException();
 			// Not a type specific to the property, so it is a String...
 			// ... but, just in case, I'll check:
 			if (! (value instanceof String))
@@ -347,13 +374,17 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		combo.setEditable(true);
 		if (text == null)
 		{
+			if (noUndefined) throw new IllegalArgumentException();
 			combo.setSelectedItem(UNDEFINED);
 		}
 		else 
 		{
 			combo.setSelectedItem(text);
 		}
+
 		if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
+		else if (noEdit) throw new IllegalArgumentException();
+		
 		firePropertyChange();
 	}
 
@@ -381,20 +412,130 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
         return true;
     }
     
+    /**
+     * Keep track of the item that was just unselected... we will need it:
+     */
+	private Object lastValidValue= null;
+
+	/**
+	 * True iif we're currently processing an itemStateChanged event.
+	 */
+	private boolean processingItemEvent= false;
+
 	/* (non-Javadoc)
 	 * @see java.awt.event.ItemListener#itemStateChanged(java.awt.event.ItemEvent)
 	 */
 	public void itemStateChanged(ItemEvent e)
 	{
-		if (e.getStateChange() == ItemEvent.SELECTED)
+		if (log.isDebugEnabled())
+		{
+			log.debug("itemStatChanged:"
+				+" processingItemEvent= "+processingItemEvent
+				+" event= "+e);
+		}
+
+		// Avoid reentrancy, or things become really messy.
+		if (processingItemEvent) return;
+		processingItemEvent= true;
+	
+		if (e.getStateChange() == ItemEvent.DESELECTED)
+		{
+			lastValidValue= e.getItem();
+		}
+		else if (e.getStateChange() == ItemEvent.SELECTED)
 		{
 			if (e.getItem() == EDIT) {
 				combo.setEditable(true);
-				combo.setSelectedItem("");
 				combo.getEditor().getEditorComponent().requestFocus();
+
+				// Obtain the editor so that we can properly initialize it for
+				// the editing (convenient selection & caret position):
+				JTextComponent textEditor= null;
+				Component c= combo.getEditor().getEditorComponent();
+				if (c instanceof JTextComponent) textEditor= (JTextComponent)c;
+
+				// We need a *valid* value to start the editing....
+
+				if (defaultValue != null)
+				{
+					// The default value looks like the best choice to me.
+					// At least it's something the property author can control:
+					combo.setSelectedItem(defaultValue);
+					if (textEditor != null) textEditor.selectAll();
+				}
+				else if (isValidValue(""))
+				{
+					// The empty string is not a bad choice, either:
+					combo.setSelectedItem("");
+				}
+				else if (lastValidValue != UNDEFINED)
+				{
+					// The previously selected item may be useful...
+
+					combo.setSelectedItem(lastValidValue);
+					if (textEditor != null) textEditor.selectAll();
+				}
+				else if (getTags() != null)
+				{
+					// Close to last resort... the first tag:
+					combo.setSelectedItem(getTags()[0]);
+					if (textEditor != null) textEditor.selectAll();
+				}
+				else
+				{
+					// Last resort: 'expressions' are always valid on
+					// editable fields:
+					combo.setSelectedItem("${}");
+					// Position the cursor inside the brackets, if possible:
+					if (textEditor != null) textEditor.setCaretPosition(2);
+				}
+				// TODO: I don't really like this solution. We could make a
+				// more convenient approach if we knew whether the property
+				// accepts expressions or not, and whether it accepts any 
+				// values beyond the provided tags or not. 
 			} 
-			else if (combo.getSelectedIndex() >= 0) combo.setEditable(false); 
+			else if (combo.getSelectedIndex() >= 0) 
+			{
+				combo.setEditable(false);
+			}
+			else if (! isValidValue((String)e.getItem()))
+			{
+				// TODO: warn the user. Maybe with a pop-up? A bell?
+				// Revert to the previously unselected (presumed valid!) value:
+				combo.setSelectedItem(lastValidValue);
+				if (combo.getSelectedIndex() >= 0) combo.setEditable(false);
+			}
 		}
+			
+		processingItemEvent= false;
+	}
+	
+	/**
+	 * Determine whether a string is a valid value for the property.
+	 * 
+	 * @param text the value to be checked
+	 * @return true iif text is a valid value
+	 */
+	private boolean isValidValue(String text)
+	{
+		if (text.indexOf("${") != -1 && ! noEdit)
+		{
+			// JMeter 'expressions' are valid on editable fields.
+			return true;
+		}
+
+		// if it's not a JMeter 'expression' ...
+		try
+		{
+			editor.setAsText(text);
+		}
+		catch (IllegalArgumentException e1)
+		{
+			// setAsText failed: not valid
+			return false;
+		}
+		// setAsText succeeded: valid
+		return true;
 	}
 
 	/**
@@ -476,9 +617,10 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 
 			e.setAsText("True");
 			assertEquals(new Boolean(true), e.getValue());
-			
+			// don't separate these two sub-tests
 			e.setAsText("invalid");
-			assertEquals(null, e.getValue());
+			assertEquals(new Boolean(true), e.getValue());
+				// reverts to las known good, that's the "true" above
 		}
 		public void testSetGetAsTextOnString() throws Exception
 		{
