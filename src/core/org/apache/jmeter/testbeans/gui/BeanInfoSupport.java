@@ -65,34 +65,50 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.MethodDescriptor;
 import java.beans.PropertyDescriptor;
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
 
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 /**
  * Support class for test bean beanInfo objects. It will help using the
- * introspector to get most of the information, then modify it at will.
+ * introspector to get most of the information, to then modify it at will.
  * <p>
  * To use, subclass it, create a subclass with a parameter-less constructor
  * that:
  * <ol>
  * <li>Calls super(beanClass)
- * <li>Uses the property(String), ... methods to get and modify any property
- * descriptor that needs to be changed.
+ * <li>Modifies the property descriptors, bean descriptor, etc. at will.
  * </ol>
+ * <p>
+ * Without any such modifications, the property descriptors will already
+ * have localized display names and short descriptions, and the bean
+ * descriptor will have a "resourceBoundle" attribute to be used for further
+ * localization.
  */
 public abstract class BeanInfoSupport implements BeanInfo {
 
 	private static transient Logger log = LoggingManager.getLoggerForClass();
 
-	private BeanInfo rootBeanInfo;
+	/**
+	 * The class for which we're providing the bean info.
+	 */
+	private Class beanClass;
 
-	private PropertyDescriptor[] properties;
+	/**
+	 * The BeanInfo for our class as obtained by the introspector.
+	 */
+	private BeanInfo rootBeanInfo;
 
 	/**
 	 * Construct a BeanInfo for the given class.
 	 */
 	protected BeanInfoSupport(Class beanClass) {
+		
+		this.beanClass= beanClass;
+		
 		try {
 			rootBeanInfo= Introspector.getBeanInfo(
 				beanClass,
@@ -101,10 +117,55 @@ public abstract class BeanInfoSupport implements BeanInfo {
 			log.error("Can't introspect.", e);
 			throw new Error(e); // Programming error: bail out.
 		}
+	
+		try{
+			ResourceBundle resourceBundle= ResourceBundle.getBundle(
+				beanClass.getName()+"Resources",
+				JMeterUtils.getLocale()); 
 
-		properties= rootBeanInfo.getPropertyDescriptors();
+			// Store the resource bundle as an attribute of the BeanDescriptor:
+			getBeanDescriptor().setValue("resourceBundle", resourceBundle);
+
+			// Localize the property names and descriptions:
+			PropertyDescriptor[] properties= getPropertyDescriptors();
+
+			for (int i=0; i<properties.length; i++)
+			{
+				String name= properties[i].getName();
+				String s;
+			
+				try
+				{
+					properties[i].setDisplayName(
+						resourceBundle.getString(name+".displayName"));
+				}
+				catch (MissingResourceException e)
+				{
+					log.debug(
+						"Localized display name not available for property "
+						+name);
+				}
+			
+				try
+				{
+					properties[i].setShortDescription(
+						resourceBundle.getString(name+".shortDescription"));
+				}
+				catch (MissingResourceException e)
+				{
+					log.debug(
+						"Localized short description not available for property "
+						+name);
+				}
+			}
+		}
+		catch (MissingResourceException e)
+		{
+			log.warn("Localized strings not available for bean "+beanClass
+							+" on locale "+JMeterUtils.getLocale());
+		}
 	}
-
+	
 	/**
 	 * Get the property descriptor for the property of the given name.
 	 * 
@@ -112,6 +173,7 @@ public abstract class BeanInfoSupport implements BeanInfo {
 	 * @return descriptor for a property of that name, or null if there's none
 	 */
 	protected PropertyDescriptor property(String name) {
+		PropertyDescriptor[] properties= getPropertyDescriptors();
 		for (int i=0; i<properties.length; i++)
 		{
 			if (properties[i].getName().equals(name)) {
@@ -177,6 +239,6 @@ public abstract class BeanInfoSupport implements BeanInfo {
 	}
 
 	public PropertyDescriptor[] getPropertyDescriptors() {
-		return properties;
+		return rootBeanInfo.getPropertyDescriptors();
 	}
 }
