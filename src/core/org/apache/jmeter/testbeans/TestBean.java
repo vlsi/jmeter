@@ -180,6 +180,7 @@ public abstract class TestBean extends AbstractTestElement
      * @param type     Type of the result.
      * @return an object of the given type if it is one of the known supported
      *              types, or the value returned by property.getObjectValue
+     * @deprecated
      */
     public static Object unwrapProperty(JMeterProperty property, Class type)
     {
@@ -235,6 +236,7 @@ public abstract class TestBean extends AbstractTestElement
      * 
      * @param value Object to be wrapped.
      * @return an unnamed property holding the provided value.
+     * @deprecated
      */
     public static JMeterProperty wrapInProperty(Object value)
     {
