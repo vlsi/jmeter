@@ -68,7 +68,7 @@ public class HTTPSamplerBeanBeanInfo extends BeanInfoSupport {
 		super(HTTPSamplerBean.class);
 		
 		property("arguments").setPropertyEditorClass(HTTPArgumentsEditor.class);
-		
+
 		createPropertyGroup("webServer",
 			new String[] { "domain", "port" });
 		createPropertyGroup("httpRequest",
@@ -78,7 +78,23 @@ public class HTTPSamplerBeanBeanInfo extends BeanInfoSupport {
 		createPropertyGroup("options",
 			new String[] { "followRedirects", "useKeepAlive", "imageParser" }); 
 
+		getBeanDescriptor().setValue("options.layout", "flow");
+		getBeanDescriptor().setValue("webServer.layout", "flow");
+		getBeanDescriptor().setValue("multipartRequest.layout", "flow");
+
 		property("protocol").setValue("tags", new String[] {"http", "https"});
 		property("method").setValue("tags", new String[] {"GET", "POST"});
+		property("port").setValue("tags", new String[] { "80", "443" });
+
+		// The following are added for demo purposes only. TODO: remove
+		property("followRedirects").setValue("noEdit", Boolean.TRUE);
+		property("useKeepAlive").setValue("noUndefined", Boolean.TRUE);
+		property("useKeepAlive").setValue("default", Boolean.FALSE);
+		property("method").setValue("noEdit", Boolean.TRUE);
+		property("method").setValue("noUndefined", Boolean.TRUE);
+		property("method").setValue("default", "GET");
+		property("fileField").setValue("noEdit", Boolean.TRUE);
+		property("fileField").setValue("noUndefined", Boolean.TRUE);
+		property("fileField").setValue("default", "");
 	}
 }
