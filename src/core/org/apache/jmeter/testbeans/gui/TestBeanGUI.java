@@ -67,7 +67,9 @@ import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -100,6 +102,27 @@ import org.apache.log.Logger;
  * It allows editing each of the public exposed properties of the
  * edited type 'a la JavaBeans': as far as the types of those properties
  * have an associated editor, there's no GUI development required. 
+ * <p>
+ * TestBeanGUI understands the following PropertyDescriptor attributes:
+ * <dl>
+ * <dt>group: String</dt>
+ * <dd>Group under which the property should be shown in the GUI. The string is
+ * also used as a group title. The default group is "".</dd>
+ * <dt>order: Integer</dt>
+ * <dd>Order in which the property will be shown in its group. A smaller
+ * integer means higher up in the GUI. The default order is 0. Properties
+ * of equal order are sorted alphabetically.</dd>
+ * </dl>
+ * <p>
+ * The following BeanDescriptor attributes are also understood:
+ * <dl>
+ * <dt>group.<i>group</i>.order: Integer</dt>
+ * <dd>where <b><i>group</i></b> is a group name used in a <b>group</b>
+ * attribute in one or more PropertyDescriptors. Defines the order in which
+ * the group will be shown in the GUI. A smaller integer means higher up
+ * in the GUI. The default order is 0. Groups of equal order are sorted
+ * alphabetically.</dd>
+ * </dl>
  */
 public class TestBeanGUI extends AbstractJMeterGuiComponent
 {
@@ -157,6 +180,9 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
                 e);
             throw new Error(e); // Programming error. Don't continue.
         }
+
+		// Sort the property descriptors:
+		Arrays.sort(descriptors, new PropertyComparator());
 
         // Obtain the propertyEditors:
         editors= new PropertyEditor[descriptors.length];
@@ -400,4 +426,74 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         return panel;
     }
     
+    /**
+     * Comparator used to sort properties for presentation in the GUI.
+     */
+    private class PropertyComparator implements Comparator
+    {
+		public int compare(Object o1, Object o2)
+		{
+			return compare((PropertyDescriptor)o1, (PropertyDescriptor)o2);
+		}
+		
+		private int compare(PropertyDescriptor d1, PropertyDescriptor d2)
+		{
+			int result;
+		
+			String g1= group(d1), g2= group(d2);
+			Integer go1= groupOrder(g1), go2= groupOrder(g2);
+		
+			result= go1.compareTo(go2);
+			if (result != 0) return result;
+		
+			result= g1.compareTo(g2);
+			if (result != 0) return result;
+		
+			Integer po1= propertyOrder(d1), po2= propertyOrder(d2);
+			result= po1.compareTo(po2);
+			if (result != 0) return result;
+		
+			return d1.getName().compareTo(d2.getName());
+		}
+	
+		/**
+		 * Obtain a property descriptor's group.
+		 * 
+		 * @param descriptor
+		 * @return the group String.
+		 */
+		private String group(PropertyDescriptor d)
+		{
+			String group= (String)d.getValue("group");
+			if (group == null) group= "";
+			return group;
+		}
+	
+		/**
+		 * Obtain a group's order.
+		 * 
+		 * @param group group name
+		 * @return the group's order (zero by default)
+		 */
+		private Integer groupOrder(String group)
+		{
+			Integer order= (Integer)beanInfo.getBeanDescriptor()
+					.getValue("group."+group+".order");
+			if (order == null) order= new Integer(0);
+			return order;
+		}
+
+		/**
+		 * Obtain a property's order.
+		 * 
+		 * @param d
+		 * @return the property's order attribute (zero by default)
+		 */
+		private Integer propertyOrder(PropertyDescriptor d)
+		{
+			Integer order= (Integer)d.getValue("order");
+			if (order == null) order= new Integer(0);
+			return order;
+		}
+    }
 }

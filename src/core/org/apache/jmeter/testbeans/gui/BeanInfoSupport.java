@@ -105,6 +105,12 @@ public abstract class BeanInfoSupport implements BeanInfo {
 		properties= rootBeanInfo.getPropertyDescriptors();
 	}
 
+	/**
+	 * Get the property descriptor for the property of the given name.
+	 * 
+	 * @param name property name
+	 * @return descriptor for a property of that name, or null if there's none
+	 */
 	protected PropertyDescriptor property(String name) {
 		for (int i=0; i<properties.length; i++)
 		{
@@ -113,6 +119,33 @@ public abstract class BeanInfoSupport implements BeanInfo {
 			}
 		}
 		return null;
+	}
+
+	private int numCreatedGroups= 0;
+	
+	/**
+	 * Utility method to group and order properties.
+	 * <p>
+	 * It will assing the given group name to each of the named properties,
+	 * and set their order attribute so that they are shown in the given order.
+	 * <p>
+	 * The created groups will get order 1, 2, 3,... in the order in which they
+	 * are created.
+	 * 
+	 * @param group name of the group
+	 * @param names property names in the desired order
+	 */
+	protected void createPropertyGroup(String group, String[] names)
+	{
+		for (int i=0; i<names.length; i++)
+		{
+			PropertyDescriptor p= property(names[i]);
+			p.setValue("group", group);
+			p.setValue("order", new Integer(i));
+		}
+		numCreatedGroups++;
+		getBeanDescriptor().setValue("group."+group+".order",
+			new Integer(numCreatedGroups));
 	}
 
 	public BeanInfo[] getAdditionalBeanInfo() {
