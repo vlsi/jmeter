@@ -199,18 +199,18 @@ public class HTTPSamplerBean extends TestBean implements Sampler
     /*
      * Public properties:
      */
-    private String fileField= null;
+    private String fileField= "";
     private File filename= null;
-    private String protocol= null;
-    private String path= null;
-    private String encodedPath= null;
+    private String protocol= "";
+    private String path= "";
+    private String encodedPath= "";
     private boolean followRedirects= true;
-    private String Method= null;
+    private String Method= "";
     private boolean useKeepAlive= false;
     private int port= UNSPECIFIED_PORT;
-    private String domain= null;
+    private String domain= "";
     private Arguments arguments= null;
-    private String mimeType= null;
+    private String mimeType= "";
     private boolean imageParser= false;
 
     /*
@@ -324,7 +324,7 @@ public class HTTPSamplerBean extends TestBean implements Sampler
      */
     private URL getUrl() throws MalformedURLException
     {
-        String pathAndQuery= null;
+        String pathAndQuery= "";
         if (this.getMethod().equals(HTTPSamplerBean.GET)
             && getQueryString().length() > 0)
         {
@@ -1115,6 +1115,7 @@ public class HTTPSamplerBean extends TestBean implements Sampler
 
     private void disconnect(HttpURLConnection conn)
     {
+    	if (conn == null) return;
         String connection= conn.getHeaderField("Connection");
         String protocol= conn.getHeaderField(0);
         if ((connection == null && (protocol == null || !protocol.startsWith("HTTP/1.1")))
