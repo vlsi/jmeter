@@ -112,11 +112,10 @@ class ComboStringEditor extends PropertyEditorSupport
 
 	private JComboBox combo;
 	private DefaultComboBoxModel model; 
-	private boolean processingItemEvent= false;
+	private boolean startingEdit= false;
 	    /* True iif we're currently processing an event triggered by the user
-	     * selecting or entering a new value. Used to prevent touching at
-	     * GUI states outside of the event handling method -- otherwise it's
-	     * a mess.
+	     * selecting the "Edit" option. Used to prevent reverting the combo
+	     * to non-editable during processing of secondary events.
 	     */
 
 	private static final Object UNDEFINED=
@@ -185,14 +184,14 @@ class ComboStringEditor extends PropertyEditorSupport
 	 */
     public void setAsText(String value)
 	{
-		if (! processingItemEvent) combo.setEditable(true);
+		combo.setEditable(true);
 
 		if (value == null) combo.setSelectedItem(UNDEFINED);
 		else combo.setSelectedItem(value);
 
-		if (combo.getSelectedIndex() >= 0)
+		if (! startingEdit && combo.getSelectedIndex() >= 0)
 		{
-			if (! processingItemEvent) combo.setEditable(false);
+			combo.setEditable(false);
 		}
 	}
 	
@@ -201,22 +200,23 @@ class ComboStringEditor extends PropertyEditorSupport
 	 */
 	public void itemStateChanged(ItemEvent e)
 	{
-		processingItemEvent= true;
-
 		if (e.getStateChange() == ItemEvent.SELECTED)
 		{
 			if (e.getItem() == EDIT) {
-				combo.setEditable(true);
+				startingEdit= true;
 				startEditing();
-			} 
-			else if (combo.getSelectedIndex() >= 0) 
-			{
-				combo.setEditable(false);
+				startingEdit= false;
 			}
-			firePropertyChange();
-		}
+			else
+			{
+				if (!startingEdit && combo.getSelectedIndex() >= 0) 
+				{
+					combo.setEditable(false);
+				}
 
-		processingItemEvent= false;
+				firePropertyChange();
+			}
+		}
 	}
 
 	private void startEditing()
@@ -224,15 +224,18 @@ class ComboStringEditor extends PropertyEditorSupport
 		JTextComponent textField=
 			(JTextComponent)combo.getEditor().getEditorComponent();
 
+		combo.setEditable(true);
+
 		textField.requestFocus();
 
-		if (initialEditValue != null)
-		{
-			textField.setText(initialEditValue);
-			int i= initialEditValue.indexOf("${}");
-			if (i != -1) textField.setCaretPosition(i+2);
-			else textField.selectAll();
-		}
+		String text= initialEditValue;
+		if (initialEditValue == null) text= "";  // will revert to last valid value if invalid
+
+		combo.setSelectedItem(text);
+
+		int i= text.indexOf("${}");
+		if (i != -1) textField.setCaretPosition(i+2);
+		else textField.selectAll();
 	}
 
 	/**
