@@ -1,4 +1,4 @@
-// Sample BeanShell Function initialisation file
+// Sample BeanShell Assertion initialisation file
 
 //print("Initialisation started");
 
@@ -18,13 +18,8 @@ setprop(p,v){// set a JMeter property
 	JMeterUtils.getJMeterProperties().setProperty(p, v);
 }
 
-// Define routines to stop the test or the current thread
-stopTest(){// Stop the JMeter test
-	org.apache.jmeter.engine.StandardJMeterEngine.stopEngine();
-}
-
-stopThread(){// Stop current JMeter thread
-	org.apache.jmeter.engine.StandardJMeterEngine.stopThread(Thread.currentThread().getName());
-}
+// Assertions can use the following methods on the Response object:
+// SampleResult.setStopThread(true)
+// SampleResult.setStopTest(true)
 
 //print("Initialisation complete");
