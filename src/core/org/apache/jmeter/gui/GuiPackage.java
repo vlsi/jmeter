@@ -191,7 +191,8 @@ public final class GuiPackage
         }
         catch (ClassNotFoundException e)
         {
-            log.error("Could not get GUI for node "+node, e);
+            log.error("Could not get GUI for "
+                +node.getPropertyAsString(TestElement.GUI_CLASS), e);
             return null;
         }
     }
@@ -215,7 +216,6 @@ public final class GuiPackage
     public JMeterGUIComponent getGui(
         TestElement node, Class guiClass, Class testClass)
     {
-        log.debug("Getting gui for " + node);
         try
         {
             JMeterGUIComponent comp = (JMeterGUIComponent) nodesToGui.get(node);
@@ -425,7 +425,7 @@ public final class GuiPackage
             if (currentNode != null)
             {
                 log.debug(
-                    "Updating current node " + currentNode.createTestElement());
+                    "Updating current node " + currentNode.getName());
                 JMeterGUIComponent comp =
                     getGui(currentNode.createTestElement());
                 TestElement el = currentNode.createTestElement();
