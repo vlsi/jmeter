@@ -42,6 +42,9 @@ import org.apache.jorphan.collections.HashTree;
 import org.apache.jorphan.collections.HashTreeTraverser;
 import org.apache.jorphan.collections.SearchByClass;
 import org.apache.jorphan.logging.LoggingManager;
+import org.apache.jorphan.util.JMeterStopTestException;
+import org.apache.jorphan.util.JMeterStopThreadException;
+import org.apache.jorphan.util.JOrphanUtils;
 import org.apache.log.Logger;
 
 /**
@@ -62,8 +65,8 @@ public class JMeterThread implements Runnable, java.io.Serializable
     TestCompiler compiler;
     JMeterThreadMonitor monitor;
     String threadName;
-    JMeterContext threadContext;
-    JMeterVariables threadVars;
+    JMeterContext threadContext; // current working thread context
+    JMeterVariables threadVars;// Initial thread variables
     Collection testListeners;
     ListenerNotifier notifier;
     int threadNum = 0;
@@ -77,7 +80,8 @@ public class JMeterThread implements Runnable, java.io.Serializable
 	private boolean onErrorStopTest;
 	private boolean onErrorStopThread;
     
-    public static final String PACKAGE_OBJECT = "JMeterThread.pack";
+    public static final String PACKAGE_OBJECT = "JMeterThread.pack"; // $NON-NLS-1$
+    public static final String LAST_SAMPLE_OK = "JMeterThread.last_sample_ok"; // $NON-NLS-1$
 
     public JMeterThread()
     {
@@ -209,6 +213,21 @@ public class JMeterThread implements Runnable, java.io.Serializable
         this.threadName = threadName;
     }
 
+	/*
+	 * See below for reason for this change.
+	 * Just in case this causes problems, allow the change to be backed out
+	*/
+	private static final boolean startEarlier =
+		org.apache.jmeter.util.JMeterUtils.getPropDefault("jmeterthread.startearlier",true);
+	
+	static{
+		if (startEarlier){
+			log.warn("jmeterthread.startearlier=true (see jmeter.properties)");
+		} else {
+			log.info("jmeterthread.startearlier=false (see jmeter.properties)");			
+		}
+	}
+	
     public void run()
     {
         try
@@ -216,6 +235,8 @@ public class JMeterThread implements Runnable, java.io.Serializable
             threadContext = JMeterContextService.getContext();
             threadContext.setVariables(threadVars);
             threadContext.setThreadNum(getThreadNum());
+            // initialise
+            threadContext.getVariables().put(LAST_SAMPLE_OK,"true"); // $NON-NLS-1$
             testTree.traverse(compiler);
             running = true;
             //listeners = controller.getListeners();
@@ -229,9 +250,15 @@ public class JMeterThread implements Runnable, java.io.Serializable
 			rampUpDelay();
             
             log.info("Thread " + Thread.currentThread().getName() + " started");
+			/*
+			 *  Setting SamplingStarted before the contollers are initialised
+			 *  allows them to access the running values of functions and variables
+			 *  (however it does not seem to help with the listeners)
+			 */
+            if (startEarlier) threadContext.setSamplingStarted(true);
             controller.initialize();
             controller.addIterationListener(new IterationListener());
-            threadContext.setSamplingStarted(true);
+			if (!startEarlier) threadContext.setSamplingStarted(true);
             threadStarted();
             while (running)
             {
@@ -271,6 +298,16 @@ public class JMeterThread implements Runnable, java.io.Serializable
                         }
 
                     }
+                    catch (JMeterStopTestException e)
+					{
+                    	log.info("Stopping Test: "+e.toString());
+                    	stopTest();
+					}
+                    catch (JMeterStopThreadException e)
+					{
+                    	log.info("Stopping Thread: "+e.toString());
+                    	stopThread();
+					}
                     catch (Exception e)
                     {
                         log.error("", e);
@@ -282,6 +319,26 @@ public class JMeterThread implements Runnable, java.io.Serializable
                 }
             }
         }
+        // Might be found by contoller.next()
+        catch (JMeterStopTestException e)
+		{
+        	log.info("Stopping Test: "+e.toString());
+        	stopTest();
+		}
+        catch (JMeterStopThreadException e)
+		{
+        	log.info("Stop Thread seen: "+e.toString());
+		}
+        catch (Exception e)
+        {
+            log.error("Test failed!", e);
+        }
+		catch (ThreadDeath e){
+			throw e; // Must not ignore this one
+		}
+		catch (Error e){// Make sure errors are output to the log file
+			log.error("Test failed!", e);
+		}
         finally
         {
             threadContext.clear();
@@ -374,6 +431,8 @@ public class JMeterThread implements Runnable, java.io.Serializable
                     && !(assertionResult.isError() || assertionResult.isFailure()));
             result.addAssertionResult(assertionResult);
         }
+        threadContext.getVariables().put(LAST_SAMPLE_OK,
+        		JOrphanUtils.booleanToString(result.isSuccessful()));
     }
 
     private void runPostProcessors(List extractors)

@@ -65,7 +65,7 @@ public class CounterConfigGui extends AbstractPreProcessorGui
         {
             CounterConfig config = (CounterConfig) c;
             config.setStart(startField.getText());
-            if (endField.getText().length() > 0)
+            //Bug 22820 if (endField.getText().length() > 0)
             {
                 config.setEnd(endField.getText());
             }
@@ -93,10 +93,10 @@ public class CounterConfigGui extends AbstractPreProcessorGui
         setLayout(new VerticalLayout(5, VerticalLayout.LEFT));
         
         startField =
-            new JLabeledTextField(JMeterUtils.getResString("start"), 5);
+            new JLabeledTextField(JMeterUtils.getResString("start")+"          ");//TODO proper alignment
         incrField =
-            new JLabeledTextField(JMeterUtils.getResString("increment"), 5);
-        endField = new JLabeledTextField(JMeterUtils.getResString("max"), 5);
+            new JLabeledTextField(JMeterUtils.getResString("increment"));
+        endField = new JLabeledTextField(JMeterUtils.getResString("max"));
         varNameField =
             new JLabeledTextField(JMeterUtils.getResString("var_name"));
         perUserField =

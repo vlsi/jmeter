@@ -26,7 +26,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 
-import java.util.Iterator;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.jmeter.config.Arguments;
@@ -35,8 +34,6 @@ import org.apache.jmeter.protocol.http.control.AuthManager;
 import org.apache.jmeter.protocol.http.control.CookieManager;
 import org.apache.jmeter.protocol.http.control.Header;
 import org.apache.jmeter.protocol.http.control.HeaderManager;
-import org.apache.jmeter.protocol.http.parser.HTMLParseException;
-import org.apache.jmeter.protocol.http.parser.HTMLParser;
 
 import org.apache.jmeter.testelement.property.CollectionProperty;
 import org.apache.jmeter.testelement.property.PropertyIterator;
@@ -303,17 +300,28 @@ public class HTTPSampler extends HTTPSamplerBase
 
         for (int i= 1; conn.getHeaderFieldKey(i) != null; i++)
         {
-            if (!conn //TODO - why is this not saved?
-                .getHeaderFieldKey(i)
-                .equalsIgnoreCase("transfer-encoding"))
-            {
-                headerBuf.append(conn.getHeaderFieldKey(i));
-                headerBuf.append(": ");
-                headerBuf.append(conn.getHeaderField(i));
-                headerBuf.append("\n");
-            }
+            modifyHeaderValues(conn,i, headerBuf);
         }
         return headerBuf.toString();
+    }
+
+    /**
+     * @param conn connection
+     * @param headerIndex which header to use
+     * @param resultBuf output string buffer
+     */
+    protected void modifyHeaderValues(HttpURLConnection conn, int headerIndex, StringBuffer resultBuf) 
+    {
+        if ("transfer-encoding" //TODO - why is this not saved? A: it might be a proxy server specific field.
+                	// If JMeter is using a proxy, the browser wouldn't know about that.
+            .equalsIgnoreCase(conn.getHeaderFieldKey(headerIndex)))
+        {
+           return; 
+        }
+        resultBuf.append(conn.getHeaderFieldKey(headerIndex));
+        resultBuf.append(": ");
+        resultBuf.append(conn.getHeaderField(headerIndex));
+        resultBuf.append("\n");
     }
 
     /**
@@ -550,7 +558,7 @@ public class HTTPSampler extends HTTPSamplerBase
                 }
 
                 if (isImageParser()
-                    && res.getDataType().equals(HTTPSampleResult.TEXT)
+                    && (HTTPSampleResult.TEXT).equals(res.getDataType())
                     && res.isSuccessful())
                 {
                     if (frameDepth > MAX_FRAME_DEPTH)
@@ -670,83 +678,6 @@ public class HTTPSampler extends HTTPSamplerBase
         return totalRes;
     }
 
-    /**
-     * Download the resources of an HTML page.
-     * <p>
-     * If createContainerResult is true, the returned result will contain one 
-     * subsample for each request issued, including the original one that was 
-     * passed in. It will otherwise look exactly like that original one.
-     * <p>
-     * If createContainerResult is false, one subsample will be added to the
-     * provided result for each requests issued.
-     * 
-     * @param res           result of the initial request - must contain an HTML
-     *                      response
-     * @param createContainerResult whether to create a "container" or just
-     *                      use the provided <code>res</code> for that purpose
-     * @param frameDepth    Depth of this target in the frame structure.
-     *                      Used only to prevent infinite recursion.
-     * @return              "Container" result with one subsample per request
-     *                      issued
-     */
-    private HTTPSampleResult downloadPageResources(
-        HTTPSampleResult res,
-        boolean createContainerResult,
-        int frameDepth)
-    {
-        Iterator urls= null;
-        try
-        {
-            urls=
-                HTMLParser.getParser().getEmbeddedResourceURLs(
-                    res.getResponseData(),
-                    res.getURL());
-        }
-        catch (HTMLParseException e)
-        {
-            // Don't break the world just because this failed:
-            res.addSubResult(errorResult(e, null, 0));
-            res.setSuccessful(false);
-        }
-
-        // Iterate through the URLs and download each image:
-        if (urls != null && urls.hasNext())
-        {
-            if (createContainerResult)
-            {
-                res= new HTTPSampleResult(res);
-            }
-
-            while (urls.hasNext())
-            {
-                Object binURL= urls.next();
-                try
-                {
-                    HTTPSampleResult binRes=
-                        sample(
-                            (URL)binURL,
-                            GET,
-                            false,
-                            frameDepth + 1);
-                    res.addSubResult(binRes);
-                    res.setSuccessful(
-                        res.isSuccessful() && binRes.isSuccessful());
-                }
-                catch (ClassCastException e)
-                {
-                    res.addSubResult(
-                        errorResult(
-                            new Exception(binURL + " is not a correct URI"),
-                            null,
-                            0));
-                    res.setSuccessful(false);
-                    continue;
-                }
-            }
-        }
-        return res;
-    }
-
     protected void disconnect(HttpURLConnection conn)
     {
         if (conn != null)
@@ -787,21 +718,6 @@ public class HTTPSampler extends HTTPSamplerBase
                         u);
                 }
             }
-        }
-    }
-
-    public String toString()
-    {
-        try
-        {
-            return this.getUrl().toString()
-                + ((POST.equals(getMethod()))
-                    ? "\nQuery Data: " + getQueryString()
-                    : "");
-        }
-        catch (MalformedURLException e)
-        {
-            return "";
         }
     }
 

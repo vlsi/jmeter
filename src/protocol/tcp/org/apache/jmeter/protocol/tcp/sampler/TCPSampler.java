@@ -18,6 +18,9 @@
 
 package org.apache.jmeter.protocol.tcp.sampler;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.jmeter.config.ConfigTestElement;
@@ -46,7 +50,7 @@ import org.apache.log.Logger;
  */
 public class TCPSampler extends AbstractSampler implements TestListener
 {
-	protected static Logger log = LoggingManager.getLoggerForClass();
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
     public final static String SERVER     = "TCPSampler.server";   //$NON-NLS-1$
     public final static String PORT       = "TCPSampler.port";     //$NON-NLS-1$
@@ -54,12 +58,45 @@ public class TCPSampler extends AbstractSampler implements TestListener
 	public final static String CLASSNAME  = "TCPSampler.classname";//$NON-NLS-1$
 	public final static String NODELAY    = "TCPSampler.nodelay";  //$NON-NLS-1$
 	public final static String TIMEOUT    = "TCPSampler.timeout";  //$NON-NLS-1$
+	public final static String REQUEST    = "TCPSampler.request";  //$NON-NLS-1$
 
 	private final static String TCPKEY = "TCP"; //$NON-NLS-1$ key for HashMap
 	private final static String ERRKEY = "ERR"; //$NON-NLS-1$ key for HashMap
 
 	private static Set allSockets = new HashSet();// Keep track of connections to allow close
 
+	// If set, this is the regex that is used to extract the status from the response
+	//NOT implemented yet private final static String STATUS_REGEX = JMeterUtils.getPropDefault("tcp.status.regex","");
+	
+	// Otherwise, the response is scanned for these strings
+	private final static String STATUS_PREFIX = JMeterUtils.getPropDefault("tcp.status.prefix","");
+	private final static String STATUS_SUFFIX = JMeterUtils.getPropDefault("tcp.status.suffix","");
+	
+	private final static String STATUS_PROPERTIES = JMeterUtils.getPropDefault("tcp.status.properties","");
+	private final static Properties statusProps = new Properties();
+	private static boolean haveStatusProps = false;
+	
+	static
+	{
+		log.info("Protocol Handler name="+getClassname());
+		log.info("Status prefix="+STATUS_PREFIX);
+		log.info("Status suffix="+STATUS_SUFFIX);
+		log.info("Status properties="+STATUS_PROPERTIES);
+		if (STATUS_PROPERTIES.length()>0)
+		{
+	        File f = new File(STATUS_PROPERTIES);
+	        try {
+				statusProps.load(new FileInputStream(f));
+				log.info("Successfully loaded properties");
+				haveStatusProps = true;
+			} catch (FileNotFoundException e) {
+				log.info("Property file not found");
+			} catch (IOException e) {
+				log.info("Property file error "+e.toString());
+			}
+		}
+	}
+    
 	/** the cache of TCP Connections */
 	private static ThreadLocal tp = new ThreadLocal(){
 		protected Object initialValue(){
@@ -67,9 +104,14 @@ public class TCPSampler extends AbstractSampler implements TestListener
 		}
 	};
 
+	private transient TCPClient protocolHandler;
+	
 	public TCPSampler()
 	{
 		log.debug("Created "+this);
+		protocolHandler=getProtocol();
+		log.debug("Using Protocol Handler: "
+				+protocolHandler.getClass().getName());
 	}
 
 	private String getError(){
@@ -147,6 +189,17 @@ public class TCPSampler extends AbstractSampler implements TestListener
 	}
 
 
+	public void setRequestData(String newRequestData)
+	{
+		this.setProperty(REQUEST, newRequestData);
+	}
+	
+	public String getRequestData()
+	{
+		return getPropertyAsString(REQUEST);
+	}
+
+
 	public void setTimeout(String newTimeout)
 	{
 		this.setProperty(FILENAME, newTimeout);
@@ -161,6 +214,7 @@ public class TCPSampler extends AbstractSampler implements TestListener
 	{
 		this.setProperty(NODELAY, newNoDelay);
 	}
+	
 	public boolean getNoDelay()
 	{
 		return getPropertyAsBoolean(NODELAY);
@@ -180,7 +234,7 @@ public class TCPSampler extends AbstractSampler implements TestListener
         return ("tcp://" + this.getServer() + ":" + this.getPort());//$NON-NLS-1$
     }
 
-	private String getClassname()
+	private static String getClassname()
 	{
 		String className = JMeterUtils.getPropDefault("tcp.handler","TCPClientImpl");
 		return className;
@@ -211,12 +265,12 @@ public class TCPSampler extends AbstractSampler implements TestListener
         
 	}
 
-    private Object getProtocol(){
-    	Object TCPClient = null;
+    private TCPClient getProtocol(){
+    	TCPClient TCPClient = null;
     	Class javaClass = getClass(getClassname());
 		try
 		{
-			TCPClient = javaClass.newInstance();
+			TCPClient = (TCPClient) javaClass.newInstance();
 			if (log.isDebugEnabled())
 			{
 				log.debug(this
@@ -236,10 +290,11 @@ public class TCPSampler extends AbstractSampler implements TestListener
 
     public SampleResult sample(Entry e)// Entry tends to be ignored ...
     {
-    	log.info(getLabel()+" "+getFilename()+" "+getUsername()+" "+getPassword());
+    	log.debug(getLabel()+" "+getFilename()+" "+getUsername()+" "+getPassword());
         SampleResult res = new SampleResult();
         boolean isSuccessful = false;
-        res.setSampleLabel(getLabel());
+        res.setSampleLabel(getName());//Use the test element name for the label
+        res.setSamplerData("Host: "+getServer()+" Port: "+getPort());
         res.sampleStart();
         try
         {
@@ -250,16 +305,43 @@ public class TCPSampler extends AbstractSampler implements TestListener
 			} else {
 				InputStream is = sock.getInputStream();
 				OutputStream os = sock.getOutputStream();
-				TCPClient proto = (TCPClient) getProtocol();
-	        	log.debug("Found class "+ proto.toString());
-				String req=proto.write(os);
+				String req = getRequestData();
+				//TODO handle filenames
 				res.setSamplerData(req);
-				String in = proto.read(is);
+				protocolHandler.write(os,req);
+				String in = protocolHandler.read(is);
 	            res.setResponseData(in.getBytes());
 	            res.setDataType(SampleResult.TEXT);
 	            res.setResponseCode("200");
 	            res.setResponseMessage("OK");
 	            isSuccessful = true;
+	            //Reset the status code if the message contains one
+	            if (STATUS_PREFIX.length() > 0)
+	            {
+	            	int i = in.indexOf(STATUS_PREFIX);
+            		int j = in.indexOf(STATUS_SUFFIX,i+STATUS_PREFIX.length());
+	            	if (i != -1 && j > i)
+	            	{
+	            		String rc = in.substring(i+STATUS_PREFIX.length(),j);
+	            		res.setResponseCode(rc);
+	            		isSuccessful = checkResponseCode(rc);
+	            		if (haveStatusProps)
+	            		{
+		            		res.setResponseMessage(
+		            				statusProps.getProperty(rc,"Status code not found in properties"));
+	            		}
+	            		else
+	            		{
+	            			res.setResponseMessage("No status property file");
+	            		}
+	            	}
+	            	else
+	            	{
+	            		res.setResponseCode("999");
+	    	            res.setResponseMessage("Status value not found");
+	    	            isSuccessful=false;
+	            	}
+	            } 
 			}
         }
         catch (Exception ex)
@@ -278,7 +360,23 @@ public class TCPSampler extends AbstractSampler implements TestListener
         return res;
     }
 
-     private void disconnectAll(){
+     /**
+	 * @param rc response code
+	 * @return whether this represents success or not
+	 */
+	private boolean checkResponseCode(String rc) {
+		if (rc.compareTo("400")>=0 && rc.compareTo("499")<=0)
+		{
+			return false;
+		}
+		if (rc.compareTo("500")>=0 && rc.compareTo("599")<=0)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	private void disconnectAll(){
 		synchronized (allSockets)
 		{
 			Iterator i = allSockets.iterator();
@@ -306,8 +404,6 @@ public class TCPSampler extends AbstractSampler implements TestListener
 	 public void testStarted() // Only called once per class?
 	 {
 		 log.debug(this+" test started");
-		 // TODO Auto-generated method stub
-        
 	 }
 
     /* (non-Javadoc)
@@ -317,7 +413,6 @@ public class TCPSampler extends AbstractSampler implements TestListener
     {
 		log.debug(this+" test ended");
 		disconnectAll();
-        
     }
 
     /* (non-Javadoc)

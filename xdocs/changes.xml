@@ -1,7 +1,7 @@
 <?xml version="1.0"?> 
 <!--
    $Header$
-   Copyright 2001-2004 The Apache Software Foundation
+   Copyright 2001-2005 The Apache Software Foundation
  
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -27,6 +27,136 @@
 
 <b>Changes: for more info, contact <a href="mailto:mstover1@apache.org">Michael Stover</a></b>
 
+<h3>Version 2.0.3</h3>
+<h4>New functionality:</h4>
+<ul>
+<li>XPath Assertion and XPath Function</li>
+<li>Switch Controller</li>
+<li>ForEach Controller can now loop through sets of groups</li>
+<li>Allow CSVRead delimiter to be changed (see jmeter.properties)</li>
+<li>Bug 33920 - allow additional property files</li>
+<li>Bug 33845 - allow direct override of Home dir</li>
+</ul>
+<h4>Bug fixes:</h4>
+<ul>
+<li>Regex Extractor nested constant not put in correct place (32395)</li>
+<li>Start time reset to now if necessary so that delay works OK.</li>
+<li>Missing start/end times in scheduler are assumed to be now, not 1970</li>
+<li>Bug 28661 - 304 responses not appearing in listeners</li>
+<li>DOS scripts now handle different disks better</li>
+<li>Bug 32345 - HTTP Rewriter does not work with HTTP Request default</li>
+<li>Catch Runtime Exceptions so an error in one Listener does not affect others</li>
+<li>Bug 33467 - __threadNum() extracted number wrongly </li>
+<li>Bug 29186,33299 - fix CLI parsing of "-" in second argument</li>
+<li>Fix CLI parse bug: -D arg1=arg2. Log more startup parameters.</li>
+<li>Fix JTidy and HTMLParser parsers to handle form src= and link rel=stylesheet</li>
+<li>JMeterThread now logs Errors to jmeter.log which were appearing on console</li>
+<li>Ensure WhileController condition is dynamically checked</li>
+<li>Bug 32790 ensure If Controller condition is re-evaluated each time</li>
+<li>Bug 30266 - document how to display proxy recording responses</li>
+<li>Bug 33921 - merge should not change file name</li>
+<li>Close file now gives chance to save changes</li>
+<li>Bug 33559 - fixes to Runtime Controller</li>
+</ul>
+<h4>Other changes:</h4>
+<ul>
+<li>To help with variable evaluation, JMeterThread sets "sampling started" a bit earlier (see jmeter.properties)</li>
+<li>Bug 33796 - delete cookies with null/empty values</li>
+<li>Better checking of parameter count in JavaScript function</li>
+<li>Thread Group now defaults to 1 loop instead of forever</li>
+<li>All Beanshell access is now via a single class; only need BSH jar at run-time</li>
+<li>Bug 32464 - document Direct Draw settings in jmeter.bat</li>
+<li>Bug 33919 - increase Counter field sizes</li>
+<li>Bug 32252 - ForEach was not initialising counters</li>
+</ul>
+
+<h3>Version 2.0.2</h3>
+<h4>New functionality:</h4>
+<ul>
+<li>While Controller</li>
+<li>BeanShell intilisation scripts</li>
+<li>Result Saver can optionally save failed results only</li>
+<li>Display as HTML has option not to download frames and images etc</li>
+<li>Multiple Tree elements can now be enabled/disabled/copied/pasted at once</li>
+<li>__split() function added</li>
+<li>(28699) allow Assertion to regard unsuccessful responses - e.g. 404 - as successful</li>
+<li>(29075) Regex Extractor can now extract data out of http response header as well as the body</li>
+<li>__log() functions can now write to stdout and stderr</li>
+<li>URL Modifier can now optionally ignore query parameters</li>
+</ul>
+<h4>Bug fixes:</h4>
+<ul>
+<li>If controller now works after the first false condition (31390)</li>
+<li>Regex GUI was losing track of Header/Body checkbox (29853)</li>
+<li>Display as HTML now handles frames and relative images</li>
+<li>Right-click open replaced by merge</li>
+<li>Fix some drag and drop problems</li>
+<li>Fixed foreach demo example so it works</li>
+<li>(30741) SSL password prompt now works again </li>
+<li>StringFromFile now closes files at end of test; start and end now optional as intended</li>
+<li>(31342) Fixed text of SOAP Sampler headers</li>
+<li>Proxy must now be stopped before it can be removed (25145)</li>
+<li>Link Parser now supports BASE href (25490)</li>
+<li>(30917) Classfinder ignores duplicate names</li>
+<li>(22820) Allow Counter value to be cleared</li>
+<li>(28230) Fix NPE in HTTP Sampler retrieving embedded resources</li>
+<li>Improve handling of StopTest; catch and log some more errors</li>
+<li>ForEach Controller no longer runs any samples if first variable is not defined</li>
+<li>(28663) NPE in remote JDBC execution</li>
+<li>(30110) Deadlock in stopTest processing</li>
+<li>(31696) Duration not working correctly when using Scheduler</li>
+<li>JMeterContext now uses ThreadLocal - should fix some potential NPE errors</li>
+</ul>
+<h3>Version 2.0.1</h3>
+<p>Bug fix release. TBA.</p>
+<h3>Version 2.0</h3>
+<ul>
+	<li>HTML parsing improved; now has choice of 3 parsers, and most embedded elements can now be detected and downloaded.</li>
+<li>Redirects can now be delegated to URLConnection by defining the JMeter property HTTPSamper.delegateRedirects=true (default is false) </li>
+<li>Stop Thread and Stop Test methods added for Samplers and Assertions etc. Samplers can call setStopThread(true) or setStopTest(true) if they detect an error that needs to stop the thread of the test after the sample has been processed </li>
+<li>Thread Group Gui now has an extra pane to specify what happens after a Sampler error: Continue (as now), Stop Thread or Stop Test. 
+    This needs to be extended to a lower level at some stage. </li>
+<li>Added Shutdown to Run Menu. This is the same as Stop except that it lets the Threads finish normally (i.e. after the next sample has been completed) </li>
+<li>Remote samples can be cached until the end of a test by defining the property hold_samples=true when running the server.
+More work is needed to be able to control this from the GUI </li>
+<li>Proxy server has option to skip recording browser headers </li>
+<li>Proxy restart works better (stop waits for daemon to finish) </li>
+<li>Scheduler ignores start if it has already passed </li>
+<li>Scheduler now has delay function </li>
+<li>added Summariser test element (mainly for non-GUI) testing. This prints summary statistics to System.out and/or the log file every so oftem (3 minutes by default). Multiple summarisers can be used; samples are accumulated by summariser name. </li>
+<li>Extra Proxy Server options: 
+Create all samplers with keep-alive disabled 
+Add Separator markers between sets of samples 
+Add Response Assertion to first sampler in each set </li>
+<li>Test Plan has a comment field</li>
+	
+	<li>Help Page can now be pushed to background</li>
+	<li>Separate Function help page</li>
+	<li>New / amended functions</li>
+	<ul>
+	  <li>__property() and __P() functions</li>
+	  <li>__log() and __logn() - for writing to the log file</li>
+      <li>_StringFromFile can now process a sequence of files, e.g. dir/file01.txt, dir/file02.txt etc </li>
+      <li>_StringFromFile() funtion can now use a variable or function for the file name </li>
+	</ul>
+	<li>New / amended Assertions</li>
+	<ul>
+        <li>Response Assertion now works for URLs, and it handles null data better </li>
+        <li>Response Assertion can now match on Response Code and Response message as well </li>
+		<li>HTML Assertion using JTidy to check for well-formed HTML</li>
+	</ul>
+	<li>If Controller (not fully functional yet)</li>
+	<li>Transaction Controller (aggregates the times of its children)</li>
+	<li>New Samplers</li>
+		<ul>
+			<li>Basic BSF Sampler (optional)</li>
+			<li>BeanShell Sampler (optional, needs to be downloaded from www.beanshell.org</li>
+			<li>Basic TCP Sampler</li>
+		</ul>
+     <li>Optionally start BeanShell server (allows remote access to JMeter variables and methods) </li>
+</ul>
+<h3>Version 1.9.1</h3>
+<p>TBA</p>
 <h3>Version 1.9</h3>
 <ul>
 <li>Sample result log files can now be in CSV or XML format</li>

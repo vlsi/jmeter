@@ -98,6 +98,7 @@ public class HTTPArgumentsPanel extends ArgumentsPanel
 
     public TestElement createTestElement()
     {
+       stopTableEditing();
         Iterator modelData = tableModel.iterator();
         Arguments args = new Arguments();
         while (modelData.hasNext())
@@ -131,6 +132,6 @@ public class HTTPArgumentsPanel extends ArgumentsPanel
         return arg.getMetaData() == null
             || arg.getMetaData().equals("=")
             || (arg.getValue() != null &&
-                arg.getValue().toString().length() > 0);
+                arg.getValue().length() > 0);
     }
 }
