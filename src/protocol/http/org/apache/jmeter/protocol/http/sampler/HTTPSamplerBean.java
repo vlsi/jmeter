@@ -1152,21 +1152,6 @@ public class HTTPSamplerBean extends TestBean implements Sampler
         }
     }
 
-    public String toString()
-    {
-        try
-        {
-            return this.getUrl().toString()
-                + ((POST.equals(getMethod()))
-                    ? "\nQuery Data: " + getQueryString()
-                    : "");
-        }
-        catch (MalformedURLException e)
-        {
-            return "";
-        }
-    }
-    
     private String encodePath(String path)
     {
         // TODO JDK1.4 
