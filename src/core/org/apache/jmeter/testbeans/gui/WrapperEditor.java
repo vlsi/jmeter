@@ -97,40 +97,14 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 {
     private static Logger log= LoggingManager.getLoggerForClass();
 
-    private static Object UNDEFINED= new Object()
-    {
-        public String toString()
-        {
-            return "Undefined"; // TODO: should be a resource.
-        }
-    };
-    // The above is a funny hack: if you use a plain String, 
-    // entering the text of the string in the editor will make the
-    // combo revert to that option -- which actually amounts to
-    // making that string 'reserved'. I preferred to avoid this by
-    // using a different type, but an object that has the same
-    // .toString().
-    // TODO: use a renderer that paints
-    // the field distinct from when the same string is typed in.
+    private static Object UNDEFINED= new UniqueObject("Undefined"); //TODO: should be a resource
+    private static Object EDIT= new UniqueObject("Edit");//TODO: this should be a resource
 
-	private static Object EDIT= new Object()
-	{
-		public String toString()
-		{
-			return "Edit"; // TODO: should be a resource.
-		}
-	};
-	
 	/**
 	 * Base PropertyEditor for the property at hand. Most methods in this class
 	 * are delegated from this one.
 	 */
     private PropertyEditor editor;
-
-    /**
-     * Property descriptor for the property to be edited by this editor.
-     */
-    private PropertyDescriptor descriptor;
 
 	/**
 	 * The type of the objects that will be assigned to or obtained from this
@@ -139,6 +113,12 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 	 */
 	private Class type;
 	
+	/**
+	 * The list of options to be offered by this editor in adition to those
+	 * defined in the wrapped editor.
+	 */
+	private String[] additionalTags;
+
     /**
      * The editor's combo box. 
      */
@@ -151,30 +131,45 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 	 * @param descriptor the descriptor for the property being edited.
 	 */
     WrapperEditor(PropertyEditor editor, PropertyDescriptor descriptor)
+    {        
+		this(
+			editor,
+			objectType(descriptor.getPropertyType()),
+			(String[])descriptor.getValue("tags"));
+    }
+    
+    private static Class objectType(Class type)
     {
-        this.editor= editor;
-        this.descriptor= descriptor;
-        
-        type= descriptor.getPropertyType();
-        if (type.isPrimitive())
-        {
-        	// Sorry for this -- I have not found a better way:
-        	if (type == boolean.class) type= Boolean.class;
-        	else if (type == char.class) type= Character.class;
-        	else if (type == byte.class) type= Byte.class;
-			else if (type == short.class) type= Short.class;
-        	else if (type == int.class) type= Integer.class;
-        	else if (type == long.class) type= Long.class;
-        	else if (type == float.class) type= Float.class;
-			else if (type == double.class) type= Double.class;
-			else if (type == void.class) type= Void.class;
-			else
-			{
-				log.error("Class "+type+" is an unknown primitive type.");
-            	throw new Error("Class "+type+" is an unknown primitive type");
-            		// programming error: bail out.
-            }
-        }
+		// Sorry for this -- I have not found a better way:
+        if (! type.isPrimitive()) return type;
+		else if (type == boolean.class) return Boolean.class;
+		else if (type == char.class) return Character.class;
+		else if (type == byte.class) return Byte.class;
+		else if (type == short.class) return Short.class;
+		else if (type == int.class) return Integer.class;
+		else if (type == long.class) return Long.class;
+		else if (type == float.class) return Float.class;
+		else if (type == double.class) return Double.class;
+		else if (type == void.class) return Void.class;
+		else
+		{
+			log.error("Class "+type+" is an unknown primitive type.");
+			throw new Error("Class "+type+" is an unknown primitive type");
+				// programming error: bail out.
+		}
+    }
+
+    /**
+     * @param editor
+     * @param type
+     * @param strings
+     */
+    protected WrapperEditor(
+    	PropertyEditor editor, Class type, String[] additionalTags)
+    {
+		this.editor= editor;
+		this.type= type;
+		this.additionalTags= additionalTags;
 
 		// Build the list of available values for this property:
 		Vector options= new Vector();
@@ -214,15 +209,14 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
      */
     public String[] getTags()
     {
-        String[] tags1= editor.getTags();
-		String[] tags2= (String[])descriptor.getValue("tags");
+        String[] tags= editor.getTags();
 		
-		if (tags1 == null) return tags2;
-		else if (tags2 == null) return tags1;
+		if (tags == null) return additionalTags;
+		else if (additionalTags == null) return tags;
 		else {
 			LinkedList l= new LinkedList();
-			l.addAll(Arrays.asList(tags1));
-			l.addAll(Arrays.asList(tags2));
+			l.addAll(Arrays.asList(tags));
+			l.addAll(Arrays.asList(additionalTags));
 			return (String[])l.toArray(new String[0]);
 		}
     }
@@ -263,8 +257,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
         if (log.isDebugEnabled())
         {
             log.debug(
-                descriptor.getName()
-                    + "->"
+                "->"
                     + (value != null ? value.getClass().getName() : "NULL")
                     + ":"
                     + value);
@@ -280,8 +273,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		if (log.isDebugEnabled())
 		{
 			log.debug(
-				descriptor.getName()
-					+ "<-"
+				"<-"
 					+ (value != null ? value.getClass().getName() : "NULL")
 					+ ":"
 					+ value);
@@ -290,11 +282,13 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		if (value == null)
 		{
 			value= UNDEFINED;
+			combo.setEditable(false);
 		}
 		else if (type.isInstance(value))
 		{
 			editor.setValue(value);
 			value= editor.getAsText();
+			combo.setEditable(false);
 		}
 		else
 		{
@@ -302,12 +296,12 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 			// ... but, just in case, I'll check:
 			if (! (value instanceof String))
 			{
-				log.error("When editing property "+descriptor.getName()
-					+", of type "+type
-					+" got value of type "+value.getClass());
+				log.error("When editing property of type "+type
+					+", got value of type "+value.getClass());
 				throw new Error("String expected, got "+value.getClass());
 					// programming error, so bail out.
 			} 
+			combo.setEditable(true);
 		}
 		combo.setSelectedItem(value);
 		firePropertyChange();
@@ -337,7 +331,7 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		}
 		if (log.isDebugEnabled())
 		{
-			log.debug(descriptor.getName() + "->\"" + text + "\"");
+			log.debug("->\"" + text + "\"");
 		}
 		return text;
 	}
@@ -349,16 +343,16 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 	{
 		if (log.isDebugEnabled())
 		{
-			log.debug(
-				descriptor.getName()
-					+ (text == null ? "<-null" : "<-\"" + text + "\""));
+			log.debug(text == null ? "<-null" : "<-\"" + text + "\"");
 		}
 		if (text == null)
 		{
+			combo.setEditable(false);
 			combo.setSelectedItem(UNDEFINED);
 		}
 		else 
 		{
+			combo.setEditable(true);
 			combo.setSelectedItem(text);
 		}
 		firePropertyChange();
@@ -404,6 +398,28 @@ class WrapperEditor extends PropertyEditorSupport implements ItemListener
 		}
 	}
 
+	/**
+	 * This is a funny hack: if you use a plain String, 
+	 * entering the text of the string in the editor will make the
+	 * combo revert to that option -- which actually amounts to
+	 * making that string 'reserved'. I preferred to avoid this by
+	 * using a different type having a controlled .toString().
+	 */
+	private static class UniqueObject
+	{
+		private String s;
+		
+		UniqueObject(String s)
+		{
+			this.s= s;
+		}
+		
+		public String toString()
+		{
+			return s;
+		}
+	}
+	
 	public static class Test extends junit.framework.TestCase
 	{
 		public Test(String name)
