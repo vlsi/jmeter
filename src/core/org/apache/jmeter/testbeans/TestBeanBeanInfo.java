@@ -55,95 +55,75 @@
  * @author <a href="mailto:jsalvata@apache.org">Jordi Salvat i Alabart</a>
  * @version $Id$
  */
-package org.apache.jmeter.testbeans.gui;
+package org.apache.jmeter.testbeans;
 
 import java.awt.Image;
 import java.beans.BeanDescriptor;
 import java.beans.BeanInfo;
 import java.beans.EventSetDescriptor;
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
 import java.beans.MethodDescriptor;
 import java.beans.PropertyDescriptor;
 
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
 
 /**
- * Support class for test bean beanInfo objects. It will help using the
- * introspector to get most of the information, then modify it at will.
- * <p>
- * To use, subclass it, create a subclass with a parameter-less constructor
- * that:
- * <ol>
- * <li>Calls super(testBeanClass)
- * <li>Uses the property(String), ... methods to get and modify any property
- * descriptor that needs to be changed.
- * </ol>
+ * This is the BeanInfo object for the TestBean class. It acts as a "stopper"
+ * for the introspector: we don't want it to look at properties defined at this
+ * or higher classes.
  */
-public abstract class TestBeanBeanInfo implements BeanInfo {
+public class TestBeanBeanInfo implements BeanInfo {
 
-	private static transient Logger log = LoggingManager.getLoggerForClass();
 
-	private BeanInfo rootBeanInfo;
-
-	private PropertyDescriptor[] properties;
-
-	/**
-	 * Construct a BeanInfo for the given class.
-	 */
-	protected TestBeanBeanInfo(Class testBeanClass) {
-		try {
-			rootBeanInfo= Introspector.getBeanInfo(
-				testBeanClass,
-				Introspector.IGNORE_IMMEDIATE_BEANINFO);
-		} catch (IntrospectionException e) {
-			log.error("Can't introspect.", e);
-			throw new Error(e); // Programming error: bail out.
-		}
-
-		properties= rootBeanInfo.getPropertyDescriptors();
+	public BeanInfo[] getAdditionalBeanInfo() {
+		return new BeanInfo[0];
 	}
 
-	protected PropertyDescriptor property(String name) {
-		for (int i=0; i<properties.length; i++)
-		{
-			if (properties[i].getName().equals(name)) {
-				return properties[i];
-			}
-		}
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getBeanDescriptor()
+	 */
+	public BeanDescriptor getBeanDescriptor() {
 		return null;
 	}
 
-	public BeanInfo[] getAdditionalBeanInfo() {
-		return rootBeanInfo.getAdditionalBeanInfo();
-	}
-
-	public BeanDescriptor getBeanDescriptor() {
-		return rootBeanInfo.getBeanDescriptor();
-	}
-
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getDefaultEventIndex()
+	 */
 	public int getDefaultEventIndex() {
-		return rootBeanInfo.getDefaultEventIndex();
+		return 0;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getDefaultPropertyIndex()
+	 */
 	public int getDefaultPropertyIndex() {
-		return rootBeanInfo.getDefaultPropertyIndex();
+		return 0;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getEventSetDescriptors()
+	 */
 	public EventSetDescriptor[] getEventSetDescriptors() {
-		return rootBeanInfo.getEventSetDescriptors();
+		return new EventSetDescriptor[0];
 	}
 
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getIcon(int)
+	 */
 	public Image getIcon(int iconKind) {
-		return rootBeanInfo.getIcon(iconKind);
+		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getMethodDescriptors()
+	 */
 	public MethodDescriptor[] getMethodDescriptors() {
-		return rootBeanInfo.getMethodDescriptors();
+		return new MethodDescriptor[0];
 	}
 
+	/* (non-Javadoc)
+	 * @see java.beans.BeanInfo#getPropertyDescriptors()
+	 */
 	public PropertyDescriptor[] getPropertyDescriptors() {
-		return properties;
+		// TODO Auto-generated method stub
+		return new PropertyDescriptor[0];
 	}
 }
