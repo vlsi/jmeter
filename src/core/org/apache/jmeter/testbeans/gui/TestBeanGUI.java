@@ -70,12 +70,16 @@ import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
 
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -93,6 +97,7 @@ import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.property.JMeterProperty;
 import org.apache.jmeter.testelement.property.PropertyIterator;
 import org.apache.jmeter.timers.Timer;
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jmeter.visualizers.Visualizer;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
@@ -115,7 +120,8 @@ import org.apache.log.Logger;
  * integer means higher up in the GUI. The default order is 0. Properties
  * of equal order are sorted alphabetically.</dd>
  * <dt>tags: String[]</dt>
- * <dd>List of values to be offered for the property.</dd>
+ * <dd>List of values to be offered for the property in addition to those
+ * offered by its property editor.</dd>
  * </dl>
  * <p>
  * The following BeanDescriptor attributes are also understood:
@@ -126,6 +132,10 @@ import org.apache.log.Logger;
  * the group will be shown in the GUI. A smaller integer means higher up
  * in the GUI. The default order is 0. Groups of equal order are sorted
  * alphabetically.</dd>
+ * <dt>resourceBundle: ResourceBundle</dt>
+ * <dd>A resource bundle to be used for GUI localization. Group display names,
+ * for example, will be obtained from property "<i>group</i>.displayName" if
+ * available (where <b><i>group</i></b> is the group name).
  * </dl>
  */
 public class TestBeanGUI extends AbstractJMeterGuiComponent
@@ -151,6 +161,29 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
      * Property editors -- or null if the property can't be edited.
      */
     private PropertyEditor[] editors;
+
+	/**
+	 * Message format for property field labels:
+	 */
+	private MessageFormat propertyFieldLabelMessage;
+	
+	/**
+	 * Message format for property tooltips:
+	 */
+	private MessageFormat propertyToolTipMessage;
+	
+	static
+	{
+		List paths= new LinkedList();
+		paths.add("org.apache.jmeter.testbeans.gui");
+		paths.addAll(Arrays.asList(PropertyEditorManager.getEditorSearchPath()));
+		String s= JMeterUtils.getPropDefault("propertyEditorSearchPath", null) ;
+		if (s != null)
+		{
+			paths.addAll(Arrays.asList(JMeterUtils.split(s, ",", "")));
+		}
+		PropertyEditorManager.setEditorSearchPath((String[])paths.toArray(new String[0]));
+	}
 
     /**
      * Create a GUI for a given test bean type.
@@ -249,13 +282,22 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
                 continue;
             }
             
-            propertyEditor=
-                new WrapperEditor(propertyEditor, descriptors[i]);
+            if (! propertyEditor.supportsCustomEditor())
+            {
+				propertyEditor=
+					new WrapperEditor(propertyEditor, descriptors[i]);
+            }
             
             propertyEditor.setValue(null);
             editors[i]= propertyEditor;
         }
-        
+
+		// Obtain message formats:
+		propertyFieldLabelMessage= new MessageFormat(	
+			JMeterUtils.getResString("property_as_field_label"));
+		propertyToolTipMessage= new MessageFormat(	
+			JMeterUtils.getResString("property_tool_tip"));
+
         // Initialize the GUI:
         init();
     }
@@ -282,8 +324,8 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         	
         	if (i == -1) continue; // ignore auxiliary properties like gui_class 
             if (editors[i] == null) continue; // ignore non-editable properties
-            
-            editors[i].setValue(jprop);
+
+            editors[i].setValue(jprop.getObjectValue());
         }
     }
 
@@ -335,10 +377,17 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         for (int i=0; i<editors.length; i++)
         {
             if (editors[i] == null) continue;
-            JMeterProperty value=
-                (JMeterProperty)editors[i].getValue();
-            if (value != null) element.setProperty(value);
-            else element.removeProperty(descriptors[i].getName());
+            Object value= editors[i].getValue();
+            
+			if (value == null)
+			{
+				element.removeProperty(descriptors[i].getName());
+			}
+			else {
+				JMeterProperty jprop= TestBean.wrapInProperty(value);
+				jprop.setName(descriptors[i].getName());
+				element.setProperty(jprop);
+			}
         }
     }
 
@@ -406,11 +455,6 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
         add(makeTitlePanel(), BorderLayout.NORTH);
         // TODO: add support for beanInfo.getBeanDescriptor().getCustomizerClass()
         // via a tabbed pannel -- e.g. "Properties" vs. "Custom"
-        // TODO: make property grouping visible, probably using etched titled borders:
-		/*groupPanel.setBorder(
-			BorderFactory.createTitledBorder(
-				BorderFactory.createEtchedBorder(),
-				group_name));*/
 
         JPanel mainPanel = new JPanel(new GridBagLayout());
         
@@ -425,28 +469,125 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
 		ce.weightx= 1.0;
 		ce.insets= new Insets(0, 1, 0, 1);
 		
+		GridBagConstraints cp= new GridBagConstraints(); // for panels
+		cp.fill= GridBagConstraints.BOTH;
+		cp.gridx= 1;
+		cp.gridy= GridBagConstraints.RELATIVE;
+		cp.gridwidth= 2;
+		cp.weightx= 1.0;
+
+		JPanel currentPanel= mainPanel;
+		String currentGroup= "";
+		int y=0;
+		
         for (int i=0; i<editors.length; i++)
         {
             if (editors[i] == null) continue;
 
-			JLabel label = new JLabel(descriptors[i].getName());
+			String g= group(descriptors[i]);
+			if (! currentGroup.equals(g))
+			{
+				if (currentPanel != mainPanel)
+				{
+					mainPanel.add(currentPanel, cp);
+				}
+				currentGroup= g;
+				currentPanel= new JPanel(new GridBagLayout()); 
+				currentPanel.setBorder(
+					BorderFactory.createTitledBorder(
+						BorderFactory.createEtchedBorder(),
+						groupDisplayName(g)));
+				cp.weighty= 0.0;
+				y= 0;
+			}
+
 			Component customEditor= editors[i].getCustomEditor();
-			label.setHorizontalAlignment(JLabel.TRAILING);
+
+			boolean multiLineEditor= false;
+			if (customEditor.getPreferredSize().height > 50)
+			{
+				// TODO: the above works in the current situation, but it's
+				// just a hack. How to get each editor to report whether it
+				// wants to grow bigger? Whether the property label should
+				// be at the left or at the top of the editor? ...?
+				multiLineEditor= true;
+			}
+			
+			JLabel label= createLabel(descriptors[i]);
 			label.setLabelFor(customEditor);
 
-			cl.gridy= i;
-            mainPanel.add(label, cl);
+			cl.gridy= y;
+			cl.gridwidth= multiLineEditor ? 2 : 1;
+			cl.anchor= multiLineEditor 
+				? GridBagConstraints.CENTER
+				: GridBagConstraints.LINE_END;
+            currentPanel.add(label, cl);
 
-			ce.gridy= i;
-            ce.weighty= customEditor.getMaximumSize().height;
-            		// TODO: the above works in the current situation, but it's
-            		// just a hack. How to get each editor to report whether it
-            		// wants to grow bigger? Whether the property label should
-            		// be at the left or at the top of the editor? ...?
-            mainPanel.add(customEditor, ce);
+			ce.gridx= multiLineEditor ? 0 : 1;
+			ce.gridy= multiLineEditor ? ++y : y;
+			ce.gridwidth= multiLineEditor ? 2 : 1;
+			ce.weighty= multiLineEditor ? 1.0 : 0.0;
+
+			cp.weighty+= ce.weighty;
+
+            currentPanel.add(customEditor, ce);
+
+            y++;
         }
+		if (currentPanel != mainPanel)
+		{
+			mainPanel.add(currentPanel, cp);
+		}
         add(mainPanel, BorderLayout.CENTER);
     }
+
+	private JLabel createLabel(PropertyDescriptor desc)
+	{
+		String text= desc.getDisplayName();
+		if (! "".equals(text))
+		{
+			text= propertyFieldLabelMessage.format(
+				new Object[] { desc.getDisplayName() } );
+		}
+		// if the displayName is the empty string, leave it like that.
+		JLabel label = new JLabel(text);
+		label.setHorizontalAlignment(JLabel.TRAILING);
+		text= propertyToolTipMessage.format(
+			new Object[] { desc.getName(), desc.getShortDescription() } );
+		label.setToolTipText(text);
+
+		return label;
+	}
+
+
+	/**
+	 * Obtain a property descriptor's group.
+	 * 
+	 * @param descriptor
+	 * @return the group String.
+	 */
+	private String group(PropertyDescriptor d)
+	{
+		String group= (String)d.getValue("group");
+		if (group == null) group= "";
+		return group;
+	}
+
+	/**
+	 *  Obtain a group's display name
+	 */
+	private String groupDisplayName(String group)
+	{
+		try {
+			ResourceBundle b= (ResourceBundle)
+				beanInfo.getBeanDescriptor().getValue("resourceBundle");
+			return b.getString(group+".displayName");
+		}
+		catch (MissingResourceException e)
+		{
+			return group;
+		}
+	}
 
     /**
      * Comparator used to sort properties for presentation in the GUI.
@@ -476,19 +617,6 @@ public class TestBeanGUI extends AbstractJMeterGuiComponent
 			if (result != 0) return result;
 		
 			return d1.getName().compareTo(d2.getName());
-		}
-	
-		/**
-		 * Obtain a property descriptor's group.
-		 * 
-		 * @param descriptor
-		 * @return the group String.
-		 */
-		private String group(PropertyDescriptor d)
-		{
-			String group= (String)d.getValue("group");
-			if (group == null) group= "";
-			return group;
 		}
 	
 		/**

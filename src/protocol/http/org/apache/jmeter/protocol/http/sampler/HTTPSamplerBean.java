@@ -56,6 +56,7 @@ package org.apache.jmeter.protocol.http.sampler;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -199,7 +200,7 @@ public class HTTPSamplerBean extends TestBean implements Sampler
      * Public properties:
      */
     private String fileField= null;
-    private String filename= null;
+    private File filename= null;
     private String protocol= null;
     private String path= null;
     private String encodedPath= null;
@@ -1220,7 +1221,7 @@ public class HTTPSamplerBean extends TestBean implements Sampler
     /**
      * @return
      */
-    public String getFilename()
+    public File getFilename()
     {
         return filename;
     }
@@ -1363,9 +1364,9 @@ public class HTTPSamplerBean extends TestBean implements Sampler
     /**
      * @param string
      */
-    public void setFilename(String string)
+    public void setFilename(File file)
     {
-        filename= string;
+        filename= file;
     }
 
     /**
