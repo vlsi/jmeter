@@ -95,7 +95,7 @@ import org.apache.log.Logger;
  * <ul>
  * <li>An option for "undefined" (corresponding to the null value or NullProperty).
  * <li>An option for each value returned by the getTags() method on the wrapped
- * 	editor.
+ * 	editor or from the "tags" attribute of the property descriptor.
  * <li>The possibility to write your own value, which will be parsed by the
  *		wrapped editor to convert into the edited type unless (and this is an
  *		heuristic) it contains the string "${", in which case it will be
@@ -199,6 +199,14 @@ class WrapperEditor implements PropertyEditor
             if (tags != null)
             {
                 options.addAll(Arrays.asList(tags));
+            }
+            
+            // Add the list of values given by the property descriptor,
+            // if there is one:
+            tags= (String[])descriptor.getValue("tags");
+            if (tags != null)
+            {
+            	options.addAll(Arrays.asList(tags));
             }
 
             // Create the combo box we will use to edit this property:
