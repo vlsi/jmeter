@@ -55,6 +55,8 @@
 <li>How-to for JMS samplers</li>
 <li>Bug 35525 - Added Spanish localisation</li>
 <li>Bug 30379 - allow server.rmi.port to be overridden</li>
+<li>enhanced the monitor listener to save the calculated stats</li>
+<li>Functions and variables now work at top level of test plan</li>
 </ul>
 <h4>Bug fixes:</h4>
 <ul>
@@ -81,6 +83,8 @@
 <li>Fixed webservice sampler so it works with user defined variables</li>
 <li>Fixed screen borders for LDAP config GUI elements</li>
 <li>Bug 31184 - make sure encoding is specified in JDBC sampler</li>
+<li>TCP sampler - only share sockets with same host:port details; correct the manual</li>
+<li>Extract src attribute for embed tags in JTidy and Html Parsers</li>
 </ul>	
 	
 <h3>Version 2.0.3</h3>
