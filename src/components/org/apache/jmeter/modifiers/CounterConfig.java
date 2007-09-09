@@ -1,155 +1,181 @@
-package org.apache.jmeter.modifiers;
-import java.io.Serializable;
-
-import org.apache.jmeter.config.ConfigTestElement;
-import org.apache.jmeter.testelement.ThreadListener;
-import org.apache.jmeter.testelement.VariablesCollection;
-import org.apache.jmeter.threads.JMeterVariables;
-import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
-/**
- * @author Administrator
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * To change this generated comment edit the template variable "typecomment":
- * Window>Preferences>Java>Templates.
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
-public class CounterConfig
-	extends ConfigTestElement
-	implements Serializable, ThreadListener
-{
-	private static Logger log = LoggingManager.getLoggerFor(JMeterUtils.ELEMENTS);
-	private final static String START = "CounterConfig.start";
-	private final static String END = "CounterConfig.end";
-	private final static String INCREMENT = "CounterConfig.incr";
-	private final static String PER_USER = "CounterConfig.per_user";
-	private final static String VAR_NAME = "CounterConfig.name";
-	
-	private boolean perUser = false;
-	private int globalCounter = -1;
-	private int increment = 1;
-	private int start = 0;
-	private int end = Integer.MAX_VALUE;
-	private VariablesCollection vars = new VariablesCollection();
-	private int currentIterationCount = -1;
+
+package org.apache.jmeter.modifiers;
+
+import java.io.ObjectStreamException;
+import java.io.Serializable;
+import java.text.DecimalFormat;
+
+import org.apache.jmeter.engine.event.LoopIterationEvent;
+import org.apache.jmeter.engine.event.LoopIterationListener;
+import org.apache.jmeter.engine.util.NoThreadClone;
+import org.apache.jmeter.testelement.AbstractTestElement;
+import org.apache.jmeter.testelement.property.BooleanProperty;
+import org.apache.jmeter.testelement.property.LongProperty;
+import org.apache.jmeter.threads.JMeterContextService;
+import org.apache.jmeter.threads.JMeterVariables;
+
+/**
+ * Provides a counter per-thread/user or globally
+ * The long value can be 
+ */
+public class CounterConfig extends AbstractTestElement implements Serializable, LoopIterationListener, NoThreadClone {
+
+	public final static String START = "CounterConfig.start"; // $NON-NLS-1$
+
+	public final static String END = "CounterConfig.end"; // $NON-NLS-1$
+
+	public final static String INCREMENT = "CounterConfig.incr"; // $NON-NLS-1$
+
+	private final static String FORMAT = "CounterConfig.format"; // $NON-NLS-1$
+
+    public final static String PER_USER = "CounterConfig.per_user"; // $NON-NLS-1$
+
+	public final static String VAR_NAME = "CounterConfig.name"; // $NON-NLS-1$
+
+	// This class is not cloned per thread, so this is shared
+	private long globalCounter = Long.MIN_VALUE;
+    
+    // Used for per-thread/user numbers
+    transient private ThreadLocal perTheadNumber;
+
+    private void init() {
+        perTheadNumber = new ThreadLocal() {
+            protected synchronized Object initialValue() {
+                return new Long(getStart());
+            }
+        };
+    }
+
+    
+    public CounterConfig() {
+        super();
+        init();
+    }
+
+    private Object readResolve() throws ObjectStreamException{
+        init();
+        return this;
+    }
 	/**
-	 * @see org.apache.jmeter.testelement.ThreadListener#iterationStarted(int)
+	 * @see LoopIterationListener#iterationStart(LoopIterationEvent)
 	 */
-	public synchronized void iterationStarted(int iterationCount)
-	{
-		JMeterVariables variables = vars.getVariables();
-		if(!perUser)
-		{
-			globalCounter++;
-			int value = start + (increment * globalCounter);
-			if(value > end)
-			{
-				globalCounter = 0;
-				value = start;
+	public synchronized void iterationStart(LoopIterationEvent event) {
+		// Cannot use getThreadContext() as not cloned per thread
+		JMeterVariables variables = JMeterContextService.getContext().getVariables();
+		long start = getStart(), end = getEnd(), increment = getIncrement();
+		if (!isPerUser()) {
+			if (globalCounter == Long.MIN_VALUE || globalCounter > end) {
+				globalCounter = start;
 			}
-			variables.put(getVarName(),Integer.toString(value));
+			variables.put(getVarName(), formatNumber(globalCounter));
+			globalCounter += increment;
+		} else {
+            long current = ((Long) perTheadNumber.get()).longValue();
+            variables.put(getVarName(), formatNumber(current));
+            current += increment;
+            if (current > end) {
+                current = start;
+            }
+            perTheadNumber.set(new Long(current));
 		}
-		else
-		{		
-			String value = variables.get(getVarName());
-			if(value == null)
-			{
-				variables.put(getVarName(),Integer.toString(start));
-			}
-			else
-			{
-				try
-				{
-					int current = Integer.parseInt(value);
-					current += increment;
-					if(current > end)
-					{
-						current = start;
-					}
-					variables.put(getVarName(),Integer.toString(current));
-				}
-				catch(NumberFormatException e)
-				{
-					log.info("Bad number in Counter config",e);
-				}		
-			}	
-		}			
 	}
-	
-	/**
-	 * @see org.apache.jmeter.testelement.ThreadListener#setJMeterVariables(JMeterVariables)
-	 */
-	public void setJMeterVariables(JMeterVariables jmVars)
-	{
-		vars.addJMeterVariables(jmVars);
-		start = getStart();
-		end = getEnd();
-		increment = getIncrement();
-		perUser = isPerUser();
+
+    // Use format to create number; if it fails, use the default
+    private String formatNumber(long value){
+        String format = getFormat();
+        if (format != null && format.length() > 0) {
+            try {
+                DecimalFormat myFormatter = new DecimalFormat(format);
+                return myFormatter.format(value);
+            } catch (NumberFormatException ignored) {
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return Long.toString(value);
+    }
+    
+	public void setStart(long start) {
+		setProperty(new LongProperty(START, start));
 	}
-	
-	public void setStart(int start)
-	{
-		setProperty(START,new Integer(start));
+
+	public void setStart(String start) {
+		setProperty(START, start);
 	}
-	
-	public void setStart(String start)
-	{
-		setProperty(START,start);
+
+	public long getStart() {
+		return getPropertyAsLong(START);
 	}
-	
-	public int getStart()
-	{
-		return getPropertyAsInt(START);
+
+	public void setEnd(long end) {
+		setProperty(new LongProperty(END, end));
 	}
-	
-	public void setEnd(int end)
-	{
-		setProperty(END,new Integer(end));
+
+	public void setEnd(String end) {
+		setProperty(END, end);
 	}
-	
-	public void setEnd(String end)
-	{
-		setProperty(END,end);
+
+    /**
+     * 
+     * @return counter upper limit (default Long.MAX_VALUE)
+     */
+	public long getEnd() {
+       long propertyAsLong = getPropertyAsLong(END);
+       if (propertyAsLong == 0 && "".equals(getProperty(END).getStringValue())) {
+          propertyAsLong = Long.MAX_VALUE;
+       }
+       return propertyAsLong;
 	}
-	
-	public int getEnd()
-	{
-		return getPropertyAsInt(END);
+
+	public void setIncrement(long inc) {
+		setProperty(new LongProperty(INCREMENT, inc));
 	}
-	
-	public void setIncrement(int inc)
-	{
-		setProperty(INCREMENT,new Integer(inc));
+
+	public void setIncrement(String incr) {
+		setProperty(INCREMENT, incr);
 	}
-	
-	public void setIncrement(String incr)
-	{
-		setProperty(INCREMENT,incr);
+
+	public long getIncrement() {
+		return getPropertyAsLong(INCREMENT);
 	}
-	
-	public int getIncrement()
-	{
-		return getPropertyAsInt(INCREMENT);
+
+	public void setIsPerUser(boolean isPer) {
+		setProperty(new BooleanProperty(PER_USER, isPer));
 	}
-	
-	public void setIsPerUser(boolean isPer)
-	{
-		setProperty(PER_USER,new Boolean(isPer));
-	}
-	
-	public boolean isPerUser()
-	{
+
+	public boolean isPerUser() {
 		return getPropertyAsBoolean(PER_USER);
 	}
-	
-	public void setVarName(String name)
-	{
-		setProperty(VAR_NAME,name);
+
+	public void setVarName(String name) {
+		setProperty(VAR_NAME, name);
 	}
-	
-	public String getVarName()
-	{
+
+	public String getVarName() {
 		return getPropertyAsString(VAR_NAME);
 	}
+
+    public void setFormat(String format) {
+        setProperty(FORMAT, format);
+    }
+
+    public String getFormat() {
+        return getPropertyAsString(FORMAT);
+    }
 }

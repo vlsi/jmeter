@@ -1,249 +1,198 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.assertions.gui;
 
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
-import javax.swing.border.Border;
-import javax.swing.border.EmptyBorder;
 
 import org.apache.jmeter.assertions.SizeAssertion;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.gui.layout.VerticalLayout;
-import org.apache.log.Hierarchy;
-import org.apache.log.Logger;
 
-
-/****************************************
- * Title: Jakarta-JMeter Description: Copyright: Copyright (c) 2001 Company:
- * Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
-
-public class SizeAssertionGui extends AbstractAssertionGui implements FocusListener, ActionListener
-{
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-			"jmeter.elements");
+public class SizeAssertionGui extends AbstractAssertionGui implements FocusListener, ActionListener {
 
 	private JTextField size;
-	SizeAssertion sa = new SizeAssertion();
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public SizeAssertionGui()
-	{
+	private JRadioButton equalButton, notequalButton, greaterthanButton, lessthanButton, greaterthanequalButton,
+			lessthanequalButton;
+
+	private int execState; // store the operator
+
+	public SizeAssertionGui() {
 		init();
 	}
 
-	/**
-	 * Returns the label to be shown within the JTree-Component.
-	 */
-	public String getStaticLabel()
-	{
-		return JMeterUtils.getResString("size_assertion_title");
+	public String getLabelResource() {
+		return "size_assertion_title"; //$NON-NLS-1$
 	}
 
-	public String getSizeAttributesTitle()
-	{
-		return JMeterUtils.getResString("size_assertion_size_test");
+	public String getSizeAttributesTitle() {
+		return JMeterUtils.getResString("size_assertion_size_test"); //$NON-NLS-1$
 	}
 
-	public TestElement createTestElement()
-	{
-		//ResponseAssertion el = new ResponseAssertion();
+	public TestElement createTestElement() {
 		SizeAssertion el = new SizeAssertion();
 		modifyTestElement(el);
 		return el;
 	}
 
+	/**
+	 * Modifies a given TestElement to mirror the data in the gui components.
+	 * 
+	 * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+	 */
+	public void modifyTestElement(TestElement el) {
+		configureTestElement(el);
+		String sizeString = size.getText();
+		long assertionSize = 0;
+		try {
+			assertionSize = Long.parseLong(sizeString);
+		} catch (NumberFormatException e) {
+			assertionSize = Long.MAX_VALUE;
+		}
+		((SizeAssertion) el).setAllowedSize(assertionSize);
+		((SizeAssertion) el).setCompOper(getState());
+	}
+    
     /**
-     * Modifies a given TestElement to mirror the data in the gui components.
-     * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+     * Implements JMeterGUIComponent.clearGui
      */
-    public void modifyTestElement(TestElement el)
-    {
-        configureTestElement(el);
-        String sizeString = size.getText();
-        long assertionSize = 0;
-        try {
-        	assertionSize = Long.parseLong(sizeString);
-        }
-        catch (NumberFormatException e) {
-        	assertionSize = Long.MAX_VALUE;
-        }
-        ((SizeAssertion)el).setAllowedSize(assertionSize);
-    }
+    public void clearGui() {
+        super.clearGui();
+        
+        size.setText(""); //$NON-NLS-1$
+        equalButton.setSelected(true);
+        notequalButton.setSelected(false);
+        greaterthanButton.setSelected(false);
+        lessthanButton.setSelected(false);
+        greaterthanequalButton.setSelected(false);
+        lessthanequalButton.setSelected(false);
+        execState = SizeAssertion.EQUAL;
+    }    
 
-	/****************************************
-	 * !ToDo (Method description)
-	 ***************************************/
-	public void configure(TestElement el)
-	{
+	public void configure(TestElement el) {
 		super.configure(el);
-		SizeAssertion assertion = (SizeAssertion)el;
+		SizeAssertion assertion = (SizeAssertion) el;
 		size.setText(String.valueOf(assertion.getAllowedSize()));
+		setState(assertion.getCompOper());
 	}
 
-	private void init()
-	{
-		this.setLayout(new VerticalLayout(5, VerticalLayout.LEFT, VerticalLayout.TOP));
+	/**
+	 * Set the state of the radio Button
+	 */
+	public void setState(int state) {
+		if (state == SizeAssertion.EQUAL) {
+			equalButton.setSelected(true);
+			execState = state;
+		} else if (state == SizeAssertion.NOTEQUAL) {
+			notequalButton.setSelected(true);
+			execState = state;
+		} else if (state == SizeAssertion.GREATERTHAN) {
+			greaterthanButton.setSelected(true);
+			execState = state;
+		} else if (state == SizeAssertion.LESSTHAN) {
+			lessthanButton.setSelected(true);
+			execState = state;
+		} else if (state == SizeAssertion.GREATERTHANEQUAL) {
+			greaterthanequalButton.setSelected(true);
+			execState = state;
+		} else if (state == SizeAssertion.LESSTHANEQUAL) {
+			lessthanequalButton.setSelected(true);
+			execState = state;
+		}
+	}
 
-		// MAIN PANEL
-		JPanel mainPanel = new JPanel();
-		Border margin = new EmptyBorder(10, 10, 5, 10);
-		mainPanel.setBorder(margin);
-		mainPanel.setLayout(new VerticalLayout(5, VerticalLayout.LEFT));
+	/**
+	 * Get the state of the radio Button
+	 */
+	public int getState() {
+		return execState;
+	}
 
-		// TITLE
-		JLabel panelTitleLabel = new JLabel(getStaticLabel());
-		Font curFont = panelTitleLabel.getFont();
-		int curFontSize = curFont.getSize();
-		curFontSize += 4;
-		panelTitleLabel.setFont(new Font(curFont.getFontName(), curFont.getStyle(), curFontSize));
-		mainPanel.add(panelTitleLabel);
+	private void init() {
+		setLayout(new VerticalLayout(5, VerticalLayout.BOTH, VerticalLayout.TOP));
+		setBorder(makeBorder());
 
-		// NAME
-		mainPanel.add(getNamePanel());
+		add(makeTitlePanel());
 
 		// USER_INPUT
 		JPanel sizePanel = new JPanel();
-		sizePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), getSizeAttributesTitle()));
-		FlowLayout layout = new FlowLayout();
-		sizePanel.setLayout(layout);
+		sizePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(),
+				getSizeAttributesTitle()));
 
-		sizePanel.add(new JLabel(JMeterUtils.getResString("size_assertion_label")));
+		sizePanel.add(new JLabel(JMeterUtils.getResString("size_assertion_label"))); //$NON-NLS-1$
 		size = new JTextField(5);
 		size.addFocusListener(this);
 		sizePanel.add(size);
-		
-		ButtonGroup comparatorButtonGroup = new ButtonGroup();
-		
-		JRadioButton equalButton = new JRadioButton("=");
-		equalButton.setSelected(true);
-		equalButton.setActionCommand(new Integer(SizeAssertion.EQUAL).toString());
-		equalButton.addActionListener(this);
-		comparatorButtonGroup.add(equalButton);
-				
-		JRadioButton notequalButton = new JRadioButton("!=");
-		notequalButton.setActionCommand(new Integer(SizeAssertion.NOTEQUAL).toString());
-		notequalButton.addActionListener(this);
-		comparatorButtonGroup.add(notequalButton);
-		
-		JRadioButton greaterthanButton = new JRadioButton(">");
-		greaterthanButton.setActionCommand(new Integer(SizeAssertion.GREATERTHAN).toString());
-		greaterthanButton.addActionListener(this);
-		comparatorButtonGroup.add(greaterthanButton);
-		
-		JRadioButton lessthanButton = new JRadioButton("<");
-		lessthanButton.setActionCommand(new Integer(SizeAssertion.LESSTHAN).toString());
-		lessthanButton.addActionListener(this);
-		comparatorButtonGroup.add(lessthanButton);
-		
-		JRadioButton greaterthanequalButton = new JRadioButton(">=");
-		greaterthanequalButton.setActionCommand(new Integer(SizeAssertion.GREATERTHANEQUAL).toString());
-		greaterthanequalButton.addActionListener(this);
-		comparatorButtonGroup.add(greaterthanequalButton);
-		
-		JRadioButton lessthanequalButton = new JRadioButton("<=");
-		lessthanequalButton.setActionCommand(new Integer(SizeAssertion.LESSTHANEQUAL).toString());
-		lessthanequalButton.addActionListener(this);
-		comparatorButtonGroup.add(lessthanequalButton);
-		
-		//Put the check boxes in a column in a panel
-        JPanel checkPanel = new JPanel();
-        checkPanel.setLayout(new GridLayout(0, 1));
-        JLabel compareLabel = new JLabel(JMeterUtils.getResString("size_assertion_comparator_label"));
-        checkPanel.add(compareLabel);
-        checkPanel.add(equalButton);
-        checkPanel.add(notequalButton);
-        checkPanel.add(greaterthanButton);
-        checkPanel.add(lessthanButton);
-        checkPanel.add(greaterthanequalButton);
-        checkPanel.add(lessthanequalButton);
-        sizePanel.add(checkPanel);
-		
-		mainPanel.add(sizePanel);
-		this.add(mainPanel);
 
+		sizePanel.add(createComparatorButtonPanel());
+
+		add(sizePanel);
 	}
 
-	/****************************************
-	 * Description of the Method
-	 *
-	 *@param e  Description of Parameter
-	 ***************************************/
-	public void focusLost(FocusEvent e)
-	{
+	private Box createComparatorButtonPanel() {
+		ButtonGroup group = new ButtonGroup();
+
+		equalButton = createComparatorButton("=", SizeAssertion.EQUAL, group); //$NON-NLS-1$
+		notequalButton = createComparatorButton("!=", SizeAssertion.NOTEQUAL, group); //$NON-NLS-1$
+		greaterthanButton = createComparatorButton(">", SizeAssertion.GREATERTHAN, group); //$NON-NLS-1$
+		lessthanButton = createComparatorButton("<", SizeAssertion.LESSTHAN, group); //$NON-NLS-1$
+		greaterthanequalButton = createComparatorButton(">=", SizeAssertion.GREATERTHANEQUAL, group); //$NON-NLS-1$
+		lessthanequalButton = createComparatorButton("<=", SizeAssertion.LESSTHANEQUAL, group); //$NON-NLS-1$
+
+		equalButton.setSelected(true);
+		execState = Integer.parseInt(equalButton.getActionCommand());
+
+		// Put the check boxes in a column in a panel
+		Box checkPanel = Box.createVerticalBox();
+		JLabel compareLabel = new JLabel(JMeterUtils.getResString("size_assertion_comparator_label")); //$NON-NLS-1$
+		checkPanel.add(compareLabel);
+		checkPanel.add(equalButton);
+		checkPanel.add(notequalButton);
+		checkPanel.add(greaterthanButton);
+		checkPanel.add(lessthanButton);
+		checkPanel.add(greaterthanequalButton);
+		checkPanel.add(lessthanequalButton);
+		return checkPanel;
+	}
+
+	private JRadioButton createComparatorButton(String name, int value, ButtonGroup group) {
+		JRadioButton button = new JRadioButton(name);
+		button.setActionCommand(String.valueOf(value));
+		button.addActionListener(this);
+		group.add(button);
+		return button;
+	}
+
+	public void focusLost(FocusEvent e) {
 		boolean isInvalid = false;
 		String sizeString = size.getText();
 		if (sizeString != null) {
@@ -252,33 +201,23 @@ public class SizeAssertionGui extends AbstractAssertionGui implements FocusListe
 				if (assertionSize < 0) {
 					isInvalid = true;
 				}
-			}
-			catch (NumberFormatException ex) {
+			} catch (NumberFormatException ex) {
 				isInvalid = true;
 			}
 			if (isInvalid) {
-				log.warn("SizeAssertionGui: Not a valid number!");
-				JOptionPane.showMessageDialog(null, JMeterUtils.getResString("size_assertion_input_error"), "Error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(null, 
+						JMeterUtils.getResString("size_assertion_input_error"), //$NON-NLS-1$
+						"Error",
+						JOptionPane.ERROR_MESSAGE);
 			}
 		}
 	}
 
-	/****************************************
-	 * Description of the Method
-	 *
-	 *@param e  Description of Parameter
-	 ***************************************/
 	public void focusGained(FocusEvent e) {
 	}
-	
-	/****************************************
-	 * Description of the Method
-	 *
-	 *@param e ActionEvent
-	 ***************************************/
+
 	public void actionPerformed(ActionEvent e) {
-		int comparator = new Integer(e.getActionCommand()).intValue(); 
-    	sa.setLogicalComparator(comparator);
-    }
-    
+		int comparator = Integer.parseInt(e.getActionCommand());
+		execState = comparator;
+	}
 }

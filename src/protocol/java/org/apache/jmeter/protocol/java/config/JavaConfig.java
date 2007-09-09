@@ -1,57 +1,21 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2002 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.protocol.java.config;
 
 import java.io.Serializable;
@@ -59,84 +23,98 @@ import java.io.Serializable;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.config.ConfigTestElement;
 import org.apache.jmeter.protocol.java.sampler.JavaSampler;
-import org.apache.jmeter.protocol.java.sampler.JavaSamplerClient;
-import org.apache.log.Hierarchy;
-import org.apache.log.Logger;
-
+import org.apache.jmeter.testelement.property.TestElementProperty;
 
 /**
- *
- * The <code>JavaConfig</code> class contains the configuration data
- * necessary for the Java protocol.
- *
- *@author     Brad Kiewel
- *@created    $Date$
- *@version    $Revision$
+ * The <code>JavaConfig</code> class contains the configuration data necessary
+ * for the Java protocol. This data is used to configure a
+ * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerClient} instance to
+ * perform performance test samples.
+ * 
+ * @author Brad Kiewel
+ * @author <a href="mailto:jeremy_a@bigfoot.com">Jeremy Arnold</a>
+ * @version $Revision$
  */
-
-public class JavaConfig extends ConfigTestElement implements Serializable
-{
-
-	/** Logging  */
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor("jmeter.protocol.java");
-	
-	private transient JavaSamplerClient javaClient = null;
+public class JavaConfig extends ConfigTestElement implements Serializable {
 
 	/**
-	 *  Constructor for the JavaConfig object
+	 * Constructor for the JavaConfig object
 	 */
-	public JavaConfig()
-	{
+	public JavaConfig() {
 		setArguments(new Arguments());
 	}
 
 	/**
-	 *  Sets the Classname attribute of the JavaConfig object
-	 *
-	 *@param  classname  The new Classname value
+	 * Sets the class name attribute of the JavaConfig object. This is the class
+	 * name of the
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerClient}
+	 * implementation which will be used to execute the test.
+	 * 
+	 * @param classname
+	 *            the new classname value
 	 */
-	public void setClassname(String classname)
-	{
+	public void setClassname(String classname) {
 		setProperty(JavaSampler.CLASSNAME, classname);
 	}
 
-
-
 	/**
-	 *  Gets the Classname attribute of the JavaConfig object
-	 *
-	 *@return    The Classname value
+	 * Gets the class name attribute of the JavaConfig object. This is the class
+	 * name of the
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerClient}
+	 * implementation which will be used to execute the test.
+	 * 
+	 * @return the classname value
 	 */
-	public String getClassname()
-	{
-		return (String) getPropertyAsString(JavaSampler.CLASSNAME);
+	public String getClassname() {
+		return getPropertyAsString(JavaSampler.CLASSNAME);
 	}
 
-	public void addArgument(String name,String value)
-	{
+	/**
+	 * Adds an argument to the list of arguments for this JavaConfig object. The
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerClient}
+	 * implementation can access these arguments through the
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerContext}.
+	 * 
+	 * @param name
+	 *            the name of the argument to be added
+	 * @param value
+	 *            the value of the argument to be added
+	 */
+	public void addArgument(String name, String value) {
 		Arguments args = this.getArguments();
-		args.addArgument(name,value);
-	}
-
-	public void removeArguments()
-	{
-		this.setProperty(JavaSampler.ARGUMENTS,new Arguments());
-	}
-	
-	public void setArguments(Arguments args)
-	{
-		setProperty(JavaSampler.ARGUMENTS,args);
+		args.addArgument(name, value);
 	}
 
 	/**
-	 *  Gets the Arguments attribute of the JavaConfig object
-	 *
-	 *@return    The Arguments value
+	 * Removes all of the arguments associated with this JavaConfig object.
 	 */
-	public Arguments getArguments()
-	{
-		return (Arguments) getProperty(JavaSampler.ARGUMENTS);
+	public void removeArguments() {
+		setProperty(new TestElementProperty(JavaSampler.ARGUMENTS, new Arguments()));
+	}
+
+	/**
+	 * Set all of the arguments for this JavaConfig object. This will replace
+	 * any previously added arguments. The
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerClient}
+	 * implementation can access these arguments through the
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerContext}.
+	 * 
+	 * @param args
+	 *            the new arguments
+	 */
+	public void setArguments(Arguments args) {
+		setProperty(new TestElementProperty(JavaSampler.ARGUMENTS, args));
+	}
+
+	/**
+	 * Gets the arguments for this JavaConfig object. The
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerClient}
+	 * implementation can access these arguments through the
+	 * {@link org.apache.jmeter.protocol.java.sampler.JavaSamplerContext}.
+	 * 
+	 * @return the arguments
+	 */
+	public Arguments getArguments() {
+		return (Arguments) getProperty(JavaSampler.ARGUMENTS).getObjectValue();
 	}
 }
-
-

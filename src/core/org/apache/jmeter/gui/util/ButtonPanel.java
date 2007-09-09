@@ -1,57 +1,23 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
- */package org.apache.jmeter.gui.util;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
+package org.apache.jmeter.gui.util;
+
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -62,101 +28,69 @@ import javax.swing.JPanel;
 
 import org.apache.jmeter.util.JMeterUtils;
 
-/****************************************
- * Title: Apache JMeter Description: Copyright: Copyright (c) 2000 Company:
- * Apache Foundation
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+// TODO - does not appear to be used
 
-public class ButtonPanel extends JPanel
-{
-
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
+public class ButtonPanel extends JPanel {
 	public final static int ADD_BUTTON = 1;
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
+
 	public final static int EDIT_BUTTON = 2;
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
+
 	public final static int DELETE_BUTTON = 3;
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
+
 	public final static int LOAD_BUTTON = 4;
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
+
 	public final static int SAVE_BUTTON = 5;
 
 	private JButton add, delete, edit, load, save;
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public ButtonPanel()
-	{
+	public ButtonPanel() {
 		init();
 	}
 
-	/****************************************
-	 * !ToDo
-	 *
-	 *@param button    !ToDo
-	 *@param listener  !ToDo
-	 ***************************************/
-	public void addButtonListener(int button, ActionListener listener)
-	{
-		switch (button)
-		{
-			case ADD_BUTTON:
-				add.addActionListener(listener);
-				break;
-			case EDIT_BUTTON:
-				edit.addActionListener(listener);
-				break;
-			case DELETE_BUTTON:
-				delete.addActionListener(listener);
-				break;
-			case LOAD_BUTTON:
-				load.addActionListener(listener);
-				break;
-			case SAVE_BUTTON:
-				save.addActionListener(listener);
-				break;
+	public void addButtonListener(int button, ActionListener listener) {
+		switch (button) {
+		case ADD_BUTTON:
+			add.addActionListener(listener);
+			break;
+		case EDIT_BUTTON:
+			edit.addActionListener(listener);
+			break;
+		case DELETE_BUTTON:
+			delete.addActionListener(listener);
+			break;
+		case LOAD_BUTTON:
+			load.addActionListener(listener);
+			break;
+		case SAVE_BUTTON:
+			save.addActionListener(listener);
+			break;
 		}
 	}
 
-	private void initButtonMap() { }
-
-	private void init()
-	{
-		add = new JButton(JMeterUtils.getResString("add"));
+	/*
+	 * NOTUSED private void initButtonMap() { }
+	 */
+	private void init() {
+		add = new JButton(JMeterUtils.getResString("add")); // $NON-NLS-1$
 		add.setActionCommand("Add");
-		edit = new JButton(JMeterUtils.getResString("edit"));
+		edit = new JButton(JMeterUtils.getResString("edit")); // $NON-NLS-1$
 		edit.setActionCommand("Edit");
-		delete = new JButton(JMeterUtils.getResString("delete"));
+		delete = new JButton(JMeterUtils.getResString("delete")); // $NON-NLS-1$
 		delete.setActionCommand("Delete");
-		load = new JButton(JMeterUtils.getResString("load"));
+		load = new JButton(JMeterUtils.getResString("load")); // $NON-NLS-1$
 		load.setActionCommand("Load");
-		save = new JButton(JMeterUtils.getResString("save"));
+		save = new JButton(JMeterUtils.getResString("save")); // $NON-NLS-1$
 		save.setActionCommand("Save");
 		Dimension d = delete.getPreferredSize();
 		add.setPreferredSize(d);
 		edit.setPreferredSize(d);
-		//close.setPreferredSize(d);
+		// close.setPreferredSize(d);
 		load.setPreferredSize(d);
 		save.setPreferredSize(d);
 		GridBagLayout g = new GridBagLayout();
 		this.setLayout(g);
 		GridBagConstraints c = new GridBagConstraints();
-		c.fill = c.NONE;
+		c.fill = GridBagConstraints.NONE;
 		c.gridwidth = 1;
 		c.gridheight = 1;
 		c.gridx = 1;
@@ -172,9 +106,7 @@ public class ButtonPanel extends JPanel
 		g.setConstraints(delete, c);
 		this.add(delete);
 		/*
-		 * c.gridx = 1;
-		 * c.gridy = 2;
-		 * g.setConstraints(close, c);
+		 * c.gridx = 1; c.gridy = 2; g.setConstraints(close, c);
 		 * panel.add(close);
 		 */
 		c.gridx = 2;

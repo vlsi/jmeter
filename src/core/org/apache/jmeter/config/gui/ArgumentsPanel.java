@@ -1,450 +1,457 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.config.gui;
+
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 import java.util.Collection;
 import java.util.Iterator;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.event.CellEditorListener;
-import javax.swing.event.ChangeEvent;
 import javax.swing.table.TableCellEditor;
-
-import junit.framework.TestCase;
 
 import org.apache.jmeter.config.Argument;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.PropertyIterator;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.gui.ObjectTableModel;
-import org.apache.log.Hierarchy;
-import org.apache.log.Logger;
+import org.apache.jorphan.reflect.Functor;
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   March 13, 2001
- *@version   1.0
- ***************************************/
+/**
+ * A GUI panel allowing the user to enter name-value argument pairs. These
+ * arguments (or parameters) are usually used to provide configuration values
+ * for some other component.
+ * 
+ */
+public class ArgumentsPanel extends AbstractConfigGui implements ActionListener {
 
-public class ArgumentsPanel extends AbstractConfigGui implements FocusListener, ActionListener, CellEditorListener
-{
-    transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(JMeterUtils.GUI);
-    transient JTable table;
-    JButton add;
-    JButton delete;
-    protected transient ObjectTableModel tableModel;
-    String name;
-    JLabel tableLabel;
+	/** The title label for this component. */
+	private JLabel tableLabel;
 
-    private static String ADD = "add";
-    private static String DELETE = "delete";
+	/** The table containing the list of arguments. */
+	private transient JTable table;
 
-    /****************************************
-     * Constructor for the ArgumentsPanel object
-     ***************************************/
-    public ArgumentsPanel()
-    {
-        this(JMeterUtils.getResString("paramtable"));
-    }
+	/** The model for the arguments table. */
+	protected transient ObjectTableModel tableModel;
 
-    public void editingCanceled(ChangeEvent e)
-    {}
+	/** A button for adding new arguments to the table. */
+	private JButton add;
 
-    public void editingStopped(ChangeEvent e)
-    {}
-
-    public ArgumentsPanel(String label)
-    {
-        tableLabel = new JLabel(label);
-        init();
-    }
-
-    protected JTable getTable()
-    {
-        return table;
-    }
-
-    protected JLabel getTableLabel()
-    {
-        return tableLabel;
-    }
-
-    protected JButton getDeleteButton()
-    {
-        return delete;
-    }
-
-    protected JButton getAddButton()
-    {
-        return add;
-    }
-
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public Collection getMenuCategories()
-    {
-        return null;
-    }
-
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public String getStaticLabel()
-    {
-        return "Argument List";
-    }
-
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public TestElement createTestElement()
-    {
-        Arguments args = new Arguments();
-        modifyTestElement(args);
-        return (TestElement) args.clone();
-    }
+	/** A button for removing arguments from the table. */
+	private JButton delete;
 
     /**
-     * Modifies a given TestElement to mirror the data in the gui components.
-     * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+     * Added background support for reporting tool
      */
-    public void modifyTestElement(TestElement args)
-    {
-        Iterator modelData = tableModel.iterator();
-        Arguments arguments = null;
-        if (args instanceof Arguments)
-        {
-            arguments = (Arguments) args;
-            arguments.clear();
-            while (modelData.hasNext())
-            {
-                Argument arg = (Argument) modelData.next();
-                arg.setMetaData("=");
-                arguments.addArgument(arg);
-            }
-        }
-        this.configureTestElement(args);
-    }
-
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param el  !ToDo (Parameter description)
-     ***************************************/
-    public void configure(TestElement el)
-    {
-        super.configure(el);
-        if (el instanceof Arguments)
-        {
-            tableModel.clearData();
-            Iterator iter = ((Arguments) el).getArguments().iterator();
-            while (iter.hasNext())
-            {
-                Argument arg = (Argument) iter.next();
-                tableModel.addRow(arg);
-            }
-        }
-        checkDeleteStatus();
-    }
-
-    /****************************************
-     * Description of the Method
-     *
-     *@param e  Description of Parameter
-     ***************************************/
-    public void focusLost(FocusEvent e)
-    {
-        log.debug("Focus lost on table");
-        stopTableEditing();
-    }
-
-    /****************************************
-     * Description of the Method
-     *
-     *@param e  Description of Parameter
-     ***************************************/
-    public void focusGained(FocusEvent e)
-    {}
-
-    /****************************************
-     * Description of the Method
-     *
-     *@param e  Description of Parameter
-     ***************************************/
-    public void actionPerformed(ActionEvent e)
-    {
-        String action = e.getActionCommand();
-        if (action.equals(DELETE))
-        {
-            deleteArgument();
-        }
-        else if (action.equals(ADD))
-        {
-            addArgument();
-        }
-    }
-
-    protected void deleteArgument()
-    {
-        // If a table cell is being edited, we must cancel the editing before
-        // deleting the row
-        if (table.isEditing())
-        {
-            TableCellEditor cellEditor = table.getCellEditor(table.getEditingRow(), table.getEditingColumn());
-            cellEditor.cancelCellEditing();
-        }
-
-        int rowSelected = table.getSelectedRow();
-        if (rowSelected >= 0)
-        {
-            tableModel.removeRow(rowSelected);
-            tableModel.fireTableDataChanged();
-
-            // Disable DELETE if there are no rows in the table to delete.
-            if (tableModel.getRowCount() == 0)
-            {
-                delete.setEnabled(false);
-            }
-
-            // Table still contains one or more rows, so highlight (select)
-            // the appropriate one.
-            else
-            {
-                int rowToSelect = rowSelected;
-
-                if (rowSelected >= tableModel.getRowCount())
-                {
-                    rowToSelect = rowSelected - 1;
-                }
-
-                table.setRowSelectionInterval(rowToSelect, rowToSelect);
-            }
-        }
-    }
-
-    protected void addArgument()
-    {
-        // If a table cell is being edited, we should accept the current value
-        // and stop the editing before adding a new row.
-        stopTableEditing();
-
-        tableModel.addRow(makeNewArgument());
-
-        // Enable DELETE (which may already be enabled, but it won't hurt)
-        delete.setEnabled(true);
-
-        // Highlight (select) the appropriate row.
-        int rowToSelect = tableModel.getRowCount() - 1;
-        table.setRowSelectionInterval(rowToSelect, rowToSelect);
-    }
-
-    protected Object makeNewArgument()
-    {
-        return new Argument("","");
-    }
-
-    private void stopTableEditing()
-    {
-        if (table.isEditing())
-        {
-            TableCellEditor cellEditor = table.getCellEditor(table.getEditingRow(), table.getEditingColumn());
-            cellEditor.stopCellEditing();
-        }
-    }
-
-    /****************************************
-     * !ToDo
-     ***************************************/
-    public void addInnerPanel()
-    {
-        initializeTableModel();
-        table = new JTable(tableModel);
-        table.setEnabled(true);
-        table.addFocusListener(this);
-        // use default editor/renderer to fix bug #16058
-        //		TextAreaTableCellEditor editor = new TextAreaTableCellEditor();
-        //		table.setDefaultEditor(String.class,
-        //				editor);
-        //		editor.addCellEditorListener(this);
-        //		TextAreaCellRenderer renderer = new TextAreaCellRenderer();
-        //		table.setRowHeight(renderer.getPreferredHeight());
-        //		table.setDefaultRenderer(String.class,renderer);
-        table.setCellSelectionEnabled(true);
-        table.setRowSelectionAllowed(true);
-        table.setColumnSelectionAllowed(false);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-        JScrollPane scroller = new JScrollPane(table);
-        Dimension tableDim = scroller.getPreferredSize();
-        tableDim.height = 70;
-        scroller.setPreferredSize(tableDim);
-        scroller.setColumnHeaderView(table.getTableHeader());
-
-        add = new JButton(JMeterUtils.getResString("add"));
-        add.setActionCommand(ADD);
-        add.setEnabled(true);
-
-        delete = new JButton(JMeterUtils.getResString("delete"));
-        delete.setActionCommand(DELETE);
-
-        checkDeleteStatus();
-
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
-        add.addActionListener(this);
-        delete.addActionListener(this);
-        buttonPanel.add(add);
-        buttonPanel.add(delete);
-
-        this.add(scroller, BorderLayout.CENTER);
-        this.add(buttonPanel, BorderLayout.SOUTH);
-    }
-
-    protected void initializeTableModel()
-    {
-        tableModel = new ObjectTableModel(new String[] { Arguments.COLUMN_NAMES[0], Arguments.COLUMN_NAMES[1] }, 
-                new String[]{"name","value"},new Class[]{String.class,Object.class},new Class[] { String.class, String.class },
-                new Argument());
-    }
-
-    protected void checkDeleteStatus()
-    {
-        // Disable DELETE if there are no rows in the table to delete.
-        if (tableModel.getRowCount() == 0)
-        {
-            delete.setEnabled(false);
-        }
-        else
-        {
-            delete.setEnabled(true);
-        }
-    }
-
-    /****************************************
-     * !ToDo (Method description)
-     **************************************
-    public void removeInnerPanel()
-    {
-    	table.setEnabled(false);
-    	add.setEnabled(false);
-    	delete.setEnabled(false);
-    	tableModel.removeAllRows();
-    	tableModel.fireTableDataChanged();
+    private Color background;
     
-    	this.remove(innerPanel);
-    	innerPanel = null;
-    }*/
+	/**
+	 * Boolean indicating whether this component is a standalong component or it
+	 * is intended to be used as a subpanel for another component.
+	 */
+	private boolean standalone = true;
 
-    private void init()
-    {
-        this.setLayout(new BorderLayout(0, 0));
-        this.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
-        Component labelPanel = makeLabelPanel();
-        this.add(labelPanel, BorderLayout.NORTH);
-        this.addInnerPanel();
-        table.revalidate();
-        sizeColumns(table);
+	/** Command for adding a row to the table. */
+	private static final String ADD = "add"; // $NON-NLS-1$
+
+	/** Command for removing a row from the table. */
+	private static final String DELETE = "delete"; // $NON-NLS-1$
+
+	public static final String COLUMN_NAMES_0 = JMeterUtils.getResString("name"); // $NON-NLS-1$
+
+	public static final String COLUMN_NAMES_1 = JMeterUtils.getResString("value"); // $NON-NLS-1$
+
+	// NOTUSED private static final String COLUMN_NAMES_2 =
+	// JMeterUtils.getResString("metadata");
+
+	/**
+	 * Create a new ArgumentsPanel as a standalone component.
+	 */
+	public ArgumentsPanel() {
+		tableLabel = new JLabel(JMeterUtils.getResString("user_defined_variables")); // $NON-NLS-1$
+		standalone = true;
+		init();
+	}
+
+	/**
+	 * Create a new ArgumentsPanel as an embedded component, using the specified
+	 * title.
+	 * 
+	 * @param label
+	 *            the title for the component.
+	 */
+	public ArgumentsPanel(String label) {
+		tableLabel = new JLabel(label);
+		standalone = false;
+		init();
+	}
+
+    /**
+     * Create a new ArgumentsPanel with a border and color background
+     * @param label text for label
+     * @param bkg background colour
+     */
+    public ArgumentsPanel(String label, Color bkg) {
+        tableLabel = new JLabel(label);
+        this.background = bkg;
+        standalone = false;
+        init();
     }
+    
+	/**
+	 * This is the list of menu categories this gui component will be available
+	 * under.
+	 * 
+	 * @return a Collection of Strings, where each element is one of the
+	 *         constants defined in MenuFactory
+	 */
+	public Collection getMenuCategories() {
+		if (standalone) {
+			return super.getMenuCategories();
+		} 
+		return null;
+	}
 
-    protected Component makeLabelPanel()
-    {
-        JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        labelPanel.add(tableLabel);
-        return labelPanel;
-    }
+	public String getLabelResource() {
+		return "user_defined_variables"; // $NON-NLS-1$
+	}
 
-    protected void sizeColumns(JTable table)
-    {}
+	/* Implements JMeterGUIComponent.createTestElement() */
+	public TestElement createTestElement() {
+		Arguments args = new Arguments();
+		modifyTestElement(args);
+		return args;
+	}
 
-    public static class Test extends TestCase
-    {
+	/* Implements JMeterGUIComponent.modifyTestElement(TestElement) */
+	public void modifyTestElement(TestElement args) {
+		stopTableEditing();
+		Iterator modelData = tableModel.iterator();
+		Arguments arguments = null;
+		if (args instanceof Arguments) {
+			arguments = (Arguments) args;
+			arguments.clear();
+			while (modelData.hasNext()) {
+				Argument arg = (Argument) modelData.next();
+				arg.setMetaData("="); // $NON-NLS-1$
+				arguments.addArgument(arg);
+			}
+		}
+		this.configureTestElement(args);
+	}
 
-        public Test(String name)
-        {
-            super(name);
+	/**
+	 * A newly created component can be initialized with the contents of a Test
+	 * Element object by calling this method. The component is responsible for
+	 * querying the Test Element object for the relevant information to display
+	 * in its GUI.
+	 * 
+	 * @param el
+	 *            the TestElement to configure
+	 */
+	public void configure(TestElement el) {
+		super.configure(el);
+		if (el instanceof Arguments) {
+			tableModel.clearData();
+			PropertyIterator iter = ((Arguments) el).iterator();
+			while (iter.hasNext()) {
+				Argument arg = (Argument) iter.next().getObjectValue();
+				tableModel.addRow(arg);
+			}
+		}
+		checkDeleteStatus();
+	}
+
+	/**
+	 * Get the table used to enter arguments.
+	 * 
+	 * @return the table used to enter arguments
+	 */
+	protected JTable getTable() {
+		return table;
+	}
+
+	/**
+	 * Get the title label for this component.
+	 * 
+	 * @return the title label displayed with the table
+	 */
+	protected JLabel getTableLabel() {
+		return tableLabel;
+	}
+
+	/**
+	 * Get the button used to delete rows from the table.
+	 * 
+	 * @return the button used to delete rows from the table
+	 */
+	protected JButton getDeleteButton() {
+		return delete;
+	}
+
+	/**
+	 * Get the button used to add rows to the table.
+	 * 
+	 * @return the button used to add rows to the table
+	 */
+	protected JButton getAddButton() {
+		return add;
+	}
+
+	/**
+	 * Enable or disable the delete button depending on whether or not there is
+	 * a row to be deleted.
+	 */
+	protected void checkDeleteStatus() {
+		// Disable DELETE if there are no rows in the table to delete.
+		if (tableModel.getRowCount() == 0) {
+			delete.setEnabled(false);
+		} else {
+			delete.setEnabled(true);
+		}
+	}
+
+	public void clearGui(){
+		super.clearGui();
+		clear();
+	}
+
+	/**
+	 * Clear all rows from the table. T.Elanjchezhiyan(chezhiyan@siptech.co.in)
+	 */
+	public void clear() {
+		stopTableEditing();
+		tableModel.clearData();
+	}
+
+	/**
+	 * Invoked when an action occurs. This implementation supports the add and
+	 * delete buttons.
+	 * 
+	 * @param e
+	 *            the event that has occurred
+	 */
+	public void actionPerformed(ActionEvent e) {
+		String action = e.getActionCommand();
+		if (action.equals(DELETE)) {
+			deleteArgument();
+		} else if (action.equals(ADD)) {
+			addArgument();
+		}
+	}
+
+	/**
+	 * Remove the currently selected argument from the table.
+	 */
+	protected void deleteArgument() {
+		// If a table cell is being edited, we must cancel the editing before
+		// deleting the row
+		if (table.isEditing()) {
+			TableCellEditor cellEditor = table.getCellEditor(table.getEditingRow(), table.getEditingColumn());
+			cellEditor.cancelCellEditing();
+		}
+
+		int rowSelected = table.getSelectedRow();
+		if (rowSelected >= 0) {
+			tableModel.removeRow(rowSelected);
+			tableModel.fireTableDataChanged();
+
+			// Disable DELETE if there are no rows in the table to delete.
+			if (tableModel.getRowCount() == 0) {
+				delete.setEnabled(false);
+			}
+
+			// Table still contains one or more rows, so highlight (select)
+			// the appropriate one.
+			else {
+				int rowToSelect = rowSelected;
+
+				if (rowSelected >= tableModel.getRowCount()) {
+					rowToSelect = rowSelected - 1;
+				}
+
+				table.setRowSelectionInterval(rowToSelect, rowToSelect);
+			}
+		}
+	}
+
+	/**
+	 * Add a new argument row to the table.
+	 */
+	protected void addArgument() {
+		// If a table cell is being edited, we should accept the current value
+		// and stop the editing before adding a new row.
+		stopTableEditing();
+
+		tableModel.addRow(makeNewArgument());
+
+		// Enable DELETE (which may already be enabled, but it won't hurt)
+		delete.setEnabled(true);
+
+		// Highlight (select) the appropriate row.
+		int rowToSelect = tableModel.getRowCount() - 1;
+		table.setRowSelectionInterval(rowToSelect, rowToSelect);
+	}
+
+	/**
+	 * Create a new Argument object.
+	 * 
+	 * @return a new Argument object
+	 */
+	protected Object makeNewArgument() {
+		return new Argument("", ""); // $NON-NLS-1$ // $NON-NLS-2$
+	}
+
+	/**
+	 * Stop any editing that is currently being done on the table. This will
+	 * save any changes that have already been made.
+	 */
+	protected void stopTableEditing() {
+		if (table.isEditing()) {
+			TableCellEditor cellEditor = table.getCellEditor(table.getEditingRow(), table.getEditingColumn());
+			cellEditor.stopCellEditing();
+		}
+	}
+
+	/**
+	 * Initialize the table model used for the arguments table.
+	 */
+	protected void initializeTableModel() {
+		tableModel = new ObjectTableModel(new String[] { COLUMN_NAMES_0, COLUMN_NAMES_1 },
+				Argument.class,
+				new Functor[] {
+				new Functor("getName"), // $NON-NLS-1$
+				new Functor("getValue") },  // $NON-NLS-1$
+				new Functor[] {
+			    new Functor("setName"), // $NON-NLS-1$
+				new Functor("setValue") }, // $NON-NLS-1$
+				new Class[] { String.class, String.class });
+	}
+
+	public static boolean testFunctors(){
+		ArgumentsPanel instance = new ArgumentsPanel();
+		instance.initializeTableModel();
+		return instance.tableModel.checkFunctors(null,instance.getClass());
+	}
+	
+	/**
+	 * Resize the table columns to appropriate widths.
+	 * 
+	 * @param _table
+	 *            the table to resize columns for
+	 */
+	protected void sizeColumns(JTable _table) {
+	}
+
+	/**
+	 * Create the main GUI panel which contains the argument table.
+	 * 
+	 * @return the main GUI panel
+	 */
+	private Component makeMainPanel() {
+		initializeTableModel();
+		table = new JTable(tableModel);
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        if (this.background != null) {
+            table.setBackground(this.background);
         }
+		return makeScrollPane(table);
+	}
 
-        public void testArgumentCreation() throws Exception
-        {
-            ArgumentsPanel gui = new ArgumentsPanel();
-            gui.tableModel.addRow(new Argument());
-            gui.tableModel.setValueAt("howdy", 0, 0);
-            gui.tableModel.setValueAt("doody", 0, 1);
-            assertEquals("=", ((Argument) ((Arguments) gui.createTestElement()).getArguments().get(0)).getMetaData());
+	/**
+	 * Create a panel containing the title label for the table.
+	 * 
+	 * @return a panel containing the title label
+	 */
+	protected Component makeLabelPanel() {
+		JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		labelPanel.add(tableLabel);
+        if (this.background != null) {
+            labelPanel.setBackground(this.background);
         }
-    }
+		return labelPanel;
+	}
+
+	/**
+	 * Create a panel containing the add and delete buttons.
+	 * 
+	 * @return a GUI panel containing the buttons
+	 */
+	private JPanel makeButtonPanel() {
+		add = new JButton(JMeterUtils.getResString("add")); // $NON-NLS-1$
+		add.setActionCommand(ADD);
+		add.setEnabled(true);
+
+		delete = new JButton(JMeterUtils.getResString("delete")); // $NON-NLS-1$
+		delete.setActionCommand(DELETE);
+
+		checkDeleteStatus();
+
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+        if (this.background != null) {
+            buttonPanel.setBackground(this.background);
+        }
+		add.addActionListener(this);
+		delete.addActionListener(this);
+		buttonPanel.add(add);
+		buttonPanel.add(delete);
+		return buttonPanel;
+	}
+
+	/**
+	 * Initialize the components and layout of this component.
+	 */
+	private void init() {
+		JPanel p = this;
+
+		if (standalone) {
+			setLayout(new BorderLayout(0, 5));
+			setBorder(makeBorder());
+			add(makeTitlePanel(), BorderLayout.NORTH);
+			p = new JPanel();
+		}
+
+		p.setLayout(new BorderLayout());
+
+		p.add(makeLabelPanel(), BorderLayout.NORTH);
+		p.add(makeMainPanel(), BorderLayout.CENTER);
+		// Force a minimum table height of 70 pixels
+		p.add(Box.createVerticalStrut(70), BorderLayout.WEST);
+		p.add(makeButtonPanel(), BorderLayout.SOUTH);
+
+		if (standalone) {
+			add(p, BorderLayout.CENTER);
+		}
+
+		table.revalidate();
+		sizeColumns(table);
+	}
 }

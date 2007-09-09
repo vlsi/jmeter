@@ -1,59 +1,28 @@
-package org.apache.jmeter.samplers;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.jmeter.assertions.Assertion;
-import org.apache.jmeter.config.ConfigTestElement;
-import org.apache.jmeter.testelement.AbstractTestElement;
-import org.apache.jmeter.testelement.PerSampleClonable;
-import org.apache.jmeter.testelement.TestElement;
-
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
 
-public abstract class AbstractSampler extends AbstractTestElement implements Sampler,
-		PerSampleClonable
-{
-	private final static String ASSERTIONS = "AbstractSampler.assertions";
+package org.apache.jmeter.samplers;
 
-	public AbstractSampler()
-	{
-		setProperty(ASSERTIONS,new ArrayList());
-	}
+import org.apache.jmeter.testelement.AbstractTestElement;
 
-	public void addTestElement(TestElement element)
-	{
-		if(element instanceof Assertion)
-		{
-			addAssertion((Assertion)element);
-		}
-		else
-		{
-			if(element.getClass().getName().equals(ConfigTestElement.class.getName()))
-			{
-				mergeIn(element);
-			}
-			else
-			{
-				addCustomTestElement(element);
-			}
-		}
-	}
-
-	abstract protected void addCustomTestElement(TestElement element);
-
-	protected void addAssertion(Assertion assertion)
-	{
-		getAssertions().add(assertion);
-	}
-
-	protected List getAssertions()
-	{
-		return (List)getProperty(ASSERTIONS);
-	}
+/**
+ * @author Michael Stover
+ * @version $Revision$
+ */
+public abstract class AbstractSampler extends AbstractTestElement implements Sampler {
 }

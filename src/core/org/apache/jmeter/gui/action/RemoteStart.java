@@ -1,263 +1,192 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.gui.action;
+
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.Iterator;
-import java.util.StringTokenizer;
 
-import javax.swing.JOptionPane;
-
+import org.apache.jmeter.JMeter;
 import org.apache.jmeter.engine.ClientJMeterEngine;
 import org.apache.jmeter.engine.JMeterEngine;
 import org.apache.jmeter.engine.JMeterEngineException;
 import org.apache.jmeter.gui.GuiPackage;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.collections.HashTree;
-import org.apache.log.Hierarchy;
+import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
-/****************************************
- * Title: Description: Copyright: Copyright (c) 2001 Company:
- *
- *@author    Michael Stover
- *@author	 Drew Gulino
- *@created   $Date$
- *@version   1.1
- ***************************************/
+public class RemoteStart extends AbstractAction {
 
-public class RemoteStart extends AbstractAction
-{
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-			"jmeter.gui");
-	private Map remoteEngines = new HashMap();
-	
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-	private static Set commands = new HashSet();
-	static
-	{
-		commands.add("remote_start");
-		commands.add("remote_stop");
-		commands.add("remote_start_all");
-		commands.add("remote_stop_all");
+	private static final String LOCAL_HOST = "127.0.0.1"; // $NON-NLS-1$
+
+    private static final String REMOTE_HOSTS = "remote_hosts"; // $NON-NLS-1$ jmeter.properties
+
+    private static final String REMOTE_HOSTS_SEPARATOR = ","; // $NON-NLS-1$
+
+    private static Set commands = new HashSet();
+	static {
+		commands.add(ActionNames.REMOTE_START);
+		commands.add(ActionNames.REMOTE_STOP);
+		commands.add(ActionNames.REMOTE_START_ALL);
+		commands.add(ActionNames.REMOTE_STOP_ALL);
+		commands.add(ActionNames.REMOTE_EXIT);
+		commands.add(ActionNames.REMOTE_EXIT_ALL);
 	}
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public RemoteStart() { }
+	private Map remoteEngines = new HashMap();
 
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param e  !ToDo (Parameter description)
-	 ***************************************/
-	public void doAction(ActionEvent e)
-	{
-		String name = ((Component)e.getSource()).getName();
-		String action = e.getActionCommand();
-		if(action.equals("remote_stop"))
-		{
-			doRemoteStop(name);
+	public RemoteStart() {
+	}
+
+	public void doAction(ActionEvent e) {
+		String name = ((Component) e.getSource()).getName();
+		if (name != null) {
+			name = name.trim();
 		}
-		else if(action.equals("remote_start"))
-		{
+		String action = e.getActionCommand();
+		if (action.equals(ActionNames.REMOTE_STOP)) {
+			doRemoteStop(name);
+		} else if (action.equals(ActionNames.REMOTE_START)) {
+			popupShouldSave(e);
 			doRemoteInit(name);
 			doRemoteStart(name);
-		}
-		else if(action.equals("remote_start_all"))
-		{
-			String remote_hosts_string = JMeterUtils.getPropDefault("remote_hosts",
-								  "127.0.0.1");
-			java.util.StringTokenizer st = new java.util.StringTokenizer(remote_hosts_string, ",");
-			while(st.hasMoreElements())
-			{
-				String el = (String)st.nextElement();
-				doRemoteInit(el);
+		} else if (action.equals(ActionNames.REMOTE_START_ALL)) {
+			popupShouldSave(e);
+			String remote_hosts_string = JMeterUtils.getPropDefault(REMOTE_HOSTS, LOCAL_HOST);
+			java.util.StringTokenizer st = new java.util.StringTokenizer(remote_hosts_string, REMOTE_HOSTS_SEPARATOR);
+			while (st.hasMoreElements()) {
+				String el = (String) st.nextElement();
+				doRemoteInit(el.trim());
 			}
-			st = new java.util.StringTokenizer(remote_hosts_string, ",");
-			while(st.hasMoreElements())
-			{
-				String el = (String)st.nextElement();
-				doRemoteStart(el);
+			st = new java.util.StringTokenizer(remote_hosts_string, REMOTE_HOSTS_SEPARATOR);
+			while (st.hasMoreElements()) {
+				String el = (String) st.nextElement();
+				doRemoteStart(el.trim());
+			}
+		} else if (action.equals(ActionNames.REMOTE_STOP_ALL)) {
+			String remote_hosts_string = JMeterUtils.getPropDefault(REMOTE_HOSTS, LOCAL_HOST);
+			java.util.StringTokenizer st = new java.util.StringTokenizer(remote_hosts_string, REMOTE_HOSTS_SEPARATOR);
+			while (st.hasMoreElements()) {
+				String el = (String) st.nextElement();
+				doRemoteStop(el.trim());
+			}
+		} else if (action.equals(ActionNames.REMOTE_EXIT)) {
+			doRemoteExit(name);
+		} else if (action.equals(ActionNames.REMOTE_EXIT_ALL)) {
+			String remote_hosts_string = JMeterUtils.getPropDefault(REMOTE_HOSTS, LOCAL_HOST);
+			java.util.StringTokenizer st = new java.util.StringTokenizer(remote_hosts_string, REMOTE_HOSTS_SEPARATOR);
+			while (st.hasMoreElements()) {
+				String el = (String) st.nextElement();
+				doRemoteExit(el.trim());
 			}
 		}
-		else if(action.equals("remote_stop_all"))
-		{
-			String remote_hosts_string = JMeterUtils.getPropDefault("remote_hosts",
-								  "127.0.0.1");
-			java.util.StringTokenizer st = new java.util.StringTokenizer(remote_hosts_string, ",");
-			while(st.hasMoreElements())
-			{
-				String el = (String)st.nextElement();
-				doRemoteStop(el);
-			}
-		}
-	}
-	
-	
-	/* 
-	 * Stops a remote testing engine
-	 * 
-	 * @param name The DNS name or IP address of the remote testing engine
-	 * 
-	 */
-	private void doRemoteStop(String name)
-	{
-		GuiPackage.getInstance().getMainFrame().showStoppingMessage(name);
-			JMeterEngine engine = (JMeterEngine)remoteEngines.get(name);
-			engine.stopTest();
 	}
 
-	/* 
-	 * Starts a remote testing engine
+	/**
+	 * Stops a remote testing engine
 	 * 
-	 * @param name The DNS name or IP address of the remote testing engine
-	 * 
-	 */	
-	private void doRemoteStart(String name)
-	{
-		JMeterEngine engine = (JMeterEngine)remoteEngines.get(name);
-			if(engine == null)
-			{
-				try
-				{
-					engine = new ClientJMeterEngine(name);
-					remoteEngines.put(name, engine);
-				}
-				catch(Exception ex)
-				{
-					log.error("",ex);
-					JMeterUtils.reportErrorToUser("Bad call to remote host");
-					return;
-				}
-			}
-			else
-			{
-				engine.reset();
-			}
-			startEngine(engine, name);
-	}
-	/* Initializes remote engines
+	 * @param name
+	 *            the DNS name or IP address of the remote testing engine
 	 * 
 	 */
-	 private void doRemoteInit(String name)
-	 {
-		JMeterEngine engine = (JMeterEngine)remoteEngines.get(name);
-			if(engine == null)
-			{
-				try
-				{
-					engine = new ClientJMeterEngine(name);
-					remoteEngines.put(name, engine);
-				}
-				catch(Exception ex)
-				{
-					log.error("",ex);
-					JMeterUtils.reportErrorToUser("Bad call to remote host");
-					return;
-				}
-			}
-			else
-			{
-				engine.reset();
-			}
-			initEngine(engine, name);
+	private void doRemoteStop(String name) {
+		GuiPackage.getInstance().getMainFrame().showStoppingMessage(name);
+		JMeterEngine engine = (JMeterEngine) remoteEngines.get(name);
+		engine.stopTest();
 	}
-	/****************************************
-	 * !ToDoo (Method description)
-	 *
-	 *@return   !ToDo (Return description)
-	 ***************************************/
-	public Set getActionNames()
-	{
+
+	/**
+	 * Exits a remote testing engine
+	 * 
+	 * @param name
+	 *            the DNS name or IP address of the remote testing engine
+	 * 
+	 */
+	private void doRemoteExit(String name) {
+		JMeterEngine engine = (JMeterEngine) remoteEngines.get(name);
+		if (engine == null)
+			return;
+		// GuiPackage.getInstance().getMainFrame().showStoppingMessage(name);
+		engine.exit();
+	}
+
+	/**
+	 * Starts a remote testing engine
+	 * 
+	 * @param name
+	 *            the DNS name or IP address of the remote testing engine
+	 * 
+	 */
+	private void doRemoteStart(String name) {
+		JMeterEngine engine = (JMeterEngine) remoteEngines.get(name);
+		if (engine != null) {
+			try {
+				engine.runTest();
+			} catch (JMeterEngineException e) {
+				JMeterUtils.reportErrorToUser(e.getMessage(),JMeterUtils.getResString("remote_error_starting")); // $NON-NLS-1$
+			}
+		}
+	}
+
+	/**
+	 * Initializes remote engines
+	 */
+	private void doRemoteInit(String name) {
+		JMeterEngine engine = (JMeterEngine) remoteEngines.get(name);
+		if (engine == null) {
+			try {
+				engine = new ClientJMeterEngine(name);
+				remoteEngines.put(name, engine);
+			} catch (Exception ex) {
+				log.error("Failed to initialise remote engine", ex);
+				JMeterUtils.reportErrorToUser(ex.getMessage(),JMeterUtils.getResString("remote_error_init")); // $NON-NLS-1$
+				return;
+			}
+		} else {
+			engine.reset();
+		}
+		initEngine(engine, name);
+	}
+
+	public Set getActionNames() {
 		return commands;
 	}
 
-	/* Initializes test on engine
-	 *
-	 * @param engine	remote engine object
-	 * @param host		host the engine will run on
+	/**
+	 * Initializes test on engine.
+	 * 
+	 * @param engine
+	 *            remote engine object
+	 * @param host
+	 *            host the engine will run on
 	 */
-	private void initEngine(JMeterEngine engine, String host)
-	{
+	private void initEngine(JMeterEngine engine, String host) {
 		GuiPackage gui = GuiPackage.getInstance();
 		HashTree testTree = gui.getTreeModel().getTestPlan();
-		convertSubTree(testTree);
-		testTree.add(testTree.getArray()[0],gui.getMainFrame());
+		JMeter.convertSubTree(testTree);
+		testTree.add(testTree.getArray()[0], gui.getMainFrame());
 		engine.configure(testTree);
-	}
-	
-	/****************************************
-	 * Starts the test on the remote engine
-	 *
-	 *@param engine  !ToDo (Parameter description)
-	 *@param host    !ToDo (Parameter description)
-	 ***************************************/
-	private void startEngine(JMeterEngine engine, String host)
-	{
-		GuiPackage gui = GuiPackage.getInstance();
-		try {
-			engine.runTest();
-		} catch(JMeterEngineException e) {
-			JOptionPane.showMessageDialog(gui.getMainFrame(),e.getMessage(),
-					JMeterUtils.getResString("Error Occurred"),JOptionPane.ERROR_MESSAGE);
-		}
 	}
 }

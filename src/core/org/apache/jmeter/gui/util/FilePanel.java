@@ -1,58 +1,23 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
- */package org.apache.jmeter.gui.util;
-import java.awt.FlowLayout;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
+package org.apache.jmeter.gui.util;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Iterator;
@@ -60,10 +25,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -71,116 +36,120 @@ import javax.swing.event.ChangeListener;
 import org.apache.jmeter.util.JMeterUtils;
 
 /**
- *  Title: Jakarta JMeter Description: Copyright: Copyright (c) 2002 Company:
- *  Apache Software Foundation
- *
- *@author     Michael Stover
- *@created    April 18, 2002
- *@version    1.0
+ * author Michael Stover Created April 18, 2002
  */
-
-public class FilePanel extends JPanel implements ActionListener
-{
-
+public class FilePanel extends HorizontalPanel implements ActionListener {
 	JTextField filename = new JTextField(20);
-	JLabel label = new JLabel(JMeterUtils.getResString("file_visualizer_filename"));
-	JButton browse = new JButton(JMeterUtils.getResString("browse"));
-	List listeners = new LinkedList();
+
+	JLabel label = new JLabel(JMeterUtils.getResString("file_visualizer_filename")); //$NON-NLS-1$
+
+	JButton browse = new JButton(JMeterUtils.getResString("browse")); //$NON-NLS-1$
+
+    private static final String ACTION_BROWSE = "browse"; //$NON-NLS-1$
+
+    List listeners = new LinkedList();
+
 	String title;
-	
+
+	String filetype;
+
 	/**
-	 *  Constructor for the FilePanel object
+	 * Constructor for the FilePanel object.
 	 */
-	public FilePanel()
-	{
-		title = "";
+	public FilePanel() {
+		title = ""; //$NON-NLS-1$
 		init();
 	}
-	
-	public FilePanel(String title)
-	{
+
+	public FilePanel(String title) {
 		this.title = title;
 		init();
 	}
 
+	public FilePanel(String title, String filetype) {
+		this(title);
+		this.filetype = filetype;
+	}
+
 	/**
-	 *  Constructor for the FilePanel object
+	 * Constructor for the FilePanel object.
 	 */
-	public FilePanel(ChangeListener l,String title)
-	{
+	public FilePanel(ChangeListener l, String title) {
 		this.title = title;
 		init();
 		listeners.add(l);
 	}
-	
-	public void addChangeListener(ChangeListener l)
-	{
+
+	public void addChangeListener(ChangeListener l) {
 		listeners.add(l);
 	}
 
-	/**
-	 *  Description of the Method
-	 */
-	private void init()
-	{
-		this.setLayout(new FlowLayout(FlowLayout.LEFT));
+	private void init() {
 		setBorder(BorderFactory.createTitledBorder(title));
 		add(label);
+		add(Box.createHorizontalStrut(5));
 		add(filename);
+		add(Box.createHorizontalStrut(5));
 		filename.addActionListener(this);
 		add(browse);
-		browse.setActionCommand("browse");
+		browse.setActionCommand(ACTION_BROWSE);
 		browse.addActionListener(this);
+
+	}
+
+	public void clearGui(){
+		filename.setText(""); // $NON-NLS-1$
 	}
 
 	/**
-	 *  Gets the filename attribute of the FilePanel object
-	 *
-	 *@return    The filename value
+	 * If the gui needs to enable/disable the FilePanel, call the method.
+	 * 
+	 * @param enable
 	 */
-	public String getFilename()
-	{
+	public void enableFile(boolean enable) {
+		browse.setEnabled(enable);
+		filename.setEnabled(enable);
+	}
+
+	/**
+	 * Gets the filename attribute of the FilePanel object.
+	 * 
+	 * @return the filename value
+	 */
+	public String getFilename() {
 		return filename.getText();
 	}
 
 	/**
-	 *  Sets the filename attribute of the FilePanel object
-	 *
-	 *@param  f  The new filename value
+	 * Sets the filename attribute of the FilePanel object.
+	 * 
+	 * @param f
+	 *            the new filename value
 	 */
-	public void setFilename(String f)
-	{
+	public void setFilename(String f) {
 		filename.setText(f);
 	}
-	
-	private void fireFileChanged()
-	{
+
+	private void fireFileChanged() {
 		Iterator iter = listeners.iterator();
-		while(iter.hasNext())
-		{
-			((ChangeListener)iter.next()).stateChanged(new ChangeEvent(this));
+		while (iter.hasNext()) {
+			((ChangeListener) iter.next()).stateChanged(new ChangeEvent(this));
 		}
 	}
-			
 
-	/**
-	 *  Description of the Method
-	 *
-	 *@param  e  Description of the Parameter
-	 */
-	public void actionPerformed(ActionEvent e)
-	{
-		if(e.getActionCommand().equals("browse"))
-		{
-			JFileChooser chooser = FileDialoger.promptToOpenFile(new String[]{".jtl"});
-			if(chooser != null && chooser.getSelectedFile() != null)
-			{
+	public void actionPerformed(ActionEvent e) {
+		if (e.getActionCommand().equals(ACTION_BROWSE)) {
+			JFileChooser chooser;
+            if(filetype == null){
+                chooser = FileDialoger.promptToOpenFile();
+            } else {
+                chooser = FileDialoger.promptToOpenFile(new String[] { filetype });
+            }
+			if (chooser != null && chooser.getSelectedFile() != null) {
 				filename.setText(chooser.getSelectedFile().getPath());
 				fireFileChanged();
 			}
-		}
-		else
-		{
+		} else {
 			fireFileChanged();
 		}
 	}

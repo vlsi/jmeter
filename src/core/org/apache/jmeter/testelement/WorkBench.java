@@ -1,36 +1,38 @@
-package org.apache.jmeter.testelement;
-import java.io.Serializable;
-import java.util.List;
-
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- *@author    Michael Stover
- *@created   March 13, 2001
- *@version   1.0
- ***************************************/
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
 
-public class WorkBench extends AbstractTestElement implements Serializable
-{
-	private static List itemsCanAdd = null;
-	private boolean isRootNode;
+package org.apache.jmeter.testelement;
 
-	/****************************************
-	 * Constructor for the WorkBench object
-	 *
-	 *@param name        Description of Parameter
-	 *@param isRootNode  !ToDo (Parameter description)
-	 ***************************************/
-	public WorkBench(String name, boolean isRootNode)
-	{
+import java.io.Serializable;
+
+/**
+ * @author Michael Stover Created March 13, 2001
+ * @version $Revision$ Last updated: $Date$
+ */
+public class WorkBench extends AbstractTestElement implements Serializable {
+
+	/**
+	 * Constructor for the WorkBench object.
+	 */
+	public WorkBench(String name, boolean isRootNode) {
 		setName(name);
 	}
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public WorkBench()
-	{
+	public WorkBench() {
 	}
-
 }

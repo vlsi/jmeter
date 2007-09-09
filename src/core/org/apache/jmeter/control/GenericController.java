@@ -1,373 +1,240 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.control;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.jmeter.samplers.AbstractSampler;
+import org.apache.jmeter.engine.event.LoopIterationEvent;
+import org.apache.jmeter.engine.event.LoopIterationListener;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testelement.AbstractTestElement;
-import org.apache.jmeter.testelement.PerSampleClonable;
-import org.apache.jmeter.testelement.PerThreadClonable;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jorphan.logging.LoggingManager;
+import org.apache.log.Logger;
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+/**
+ * @author Michael Stover
+ * @author Thad Smith
+ * @version $Revision$
+ */
+public class GenericController extends AbstractTestElement implements Controller, Serializable {
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-public class GenericController extends AbstractTestElement implements Controller,
-		Serializable,PerThreadClonable
-{
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
-	protected List subControllersAndSamplers = new ArrayList();
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
-	protected int current;
-	/****************************************
-	 * !ToDo (Field description)
-	 ***************************************/
-	protected Iterator controlIt;
-	private List configs = new LinkedList();
-	private boolean returnedNull = false;
-	private boolean done = false, timeForNext = false;
-	private List assertions = new LinkedList();
+	protected transient LinkedList iterationListeners = new LinkedList();
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public GenericController()
-	{
-		
+	protected transient List subControllersAndSamplers = new ArrayList();
+
+	protected transient int current;
+
+	private transient int iterCount;
+
+	private transient boolean done, first;
+
+	/**
+	 * Creates a Generic Controller
+	 */
+	public GenericController() {
 	}
-	
-	public boolean isNextFirst()
-	{
-		if(current == 0)
-		{
-			return true;
+
+	public void initialize() {
+		resetCurrent();
+		resetIterCount();
+		done = false;
+		first = true;
+		TestElement elem;
+		for (int i = 0; i < subControllersAndSamplers.size(); i++) {
+			elem = (TestElement) subControllersAndSamplers.get(i);
+			if (elem instanceof Controller) {
+				((Controller) elem).initialize();
+			}
 		}
-		return false;
 	}
 
-	/****************************************
-	 * Gets the ConfigElements attribute of the GenericController object
-	 *
-	 *@return   The ConfigElements value
-	 ***************************************/
-	protected List getConfigElements()
-	{
-		return configs;
-	}
-
-	private void addConfigElement(TestElement el)
-	{
-		configs.add(el);
-	}
-
-	public void initialize()
-	{
+	protected void reInitialize() {
 		resetCurrent();
-	}
-
-	public void reInitialize()
-	{
-		resetCurrent();
-	}
-
-	protected void removeCurrentController()
-	{
-		subControllersAndSamplers.remove(current);
-	}
-
-	protected void resetCurrent()
-	{
-		current = 0;
-	}
-
-	protected void incrementCurrent()
-	{
-		current++;
+		incrementIterCount();
+		setFirst(true);
+		recoverRunningVersion();
 	}
 
 	/**
-	 * Answers the question: when the end of subcontrollers and samplers is reached,
-	 * how does this Controller answert the question: hasNext()?  For most controllers,
-	 * the answer is to return false.  For some, it depends.  The LoopController, for
-	 * instance will repeat the list of subcontrollers a given number of times
-	 * before signalling false to 'hasNext()'.
+	 * @see org.apache.jmeter.control.Controller#next()
 	 */
-	protected boolean hasNextAtEnd()
-	{
-		return false;
-	}
-
-	protected void nextAtEnd()
-	{
-		resetCurrent();
-	}
-
-	public boolean hasNext()
-	{
-		boolean retVal;
-		Object controller = getCurrentController();
-		if(controller == null)
-		{
-			retVal = hasNextAtEnd();
-		}
-		else if(controller instanceof Controller)
-		{
-			if(((Controller)controller).hasNext())
-			{
-				retVal = true;
+	public Sampler next() {
+		fireIterEvents();
+		log.debug("Calling next on: " + this.getClass().getName());
+		if (isDone())
+			return null;
+		Sampler returnValue = null;
+		TestElement currentElement = null;
+		try {
+			currentElement = getCurrentElement();
+			setCurrentElement(currentElement);
+			if (currentElement == null) {
+				// incrementCurrent();
+				returnValue = nextIsNull();
+			} else {
+				if (currentElement instanceof Sampler) {
+					returnValue = nextIsASampler((Sampler) currentElement);
+				} else {
+					returnValue = nextIsAController((Controller) currentElement);
+				}
 			}
-			else
-			{
-				currentHasNextIsFalse();
-				retVal = hasNext();
-			}
+		} catch (NextIsNullException e) {
+			returnValue = null;
 		}
-		else
-		{
-			retVal = true;
-		}
-		if(!retVal)
-		{
-			reInitialize();
-		}
-		return retVal;
+		return returnValue;
 	}
 
-	protected void currentHasNextIsFalse()
-	{
-		if(((Controller)getCurrentController()).isDone())
-		{
-			removeCurrentController();
-		}
-		else
-		{
-			incrementCurrent();
-		}
-	}
-
-	protected boolean shortCircuitIsDone()
-	{
+	/**
+	 * @see org.apache.jmeter.control.Controller#isDone()
+	 */
+	public boolean isDone() {
 		return done;
 	}
 
-	protected void setShortCircuit(boolean done)
-	{
+	protected void setDone(boolean done) {
 		this.done = done;
 	}
 
-	public boolean isDone()
-	{
-		if(shortCircuitIsDone())
-		{
-			return true;
-		}
-		boolean isdone = true;
-		Iterator iter = subControllersAndSamplers.iterator();
-		while (iter.hasNext())
-		{
-			Object item = iter.next();
-			if(item instanceof Sampler)
-			{
-				return false;
-			}
-			else
-			{
-				isdone = isdone && ((Controller)item).isDone();
-			}
-		}
-		setShortCircuit(isdone);
-		return isdone;
+	protected boolean isFirst() {
+		return first;
 	}
 
-	protected TestElement getCurrentController()
-	{
-		if(current < subControllersAndSamplers.size())
-		{
-			return (TestElement)subControllersAndSamplers.get(current);
-		}
-		else return null;
+	public void setFirst(boolean b) {
+		first = b;
 	}
 
-	/****************************************
+	protected Sampler nextIsAController(Controller controller) throws NextIsNullException {
+		Sampler returnValue;
+		Sampler sampler = controller.next();
+		if (sampler == null) {
+			currentReturnedNull(controller);
+			returnValue = next();
+		} else {
+			returnValue = sampler;
+		}
+		return returnValue;
+	}
+
+	protected Sampler nextIsASampler(Sampler element) throws NextIsNullException {
+		incrementCurrent();
+		return element;
+	}
+
+	protected Sampler nextIsNull() throws NextIsNullException {
+		reInitialize();
+		return null;
+	}
+
+	protected void currentReturnedNull(Controller c) {
+		if (c.isDone()) {
+			removeCurrentElement();
+		} else {
+			incrementCurrent();
+		}
+	}
+
+	/**
 	 * Gets the SubControllers attribute of the GenericController object
-	 *
-	 *@return   The SubControllers value
-	 ***************************************/
-	protected List getSubControllers()
-	{
+	 * 
+	 * @return the SubControllers value
+	 */
+	protected List getSubControllers() {
 		return subControllersAndSamplers;
 	}
 
-
-	/****************************************
-	 * !ToDo
-	 *
-	 *@param child  !ToDo
-	 ***************************************/
-	public void addTestElement(TestElement child)
-	{
-		if(child instanceof Controller || child instanceof Sampler)
-		{
-			addController(child);
-		}
-	}
-
-	private void addController(TestElement child)
-	{
+	private void addElement(TestElement child) {
 		subControllersAndSamplers.add(child);
 	}
 
-	/****************************************
-	 * Retrieves the next Entry to be sampled.
-	 *
-	 *@return   !ToDo (Return description)
-	 ***************************************/
-	public Sampler next()
-	{
-		TestElement controller = getCurrentController();
-		if(controller == null)
-		{
-			nextAtEnd();
-			return next();
-		}
-		if(controller instanceof Sampler)
-		{
-			incrementCurrent();
-			return (Sampler)controller;
-		}
-		else
-		{
-			Controller c = (Controller)controller;
-			if(c.hasNext())
-			{
-				Sampler s = c.next();
-				return s;
+	protected void setCurrentElement(TestElement currentElement) throws NextIsNullException {
+	}
+
+	protected TestElement getCurrentElement() throws NextIsNullException {
+		if (current < subControllersAndSamplers.size()) {
+			return (TestElement) subControllersAndSamplers.get(current);
+		} else {
+			if (subControllersAndSamplers.size() == 0) {
+				setDone(true);
+				throw new NextIsNullException();
 			}
-			else if(c.isDone())
-			{
-				removeCurrentController();
-				return next();
-			}
-			else
-			{
-				incrementCurrent();
-				return next();
-			}
+			return null;
 		}
 	}
 
-	public static class Test extends junit.framework.TestCase
-	{
-		public Test(String name)
-		{
-			super(name);
-		}
+	protected void removeCurrentElement() {
+		subControllersAndSamplers.remove(current);
+	}
 
-		public void testProcessing() throws Exception
-		{
-			GenericController controller = new GenericController();
-			GenericController sub_1 = new GenericController();
-			sub_1.addTestElement(makeSampler("one"));
-			sub_1.addTestElement(makeSampler("two"));
-			controller.addTestElement(sub_1);
-			controller.addTestElement(makeSampler("three"));
-			GenericController sub_2 = new GenericController();
-			GenericController sub_3 = new GenericController();
-			sub_2.addTestElement(makeSampler("four"));
-			sub_3.addTestElement(makeSampler("five"));
-			sub_3.addTestElement(makeSampler("six"));
-			sub_2.addTestElement(sub_3);
-			sub_2.addTestElement(makeSampler("seven"));
-			controller.addTestElement(sub_2);
-			String[] order = new String[]{"one","two","three","four","five","six","seven"};
-			int counter = 7;
-			for (int i = 0; i < 2; i++)
-			{
-				assertEquals(7,counter);
-				counter = 0;
-				while(controller.hasNext())
-				{
-					TestElement sampler = controller.next();
-					assertEquals(order[counter++],sampler.getProperty(TestElement.NAME));
-				}
-			}
-		}
+	protected void incrementCurrent() {
+		current++;
+	}
 
-		private TestElement makeSampler(String name)
-		{
-			TestSampler s = new TestSampler();
-			s.setName(name);
-			return s;
+	protected void resetCurrent() {
+		current = 0;
+	}
+
+	public void addTestElement(TestElement child) {
+		if (child instanceof Controller || child instanceof Sampler) {
+			addElement(child);
 		}
-		class TestSampler extends AbstractSampler implements PerSampleClonable {
-		  public void addCustomTestElement(TestElement t) { }
-		  public org.apache.jmeter.samplers.SampleResult sample(org.apache.jmeter.samplers.Entry e) { return null; }
+	}
+
+	public void addIterationListener(LoopIterationListener lis) {
+		/*
+		 * A little hack - add each listener to the start of the list - this
+		 * ensures that the thread running the show is the first listener and
+		 * can modify certain values before other listeners are called.
+		 */
+		iterationListeners.addFirst(lis);
+	}
+
+	protected void fireIterEvents() {
+		if (isFirst()) {
+			fireIterationStart();
+			first = false;
 		}
+	}
+
+	protected void fireIterationStart() {
+		Iterator iter = iterationListeners.iterator();
+		LoopIterationEvent event = new LoopIterationEvent(this, getIterCount());
+		while (iter.hasNext()) {
+			LoopIterationListener item = (LoopIterationListener) iter.next();
+			item.iterationStart(event);
+		}
+	}
+
+	protected int getIterCount() {
+		return iterCount;
+	}
+
+	protected void incrementIterCount() {
+		iterCount++;
+	}
+
+	protected void resetIterCount() {
+		iterCount = 0;
 	}
 }

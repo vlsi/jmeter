@@ -1,194 +1,192 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
-package org.apache.jmeter.protocol.ftp.config.gui;
-import java.awt.Font;
 
+package org.apache.jmeter.protocol.ftp.config.gui;
+
+import java.awt.BorderLayout;
+
+import javax.swing.ButtonGroup;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.JTextField;
-import javax.swing.border.Border;
-import javax.swing.border.EmptyBorder;
 
 import org.apache.jmeter.config.ConfigTestElement;
 import org.apache.jmeter.config.gui.AbstractConfigGui;
+import org.apache.jmeter.gui.util.HorizontalPanel;
+import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.protocol.ftp.sampler.FTPSampler;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.gui.layout.VerticalLayout;
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+public class FtpConfigGui extends AbstractConfigGui {
 
-public class FtpConfigGui extends AbstractConfigGui
-{
-	private final static String SERVER = "server";
-	private final static String FILENAME = "filename";
+	private JTextField server;
 
-	private JTextField server = new JTextField(20);
-	private JTextField filename = new JTextField(20);
+	private JTextField remoteFile;
 
+	private JTextField localFile;
+
+	private JCheckBox binaryMode;
+	
+	private JCheckBox saveResponseData;
+	
 	private boolean displayName = true;
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public FtpConfigGui()
-	{
+	private JRadioButton getBox;
+
+	private JRadioButton putBox;
+
+	public FtpConfigGui() {
 		this(true);
 	}
 
-	public String getStaticLabel()
-	{
-		return JMeterUtils.getResString("ftp_sample_title");
+	public FtpConfigGui(boolean displayName) {
+		this.displayName = displayName;
+		init();
 	}
 
-	public void configure(TestElement element)
-	{
+	public String getLabelResource() {
+		return "ftp_sample_title"; // $NON-NLS-1$
+	}
+
+	public void configure(TestElement element) {
 		super.configure(element);
-		server.setText((String)element.getProperty(FTPSampler.SERVER));
-		filename.setText((String)element.getProperty(FTPSampler.FILENAME));
+		// Note: the element is a ConfigTestElement, so cannot use FTPSampler access methods
+		server.setText(element.getPropertyAsString(FTPSampler.SERVER));
+		remoteFile.setText(element.getPropertyAsString(FTPSampler.REMOTE_FILENAME));
+		localFile.setText(element.getPropertyAsString(FTPSampler.LOCAL_FILENAME));
+		binaryMode.setSelected(element.getPropertyAsBoolean(FTPSampler.BINARY_MODE, false));
+		saveResponseData.setSelected(element.getPropertyAsBoolean(FTPSampler.SAVE_RESPONSE, false));
+		putBox.setSelected(element.getPropertyAsBoolean(FTPSampler.UPLOAD_FILE,false));
 	}
 
-	public TestElement createTestElement()
-	{
+	public TestElement createTestElement() {
 		ConfigTestElement element = new ConfigTestElement();
 		modifyTestElement(element);
 		return element;
 	}
 
-    /**
-     * Modifies a given TestElement to mirror the data in the gui components.
-     * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
-     */
-    public void modifyTestElement(TestElement element)
-    {
-        configureTestElement(element);
-        element.setProperty(FTPSampler.SERVER,server.getText());
-        element.setProperty(FTPSampler.FILENAME,filename.getText());
-    }
-
-	/****************************************
-	 * !ToDo (Constructor description)
-	 *
-	 *@param displayName  !ToDo (Parameter description)
-	 ***************************************/
-	public FtpConfigGui(boolean displayName)
-	{
-		this.displayName = displayName;
-		init();
+	/**
+	 * Modifies a given TestElement to mirror the data in the gui components.
+	 * 
+	 * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+	 */
+	public void modifyTestElement(TestElement element) {
+		configureTestElement(element);
+		// Note: the element is a ConfigTestElement, so cannot use FTPSampler access methods
+		element.setProperty(FTPSampler.SERVER,server.getText());
+		element.setProperty(FTPSampler.REMOTE_FILENAME,remoteFile.getText());
+		element.setProperty(FTPSampler.LOCAL_FILENAME,localFile.getText());
+		element.setProperty(FTPSampler.BINARY_MODE,binaryMode.isSelected());
+		element.setProperty(FTPSampler.SAVE_RESPONSE, saveResponseData.isSelected());
+		element.setProperty(FTPSampler.UPLOAD_FILE,putBox.isSelected());
 	}
 
-	private JPanel createServerPanel()
-	{
-		JPanel serverPanel = new JPanel();
-		serverPanel.add(new JLabel(JMeterUtils.getResString("server")));
-		server.setName(SERVER);
-		serverPanel.add(server);
+    /**
+     * Implements JMeterGUIComponent.clearGui
+     */
+    public void clearGui() {
+        super.clearGui();
+        
+        server.setText(""); //$NON-NLS-1$
+        remoteFile.setText(""); //$NON-NLS-1$
+        localFile.setText(""); //$NON-NLS-1$
+        binaryMode.setSelected(false);
+        saveResponseData.setSelected(false);
+        getBox.setSelected(true);
+        putBox.setSelected(false);
+    }    
 
+	private JPanel createServerPanel() {
+		JLabel label = new JLabel(JMeterUtils.getResString("server")); //$NON-NLS-1$
+
+		server = new JTextField(10);
+		label.setLabelFor(server);
+
+		JPanel serverPanel = new JPanel(new BorderLayout(5, 0));
+		serverPanel.add(label, BorderLayout.WEST);
+		serverPanel.add(server, BorderLayout.CENTER);
 		return serverPanel;
 	}
 
-	private JPanel createFilenamePanel()
-	{
-		JPanel filenamePanel = new JPanel();
-		filenamePanel.add(new JLabel(JMeterUtils.getResString("file_to_retrieve")));
-		filename.setName(FILENAME);
-		filenamePanel.add(filename);
+	private JPanel createLocalFilenamePanel() {
+		JLabel label = new JLabel(JMeterUtils.getResString("ftp_local_file")); //$NON-NLS-1$
 
+		localFile = new JTextField(10);
+		label.setLabelFor(localFile);
+
+		JPanel filenamePanel = new JPanel(new BorderLayout(5, 0));
+		filenamePanel.add(label, BorderLayout.WEST);
+		filenamePanel.add(localFile, BorderLayout.CENTER);
 		return filenamePanel;
 	}
 
-	private void init()
-	{
-		this.setLayout(new VerticalLayout(1, VerticalLayout.LEFT));
-		if(displayName)
-		{
-			this.setLayout(new VerticalLayout(5, VerticalLayout.LEFT, VerticalLayout.TOP));
+	private JPanel createRemoteFilenamePanel() {
+		JLabel label = new JLabel(JMeterUtils.getResString("ftp_remote_file")); //$NON-NLS-1$
 
-			// MAIN PANEL
-			JPanel mainPanel = new JPanel();
-			Border margin = new EmptyBorder(10, 10, 5, 10);
-			mainPanel.setBorder(margin);
-			mainPanel.setLayout(new VerticalLayout(5, VerticalLayout.LEFT));
+		remoteFile = new JTextField(10);
+		label.setLabelFor(remoteFile);
 
-			// TITLE
-			JLabel panelTitleLabel = new JLabel(JMeterUtils.getResString("ftp_sample_title"));
-			Font curFont = panelTitleLabel.getFont();
-			int curFontSize = curFont.getSize();
-			curFontSize += 4;
-			panelTitleLabel.setFont(new Font(curFont.getFontName(), curFont.getStyle(), curFontSize));
-			mainPanel.add(panelTitleLabel);
+		JPanel filenamePanel = new JPanel(new BorderLayout(5, 0));
+		filenamePanel.add(label, BorderLayout.WEST);
+		filenamePanel.add(remoteFile, BorderLayout.CENTER);
+		return filenamePanel;
+	}
 
-			// NAME
-			mainPanel.add(getNamePanel());
+	private JPanel createOptionsPanel(){
 
-			// LOOP
-			mainPanel.add(createServerPanel());
-			mainPanel.add(createFilenamePanel());
+		ButtonGroup group = new ButtonGroup();
 
-			this.add(mainPanel);
+		getBox = new JRadioButton(JMeterUtils.getResString("ftp_get")); //$NON-NLS-1$
+		group.add(getBox);
+		getBox.setSelected(true);
+
+		putBox = new JRadioButton(JMeterUtils.getResString("ftp_put")); //$NON-NLS-1$
+		group.add(putBox);
+
+		binaryMode = new JCheckBox(JMeterUtils.getResString("ftp_binary_mode")); //$NON-NLS-1$
+		saveResponseData = new JCheckBox(JMeterUtils.getResString("ftp_save_response_data")); //$NON-NLS-1$
+		
+		
+		JPanel optionsPanel = new HorizontalPanel();
+		optionsPanel.add(getBox);
+		optionsPanel.add(putBox);
+		optionsPanel.add(binaryMode);
+		optionsPanel.add(saveResponseData);
+		return optionsPanel;		
+	}
+	private void init() {
+		setLayout(new BorderLayout(0, 5));
+
+		if (displayName) {
+			setBorder(makeBorder());
+			add(makeTitlePanel(), BorderLayout.NORTH);
 		}
-		else
-		{
-			this.add(createServerPanel());
-			this.add(createFilenamePanel());
-		}
+
+		// MAIN PANEL
+		VerticalPanel mainPanel = new VerticalPanel();
+		mainPanel.add(createServerPanel());
+		mainPanel.add(createRemoteFilenamePanel());
+		mainPanel.add(createLocalFilenamePanel());
+		mainPanel.add(createOptionsPanel());
+
+		add(mainPanel, BorderLayout.CENTER);
 	}
 }

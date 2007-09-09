@@ -1,14 +1,33 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
 package org.apache.jmeter.modifiers.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -17,64 +36,60 @@ import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.TableCellEditor;
 
-import org.apache.jmeter.config.gui.AbstractConfigGui;
 import org.apache.jmeter.gui.util.PowerTableModel;
+import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.modifiers.UserParameters;
+import org.apache.jmeter.processor.gui.AbstractPreProcessorGui;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.CollectionProperty;
+import org.apache.jmeter.testelement.property.PropertyIterator;
 import org.apache.jmeter.util.JMeterUtils;
+import org.apache.jorphan.logging.LoggingManager;
+import org.apache.log.Logger;
 
-/**
- * @author Administrator
- *
- * To change this generated comment edit the template variable "typecomment":
- * Window>Preferences>Java>Templates.
- */
-public class UserParametersGui extends AbstractConfigGui {
+public class UserParametersGui extends AbstractPreProcessorGui {
+	private static Logger log = LoggingManager.getLoggerForClass();
 
-	private String THREAD_COLUMNS =
-		JMeterUtils.getResString("user");
+	private String THREAD_COLUMNS_PREFIX = JMeterUtils.getResString("user") + "_"; // $NON-NLS-1$ $NON-NLS-2$
 
-	JTable paramTable;
-	PowerTableModel tableModel;
+	private JTable paramTable;
+
+	private PowerTableModel tableModel;
+
 	private int numUserColumns = 1;
-	private JButton addParameterButton,
-		addUserButton,
-		deleteRowButton,
-		deleteColumnButton;
+
+	private JButton addParameterButton, addUserButton, deleteRowButton, deleteColumnButton;
+
+	private JCheckBox perIterationCheck;
 
 	public UserParametersGui() {
 		super();
 		init();
 	}
 
-	/**
-	 * @see org.apache.jmeter.gui.JMeterGUIComponent#getStaticLabel()
-	 */
-	public String getStaticLabel() {
-		return JMeterUtils.getResString("user_parameters_title");
+	public String getLabelResource() {
+		return "user_parameters_title"; // $NON-NLS-1$
 	}
-	
-	public void configure(TestElement el)
-	{
-        initTableModel();
-        paramTable.setModel(tableModel);
-		UserParameters params = (UserParameters)el;
-		List names = params.getNames();
-		List threadValues = params.getThreadLists();
-		tableModel.setColumnData(0,names);
-		Iterator iter = threadValues.iterator();
-		if(iter.hasNext())
-		{
-			tableModel.setColumnData(1,(List)iter.next());
+
+	public void configure(TestElement el) {
+		initTableModel();
+		paramTable.setModel(tableModel);
+		UserParameters params = (UserParameters) el;
+		CollectionProperty names = params.getNames();
+		CollectionProperty threadValues = params.getThreadLists();
+		tableModel.setColumnData(0, (List) names.getObjectValue());
+		PropertyIterator iter = threadValues.iterator();
+		if (iter.hasNext()) {
+			tableModel.setColumnData(1, (List) iter.next().getObjectValue());
 		}
 		int count = 2;
-		while(iter.hasNext())
-		{
-			String colName = THREAD_COLUMNS+"_"+count;
-			tableModel.addNewColumn(colName,String.class);
-			tableModel.setColumnData(count,(List)iter.next());
+		while (iter.hasNext()) {
+			String colName = THREAD_COLUMNS_PREFIX + count;
+			tableModel.addNewColumn(colName, String.class);
+			tableModel.setColumnData(count, (List) iter.next().getObjectValue());
 			count++;
 		}
+		perIterationCheck.setSelected(params.isPerIteration());
 		super.configure(el);
 	}
 
@@ -87,70 +102,92 @@ public class UserParametersGui extends AbstractConfigGui {
 		return params;
 	}
 
+	/**
+	 * Modifies a given TestElement to mirror the data in the gui components.
+	 * 
+	 * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+	 */
+	public void modifyTestElement(TestElement params) {
+		if (paramTable.isEditing()) {
+			paramTable.getCellEditor().stopCellEditing();
+		}
+		((UserParameters) params).setNames(new CollectionProperty(UserParameters.NAMES, tableModel
+				.getColumnData(JMeterUtils.getResString("name")))); // $NON-NLS-1$
+		CollectionProperty threadLists = new CollectionProperty(UserParameters.THREAD_VALUES, new ArrayList());
+		log.debug("making threadlists from gui = " + threadLists);
+		for (int x = 1; x < tableModel.getColumnCount(); x++) {
+			threadLists.addItem(tableModel.getColumnData(THREAD_COLUMNS_PREFIX + x));
+			log.debug("Adding column to threadlist: " + tableModel.getColumnData(THREAD_COLUMNS_PREFIX + x));
+			log.debug("Threadlists now = " + threadLists);
+		}
+		log.debug("In the end, threadlists = " + threadLists);
+		((UserParameters) params).setThreadLists(threadLists);
+		((UserParameters) params).setPerIteration(perIterationCheck.isSelected());
+		super.configureTestElement(params);
+	}
+
     /**
-     * Modifies a given TestElement to mirror the data in the gui components.
-     * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+     * Implements JMeterGUIComponent.clearGui
      */
-    public void modifyTestElement(TestElement params)
-    {
-        ((UserParameters)params).setNames(tableModel.getColumnData(JMeterUtils.getResString("name")));
-        List threadLists = new LinkedList();
-        for (int x = 1; x < tableModel.getColumnCount(); x++) {
-        	threadLists.add(tableModel.getColumnData(THREAD_COLUMNS + "_" + x));
-        }
-        ((UserParameters)params).setThreadLists(threadLists);
-        super.configureTestElement(params);
-    }
+    public void clearGui() {
+        super.clearGui();
+        
+        initTableModel();
+        paramTable.setModel(tableModel);
+        perIterationCheck.setSelected(false);
+    }    
 
 	private void init() {
-		this.setLayout(new BorderLayout());
-		add(makeTitlePanel(), BorderLayout.NORTH);
+		setBorder(makeBorder());
+		setLayout(new BorderLayout());
+		JPanel vertPanel = new VerticalPanel();
+		vertPanel.add(makeTitlePanel());
+
+		perIterationCheck = new JCheckBox(JMeterUtils.getResString("update_per_iter"), true); // $NON-NLS-1$
+		Box perIterationPanel = Box.createHorizontalBox();
+		perIterationPanel.add(perIterationCheck);
+		perIterationPanel.add(Box.createHorizontalGlue());
+		vertPanel.add(perIterationPanel);
+		add(vertPanel, BorderLayout.NORTH);
+
 		add(makeParameterPanel(), BorderLayout.CENTER);
 	}
 
 	private JPanel makeParameterPanel() {
-		JPanel paramPanel = new JPanel(new BorderLayout());
-		JLabel tableLabel =
-			new JLabel(JMeterUtils.getResString("user_parameters_table"));
+		JLabel tableLabel = new JLabel(JMeterUtils.getResString("user_parameters_table")); // $NON-NLS-1$
 		initTableModel();
 		paramTable = new JTable(tableModel);
-		paramTable.setRowSelectionAllowed(true);
-		paramTable.setColumnSelectionAllowed(true);
+		// paramTable.setRowSelectionAllowed(true);
+		// paramTable.setColumnSelectionAllowed(true);
 		paramTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		paramTable.setCellSelectionEnabled(true);
+		// paramTable.setCellSelectionEnabled(true);
+		// paramTable.setPreferredScrollableViewportSize(new Dimension(100,
+		// 70));
+
+		JPanel paramPanel = new JPanel(new BorderLayout());
 		paramPanel.add(tableLabel, BorderLayout.NORTH);
-		JScrollPane scroller = new JScrollPane(paramTable);
-		Dimension tableDim = scroller.getPreferredSize();
-		tableDim.height = 70;
-		scroller.setPreferredSize(tableDim);
-		scroller.setColumnHeaderView(paramTable.getTableHeader());
-		paramPanel.add(scroller, BorderLayout.CENTER);
+		JScrollPane scroll = new JScrollPane(paramTable);
+		scroll.setPreferredSize(scroll.getMinimumSize());
+		paramPanel.add(scroll, BorderLayout.CENTER);
 		paramPanel.add(makeButtonPanel(), BorderLayout.SOUTH);
 		return paramPanel;
 	}
 
-    protected void initTableModel()
-    {
-        tableModel =
-        	new PowerTableModel(
-        		new String[] {
-        			JMeterUtils.getResString("name"),
-        			THREAD_COLUMNS + "_" + numUserColumns },
-        		new Class[] { String.class, String.class });
-    }
+	protected void initTableModel() {
+		tableModel = new PowerTableModel(new String[] { JMeterUtils.getResString("name"), // $NON-NLS-1$
+				THREAD_COLUMNS_PREFIX + numUserColumns }, new Class[] { String.class, String.class });
+	}
 
 	private JPanel makeButtonPanel() {
 		JPanel buttonPanel = new JPanel();
-		addParameterButton =
-			new JButton(JMeterUtils.getResString("add_parameter"));
-		addUserButton = new JButton(JMeterUtils.getResString("add_user"));
-		deleteRowButton =
-			new JButton(JMeterUtils.getResString("delete_parameter"));
-		deleteColumnButton =
-			new JButton(JMeterUtils.getResString("delete_user"));
+		buttonPanel.setLayout(new GridLayout(2, 2));
+		addParameterButton = new JButton(JMeterUtils.getResString("add_parameter")); // $NON-NLS-1$
+		addUserButton = new JButton(JMeterUtils.getResString("add_user")); // $NON-NLS-1$
+		deleteRowButton = new JButton(JMeterUtils.getResString("delete_parameter")); // $NON-NLS-1$
+		deleteColumnButton = new JButton(JMeterUtils.getResString("delete_user")); // $NON-NLS-1$
 		buttonPanel.add(addParameterButton);
-		buttonPanel.add(addUserButton);
 		buttonPanel.add(deleteRowButton);
+		buttonPanel.add(addUserButton);
 		buttonPanel.add(deleteColumnButton);
 		addParameterButton.addActionListener(new AddParamAction());
 		addUserButton.addActionListener(new AddUserAction());
@@ -162,10 +199,8 @@ public class UserParametersGui extends AbstractConfigGui {
 	private class AddParamAction implements ActionListener {
 		public void actionPerformed(ActionEvent e) {
 			if (paramTable.isEditing()) {
-				TableCellEditor cellEditor =
-					paramTable.getCellEditor(
-						paramTable.getEditingRow(),
-						paramTable.getEditingColumn());
+				TableCellEditor cellEditor = paramTable.getCellEditor(paramTable.getEditingRow(), paramTable
+						.getEditingColumn());
 				cellEditor.stopCellEditing();
 			}
 
@@ -183,18 +218,14 @@ public class UserParametersGui extends AbstractConfigGui {
 
 	private class AddUserAction implements ActionListener {
 		public void actionPerformed(ActionEvent e) {
-			
+
 			if (paramTable.isEditing()) {
-				TableCellEditor cellEditor =
-					paramTable.getCellEditor(
-						paramTable.getEditingRow(),
-						paramTable.getEditingColumn());
+				TableCellEditor cellEditor = paramTable.getCellEditor(paramTable.getEditingRow(), paramTable
+						.getEditingColumn());
 				cellEditor.stopCellEditing();
 			}
 
-			tableModel.addNewColumn(
-				THREAD_COLUMNS + "_" + tableModel.getColumnCount(),
-				String.class);
+			tableModel.addNewColumn(THREAD_COLUMNS_PREFIX + tableModel.getColumnCount(), String.class);
 			tableModel.fireTableDataChanged();
 
 			// Enable DELETE (which may already be enabled, but it won't hurt)
@@ -209,10 +240,8 @@ public class UserParametersGui extends AbstractConfigGui {
 	private class DeleteRowAction implements ActionListener {
 		public void actionPerformed(ActionEvent e) {
 			if (paramTable.isEditing()) {
-				TableCellEditor cellEditor =
-					paramTable.getCellEditor(
-						paramTable.getEditingRow(),
-						paramTable.getEditingColumn());
+				TableCellEditor cellEditor = paramTable.getCellEditor(paramTable.getEditingRow(), paramTable
+						.getEditingColumn());
 				cellEditor.cancelCellEditing();
 			}
 
@@ -235,9 +264,7 @@ public class UserParametersGui extends AbstractConfigGui {
 						rowToSelect = rowSelected - 1;
 					}
 
-					paramTable.setRowSelectionInterval(
-						rowToSelect,
-						rowToSelect);
+					paramTable.setRowSelectionInterval(rowToSelect, rowToSelect);
 				}
 			}
 		}
@@ -246,18 +273,16 @@ public class UserParametersGui extends AbstractConfigGui {
 	private class DeleteColumnAction implements ActionListener {
 		public void actionPerformed(ActionEvent e) {
 			if (paramTable.isEditing()) {
-				TableCellEditor cellEditor =
-					paramTable.getCellEditor(
-						paramTable.getEditingRow(),
-						paramTable.getEditingColumn());
+				TableCellEditor cellEditor = paramTable.getCellEditor(paramTable.getEditingRow(), paramTable
+						.getEditingColumn());
 				cellEditor.cancelCellEditing();
 			}
 
 			int colSelected = paramTable.getSelectedColumn();
-			if(colSelected == 0 || colSelected == 1)
-			{
+			if (colSelected == 0 || colSelected == 1) {
 				JOptionPane.showMessageDialog(null, 
-						JMeterUtils.getResString("column_delete_disallowed"), "Error", 
+						JMeterUtils.getResString("column_delete_disallowed"), // $NON-NLS-1$
+						"Error",
 						JOptionPane.ERROR_MESSAGE);
 				return;
 			}
@@ -278,9 +303,7 @@ public class UserParametersGui extends AbstractConfigGui {
 						colSelected = colSelected - 1;
 					}
 
-					paramTable.setColumnSelectionInterval(
-						colSelected,
-						colSelected);
+					paramTable.setColumnSelectionInterval(colSelected, colSelected);
 				}
 			}
 		}

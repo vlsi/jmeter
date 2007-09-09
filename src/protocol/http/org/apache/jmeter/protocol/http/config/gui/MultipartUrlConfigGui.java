@@ -1,59 +1,22 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001-2003 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
-package org.apache.jmeter.protocol.http.config.gui;
 
+package org.apache.jmeter.protocol.http.config.gui;
 
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
@@ -61,6 +24,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -68,235 +32,182 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import org.apache.jmeter.gui.util.FileDialoger;
-import org.apache.jmeter.protocol.http.sampler.HTTPSampler;
+import org.apache.jmeter.gui.util.VerticalPanel;
+import org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.gui.layout.VerticalLayout;
 
+/**
+ * @author Michael Stover
+ */
+public class MultipartUrlConfigGui extends UrlConfigGui implements ActionListener {
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+	private JTextField filenameField;
 
-public class MultipartUrlConfigGui extends UrlConfigGui implements ActionListener
-{
+	private JTextField paramNameField;
 
-    JTextField filenameField;
-    JTextField paramNameField;
-    JTextField mimetypeField;
-    JLabel filenameLabel;
-    JLabel paramNameLabel;
-    JLabel mimetypeLabel;
-    JButton browseFileButton;
-    private static String FILENAME = "filename";
-    private static String BROWSE = "browse";
-    private static String PARAMNAME = "paramname";
-    private static String MIMETYPE = "mimetype";
+	private JTextField mimetypeField;
 
-    /****************************************
-     * !ToDo (Constructor description)
-     ***************************************/
-    public MultipartUrlConfigGui()
-    {
-        super();
-    }
+	// TODO these are used as names for the GUI elements - are they needed? are they NLS?
+	private static String FILENAME = "filename";
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public TestElement createTestElement()
-    {
-        TestElement ce = super.createTestElement();
+	private static String BROWSE = "browse";  // $NON-NLS-1$ used as an ActionName locally
 
-        configureTestElement(ce);
-        ce.setProperty(HTTPSampler.MIMETYPE, mimetypeField.getText());
-        ce.setProperty(HTTPSampler.FILE_NAME, filenameField.getText());
-        ce.setProperty(HTTPSampler.FILE_FIELD, paramNameField.getText());
-        return ce;
-    }
+	private static String PARAMNAME = "paramname";
 
-    public void configureSampler(HTTPSampler sampler)
-    {
-        sampler.setMimetype(mimetypeField.getText());
-        sampler.setFileField(paramNameField.getText());
-        sampler.setFilename(filenameField.getText());
-        super.configureSampler(sampler);
-    }
+	private static String MIMETYPE = "mimetype";
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param el  !ToDo (Parameter description)
-     ***************************************/
-    public void configure(TestElement el)
-    {
-        super.configure(el);
-        mimetypeField.setText((String) el.getProperty(HTTPSampler.MIMETYPE));
-        filenameField.setText((String) el.getProperty(HTTPSampler.FILE_NAME));
-        paramNameField.setText((String) el.getProperty(HTTPSampler.FILE_FIELD));
-    }
+	public MultipartUrlConfigGui() {
+		super();
+	}
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public String getStaticLabel()
-    {
-        return JMeterUtils.getResString("url_multipart_config_title");
-    }
+	public TestElement createTestElement() {
+		TestElement ce = super.createTestElement();
 
-    /****************************************
-     * !ToDo (Method description)
-     ***************************************/
-    public void updateGui()
-    {}
+		configureTestElement(ce);
+		ce.setProperty(HTTPSamplerBase.MIMETYPE, mimetypeField.getText());
+		ce.setProperty(HTTPSamplerBase.FILE_NAME, filenameField.getText());
+		ce.setProperty(HTTPSamplerBase.FILE_FIELD, paramNameField.getText());
+		return ce;
+	}
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param e  !ToDo (Parameter description)
-     ***************************************/
-    public void actionPerformed(ActionEvent e)
-    {
-        String name = e.getActionCommand();
+	// does not appear to be used
+	// public void configureSampler(HTTPSamplerBase sampler)
+	// {
+	// sampler.setMimetype(mimetypeField.getText());
+	// sampler.setFileField(paramNameField.getText());
+	// sampler.setFilename(filenameField.getText());
+	// super.configureSampler(sampler);
+	// }
 
-        if (name.equals(BROWSE))
-        {
-            JFileChooser chooser = FileDialoger.promptToOpenFile();
+	public void configure(TestElement el) {
+		super.configure(el);
+		mimetypeField.setText(el.getPropertyAsString(HTTPSamplerBase.MIMETYPE));
+		filenameField.setText(el.getPropertyAsString(HTTPSamplerBase.FILE_NAME));
+		paramNameField.setText(el.getPropertyAsString(HTTPSamplerBase.FILE_FIELD));
+	}
 
-            if (chooser == null)
-            {
-                return;
-            }
-            File file = chooser.getSelectedFile();
+	public String getLabelResource() {
+		return "url_multipart_config_title"; // $NON-NLS-1$
+	}
 
-            if (file != null)
-            {
-                filenameField.setText(file.getPath());
-            }
-        }
-    }
+	public void updateGui() {
+	}
 
-    /****************************************
-     * !ToDo (Method description)
-     ***************************************/
-    protected void init()
-    {
-        this.setLayout(new BorderLayout());
+	public void actionPerformed(ActionEvent e) {
+		String name = e.getActionCommand();
 
-        // WEB SERVER PANEL
-        JPanel webServerPanel = new JPanel();
+		if (name.equals(BROWSE)) {
+			JFileChooser chooser = FileDialoger.promptToOpenFile();
 
-        webServerPanel.setLayout(new BorderLayout());
-        webServerPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(),
-                JMeterUtils.getResString("web_server")));
-        webServerPanel.add(getDomainPanel(), BorderLayout.NORTH);
-        webServerPanel.add(getPortPanel(), BorderLayout.SOUTH);
+			if (chooser == null) {
+				return;
+			}
+			File file = chooser.getSelectedFile();
 
-        // WEB REQUEST PANEL
-        JPanel webRequestPanel = new JPanel(new BorderLayout());
-        JPanel northPanel = new JPanel(new BorderLayout());
+			if (file != null) {
+				filenameField.setText(file.getPath());
+			}
+		}
+	}
 
-        webRequestPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(),
-                JMeterUtils.getResString("web_request")));
-        northPanel.add(getProtocolAndMethodPanel(), BorderLayout.NORTH);
-        northPanel.add(getPathPanel(), BorderLayout.SOUTH);
-        webRequestPanel.add(northPanel, BorderLayout.NORTH);
-        webRequestPanel.add(getParameterPanel(), BorderLayout.CENTER);
-        webRequestPanel.add(getFilePanel(), BorderLayout.SOUTH);
+	protected void init() {
+		this.setLayout(new BorderLayout());
 
-        // If displayName is TRUE, then this GUI is not embedded in another GUI.
-        this.add(webServerPanel, BorderLayout.NORTH);
-        this.add(webRequestPanel, BorderLayout.CENTER);
-    }
+		// WEB SERVER PANEL
+		VerticalPanel webServerPanel = new VerticalPanel();
+		webServerPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("web_server"))); // $NON-NLS-1$
+		final JPanel domainPanel = getDomainPanel();
+		final JPanel portPanel = getPortPanel();
+		domainPanel.add(portPanel,BorderLayout.EAST);
+		webServerPanel.add(domainPanel);
+		//webServerPanel.add(getPortPanel());
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    protected JPanel getFilePanel()
-    {
-        // FILE PANEL (all main components are add to this panel)
-        JPanel filePanel = new JPanel();
+		JPanel northPanel = new JPanel();
+		northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
+		northPanel.add(getProtocolAndMethodPanel());
+		northPanel.add(getPathPanel());
 
-        filePanel.setLayout(new VerticalLayout(1, VerticalLayout.LEFT));
-        filePanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+		// WEB REQUEST PANEL
+		JPanel webRequestPanel = new JPanel();
+		webRequestPanel.setLayout(new BorderLayout());
+		webRequestPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("web_request"))); // $NON-NLS-1$
 
-        // SEND FILE LABEL
-        JLabel sendFileLabel = new JLabel(JMeterUtils.getResString("send_file"));
+		webRequestPanel.add(northPanel, BorderLayout.NORTH);
+		webRequestPanel.add(getParameterPanel(), BorderLayout.CENTER);
+		webRequestPanel.add(getFilePanel(), BorderLayout.SOUTH);
 
-        filePanel.add(sendFileLabel);
+		this.add(webServerPanel, BorderLayout.NORTH);
+		this.add(webRequestPanel, BorderLayout.CENTER);
+	}
 
-        // FILENAME PANEL (contains filename label and text field and Browse button)
-        JPanel filenamePanel = new JPanel();
+	protected JPanel getFilePanel() {
+		JPanel filePanel = new VerticalPanel();
+		filePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("send_file"))); // $NON-NLS-1$
 
-        filenamePanel.setBorder(BorderFactory.createEmptyBorder(0, 25, 0, 0));
+		filePanel.add(createFilenamePanel());
+		filePanel.add(createFileParamNamePanel());
+		filePanel.add(createFileMimeTypePanel());
 
-        // --- FILENAME LABEL
-        filenameLabel = new JLabel(JMeterUtils.getResString("send_file_filename_label"));
-        filenameLabel.setEnabled(true);
+		return filePanel;
+	}
 
-        // --- FILENAME TEXT FIELD
-        filenameField = new JTextField(15);
-        filenameField.setEnabled(true);
-        filenameField.setName(FILENAME);
+	private JPanel createFileMimeTypePanel() {
+		mimetypeField = new JTextField(15);
+		mimetypeField.setName(MIMETYPE);
 
-        // --- BROWSE BUTTON
-        browseFileButton = new JButton(JMeterUtils.getResString("send_file_browse"));
-        browseFileButton.setEnabled(true);
-        browseFileButton.setActionCommand(BROWSE);
-        browseFileButton.addActionListener(this);
+		JLabel mimetypeLabel = new JLabel(JMeterUtils.getResString("send_file_mime_label")); // $NON-NLS-1$
+		mimetypeLabel.setLabelFor(mimetypeField);
+		JPanel mimePanel = new JPanel(new BorderLayout(5, 0));
+		mimePanel.add(mimetypeLabel, BorderLayout.WEST);
+		mimePanel.add(mimetypeField, BorderLayout.CENTER);
+		return mimePanel;
+	}
 
-        filenamePanel.add(filenameLabel);
-        filenamePanel.add(filenameField);
-        filenamePanel.add(browseFileButton);
+	private JPanel createFileParamNamePanel() {
+		paramNameField = new JTextField(15);
+		paramNameField.setName(PARAMNAME);
 
-        // PARAM NAME PANEL (contains param name label and text field)
-        JPanel paramNamePanel = new JPanel();
+		JLabel paramNameLabel = new JLabel(JMeterUtils.getResString("send_file_param_name_label")); // $NON-NLS-1$
+		paramNameLabel.setLabelFor(paramNameField);
 
-        paramNamePanel.setBorder(BorderFactory.createEmptyBorder(0, 25, 0, 0));
+		JPanel paramNamePanel = new JPanel(new BorderLayout(5, 0));
+		paramNamePanel.add(paramNameLabel, BorderLayout.WEST);
+		paramNamePanel.add(paramNameField, BorderLayout.CENTER);
+		return paramNamePanel;
+	}
 
-        // --- PARAM NAME LABEL
-        paramNameLabel = new JLabel(JMeterUtils.getResString("send_file_param_name_label"));
-        paramNameLabel.setEnabled(true);
+	private JPanel createFilenamePanel() {
+		filenameField = new JTextField(15);
+		filenameField.setName(FILENAME);
 
-        // --- PARAM NAME TEXT FIELD
-        paramNameField = new JTextField(15);
-        paramNameField.setName(PARAMNAME);
-        paramNameField.setEnabled(true);
+		JLabel filenameLabel = new JLabel(JMeterUtils.getResString("send_file_filename_label")); // $NON-NLS-1$
+		filenameLabel.setLabelFor(filenameField);
 
-        paramNamePanel.add(paramNameLabel);
-        paramNamePanel.add(paramNameField);
+		JButton browseFileButton = new JButton(JMeterUtils.getResString("send_file_browse")); // $NON-NLS-1$
+		browseFileButton.setActionCommand(BROWSE);
+		browseFileButton.addActionListener(this);
 
-        // MIME TYPE PANEL (contains mime type label and text field)
-        JPanel mimePanel = new JPanel();
+		JPanel filenamePanel = new JPanel(new BorderLayout(5, 0));
+		filenamePanel.add(filenameLabel, BorderLayout.WEST);
+		filenamePanel.add(filenameField, BorderLayout.CENTER);
+		filenamePanel.add(browseFileButton, BorderLayout.EAST);
+		return filenamePanel;
+	}
 
-        mimePanel.setBorder(BorderFactory.createEmptyBorder(0, 25, 0, 0));
-
-        // --- MIME TYPE LABEL
-        mimetypeLabel = new JLabel(JMeterUtils.getResString("send_file_mime_label"));
-        mimetypeLabel.setEnabled(true);
-
-        // --- MIME TYPE TEXT FIELD
-        mimetypeField = new JTextField(15);
-        mimetypeField.setEnabled(true);
-        mimetypeField.setName(MIMETYPE);
-
-        mimePanel.add(mimetypeLabel);
-        mimePanel.add(mimetypeField);
-
-        filePanel.add(filenamePanel);
-        filePanel.add(paramNamePanel);
-        filePanel.add(mimePanel);
-
-        return filePanel;
-    }
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.apache.jmeter.protocol.http.config.gui.UrlConfigGui#clear()
+	 */
+	public void clear() {
+		// TODO Auto-generated method stub
+		super.clear();
+		filenameField.setText(""); // $NON-NLS-1$
+		mimetypeField.setText(""); // $NON-NLS-1$
+		paramNameField.setText(""); // $NON-NLS-1$
+	}
 }

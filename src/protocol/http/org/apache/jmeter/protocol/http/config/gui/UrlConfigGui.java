@@ -1,361 +1,316 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001-2003 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.protocol.http.config.gui;
 
-
 import java.awt.BorderLayout;
-import java.awt.Dimension;
+import java.awt.Component;
 import java.awt.FlowLayout;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.ButtonGroup;
+import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JTextField;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.config.ConfigTestElement;
 import org.apache.jmeter.protocol.http.gui.HTTPArgumentsPanel;
-import org.apache.jmeter.protocol.http.sampler.HTTPSampler;
+import org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase;
 import org.apache.jmeter.protocol.http.util.HTTPArgument;
 import org.apache.jmeter.testelement.AbstractTestElement;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.BooleanProperty;
+import org.apache.jmeter.testelement.property.TestElementProperty;
 import org.apache.jmeter.util.JMeterUtils;
+import org.apache.jorphan.gui.JLabeledChoice;
 
+/**
+ * @author Michael Stover
+ */
+public class UrlConfigGui extends JPanel implements ChangeListener {
+	protected HTTPArgumentsPanel argsPanel;
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+	private static String DOMAIN = "domain"; // $NON-NLS-1$
 
-public class UrlConfigGui extends JPanel
-{
+	private static String PORT = "port"; // $NON-NLS-1$
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected HTTPArgumentsPanel argsPanel;
-    private static String DOMAIN = "domain";
-    private static String PORT = "port";
-    private static String PROTOCOL = "protocol";
-    private static String PATH = "path";
-    private static String FOLLOW_REDIRECTS = "follow_redirects";
-    private static String USE_KEEPALIVE = "use_keepalive";
-    private static String POST = "post";
-    private static String GET = "get";
-    private static String SEND_PARAM = "sendparam";
+	private static String PROTOCOL = "protocol"; // $NON-NLS-1$
 
-    private JTextField domain;
-    private JTextField port;
-    private JTextField protocol;
-    private JTextField path;
-    private JCheckBox followRedirects;
-    private JCheckBox useKeepAlive;
-    private JRadioButton post;
-    private JRadioButton get;
+	private static String CONTENT_ENCODING = "content_encoding"; // $NON-NLS-1$
 
-    /****************************************
-     * !ToDo (Constructor description)
-     ***************************************/
-    public UrlConfigGui()
-    {
-        init();
-    }
+	private static String PATH = "path"; // $NON-NLS-1$
 
-    protected void configureTestElement(TestElement mc)
-    {
-        mc.setProperty(TestElement.NAME, getName());
-        mc.setProperty(TestElement.GUI_CLASS, this.getClass().getName());
-        mc.setProperty(TestElement.TEST_CLASS, mc.getClass().getName());
-    }
+	private static String FOLLOW_REDIRECTS = "follow_redirects"; // $NON-NLS-1$
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public TestElement createTestElement()
-    {
-        ConfigTestElement element = new ConfigTestElement();
+	private static String AUTO_REDIRECTS = "auto_redirects"; // $NON-NLS-1$
 
-        this.configureTestElement(element);
-        Arguments args = (Arguments) argsPanel.createTestElement();
+	private static String USE_KEEPALIVE = "use_keepalive"; // $NON-NLS-1$
 
-        HTTPArgument.convertArgumentsToHTTP(args);
-        element.setProperty(HTTPSampler.ARGUMENTS, args);
-        element.setProperty(HTTPSampler.DOMAIN, domain.getText());
-        element.setProperty(HTTPSampler.PORT, port.getText());
-        element.setProperty(HTTPSampler.PROTOCOL, protocol.getText());
-        element.setProperty(HTTPSampler.METHOD,
-                (post.isSelected() ? "POST" : "GET"));
-        element.setProperty(HTTPSampler.PATH, path.getText());
-        element.setProperty(HTTPSampler.FOLLOW_REDIRECTS,
-                new Boolean(followRedirects.isSelected()));
-        element.setProperty(HTTPSampler.USE_KEEPALIVE,
-                new Boolean(useKeepAlive.isSelected()));
-        return element;
-    }
+    private static String USE_MULTIPART_FOR_POST = "use_multipart_for_post"; // $NON-NLS-1$
 
-    public void configureSampler(HTTPSampler sampler)
-    {
-        sampler.setArguments((Arguments) argsPanel.createTestElement());
-        sampler.setDomain(domain.getText());
-        sampler.setProtocol(protocol.getText());
-        sampler.setPath(path.getText());
-        sampler.setFollowRedirects(followRedirects.isSelected());
-        sampler.setUseKeepAlive(useKeepAlive.isSelected());
-        if (port.getText().length() > 0)
-        {
-            sampler.setPort(Integer.parseInt(port.getText()));
-        }
-        sampler.setMethod((post.isSelected() ? "POST" : "GET"));
-    }
+	private JTextField domain;
 
-    /****************************************
-     * Set the text, etc. in the UI.
-     *
-     *@param el contains the data to be displayed
-     ***************************************/
-    public void configure(TestElement el)
-    {
-        setName((String) el.getProperty(TestElement.NAME));
-        argsPanel.configure((TestElement) el.getProperty(HTTPSampler.ARGUMENTS));
-        domain.setText((String) el.getProperty(HTTPSampler.DOMAIN));
-        
-        String portString = (String) el.getPropertyAsString(HTTPSampler.PORT);
+	private JTextField port;
 
-        // Only display the port number if it is meaningfully specified
-        if (portString.equals("" + HTTPSampler.UNSPECIFIED_PORT))
-        {
-                port.setText("");
-        }
-        else
-        {
-            port.setText(portString);
-        }
-        protocol.setText((String) el.getProperty(HTTPSampler.PROTOCOL));
-        if ("POST".equals(el.getProperty(HTTPSampler.METHOD)))
-        {
-            post.setSelected(true);
-            get.setSelected(false);
-        }
-        else
-        {
-            get.setSelected(true);
-            post.setSelected(false);
-        }
-        path.setText((String) el.getProperty(HTTPSampler.PATH));
-        followRedirects.setSelected(((AbstractTestElement) el).getPropertyAsBoolean(HTTPSampler.FOLLOW_REDIRECTS));
-        useKeepAlive.setSelected(((AbstractTestElement) el).getPropertyAsBoolean(HTTPSampler.USE_KEEPALIVE));
-    }
+	private JTextField protocol;
 
-    /****************************************
-     * !ToDo (Method description)
-     ***************************************/
-    protected void init()
-    {
-        this.setLayout(new BorderLayout());
+	private JTextField contentEncoding;
 
-        JPanel webServerPanel = new JPanel();
+	private JTextField path;
 
-        webServerPanel.setLayout(new BorderLayout());
-        webServerPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(),
-                JMeterUtils.getResString("web_server")));
-        webServerPanel.add(getDomainPanel(), BorderLayout.NORTH);
-        webServerPanel.add(getPortPanel(), BorderLayout.SOUTH);
+	private JCheckBox followRedirects;
 
-        JPanel webRequestPanel = new JPanel();
+	private JCheckBox autoRedirects;
 
-        webRequestPanel.setLayout(new BorderLayout());
-        webRequestPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(),
-                JMeterUtils.getResString("web_request")));
-        JPanel northPanel = new JPanel(new BorderLayout());
+	private JCheckBox useKeepAlive;
 
-        northPanel.add(getProtocolAndMethodPanel(), BorderLayout.NORTH);
-        northPanel.add(getPathPanel(), BorderLayout.SOUTH);
-        webRequestPanel.add(northPanel, BorderLayout.NORTH);
-        webRequestPanel.add(getParameterPanel(), BorderLayout.CENTER);
+    private JCheckBox useMultipartForPost;
 
-        this.add(webServerPanel, BorderLayout.NORTH);
-        this.add(webRequestPanel, BorderLayout.CENTER);
-    }
+    private JLabeledChoice method;
+    
+	public UrlConfigGui() {
+		init();
+	}
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    protected JPanel getPortPanel()
-    {
-        JPanel portP = new JPanel(new FlowLayout(FlowLayout.LEFT));
+	protected void configureTestElement(TestElement mc) {
+		mc.setProperty(TestElement.NAME, getName());
+		mc.setProperty(TestElement.GUI_CLASS, this.getClass().getName());
+		mc.setProperty(TestElement.TEST_CLASS, mc.getClass().getName());
+	}
 
-        portP.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
-        portP.add(new JLabel(JMeterUtils.getResString("web_server_port")));
+	public void clear() {
+		domain.setText(""); // $NON-NLS-1$
+		followRedirects.setSelected(false);
+		autoRedirects.setSelected(true);
+        method.setText(HTTPSamplerBase.DEFAULT_METHOD);
+		path.setText(""); // $NON-NLS-1$
+		port.setText(""); // $NON-NLS-1$
+		protocol.setText(""); // $NON-NLS-1$
+		contentEncoding.setText(""); // $NON-NLS-1$
+		useKeepAlive.setSelected(true);
+        useMultipartForPost.setSelected(false);
+		argsPanel.clear();
+	}
 
-        port = new JTextField(6);
+	public TestElement createTestElement() {
+		ConfigTestElement element = new ConfigTestElement();
 
-        port.setName(PORT);
-        portP.add(port);
+		this.configureTestElement(element);
+		Arguments args = (Arguments) argsPanel.createTestElement();
 
-        return portP;
-    }
+		HTTPArgument.convertArgumentsToHTTP(args);
+		element.setProperty(new TestElementProperty(HTTPSamplerBase.ARGUMENTS, args));
+		element.setProperty(HTTPSamplerBase.DOMAIN, domain.getText());
+		element.setProperty(HTTPSamplerBase.PORT, port.getText());
+		element.setProperty(HTTPSamplerBase.PROTOCOL, protocol.getText());
+		element.setProperty(HTTPSamplerBase.METHOD, method.getText());
+		element.setProperty(HTTPSamplerBase.CONTENT_ENCODING, contentEncoding.getText());
+		element.setProperty(HTTPSamplerBase.PATH, path.getText());
+		element.setProperty(new BooleanProperty(HTTPSamplerBase.FOLLOW_REDIRECTS, followRedirects.isSelected()));
+		element.setProperty(new BooleanProperty(HTTPSamplerBase.AUTO_REDIRECTS, autoRedirects.isSelected()));
+		element.setProperty(new BooleanProperty(HTTPSamplerBase.USE_KEEPALIVE, useKeepAlive.isSelected()));
+        element.setProperty(new BooleanProperty(HTTPSamplerBase.DO_MULTIPART_POST, useMultipartForPost.isSelected()));
+		return element;
+	}
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    protected JPanel getDomainPanel()
-    {
-        JPanel domainP = new JPanel(new FlowLayout(FlowLayout.LEFT));
+	/**
+	 * Set the text, etc. in the UI.
+	 * 
+	 * @param el
+	 *            contains the data to be displayed
+	 */
+	public void configure(TestElement el) {
+		setName(el.getPropertyAsString(TestElement.NAME));
+		argsPanel.configure((TestElement) el.getProperty(HTTPSamplerBase.ARGUMENTS).getObjectValue());
+		domain.setText(el.getPropertyAsString(HTTPSamplerBase.DOMAIN));
 
-        domainP.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
-        domainP.add(new JLabel(JMeterUtils.getResString("web_server_domain")));
+		String portString = el.getPropertyAsString(HTTPSamplerBase.PORT);
 
-        domain = new JTextField(20);
-        domain.setName(DOMAIN);
-        domainP.add(domain);
+		// Only display the port number if it is meaningfully specified
+		if (portString.equals(HTTPSamplerBase.UNSPECIFIED_PORT_AS_STRING)) {
+			port.setText(""); // $NON-NLS-1$
+		} else {
+			port.setText(portString);
+		}
+		protocol.setText(el.getPropertyAsString(HTTPSamplerBase.PROTOCOL));
+        method.setText(el.getPropertyAsString(HTTPSamplerBase.METHOD));
+        contentEncoding.setText(el.getPropertyAsString(HTTPSamplerBase.CONTENT_ENCODING));
+		path.setText(el.getPropertyAsString(HTTPSamplerBase.PATH));
+		followRedirects.setSelected(((AbstractTestElement) el).getPropertyAsBoolean(HTTPSamplerBase.FOLLOW_REDIRECTS));
 
-        return domainP;
-    }
+		autoRedirects.setSelected(((AbstractTestElement) el).getPropertyAsBoolean(HTTPSamplerBase.AUTO_REDIRECTS));
+		useKeepAlive.setSelected(((AbstractTestElement) el).getPropertyAsBoolean(HTTPSamplerBase.USE_KEEPALIVE));
+        useMultipartForPost.setSelected(((AbstractTestElement) el).getPropertyAsBoolean(HTTPSamplerBase.DO_MULTIPART_POST));
+	}
 
-    /****************************************
-     * This method defines the Panel for the 
-     * HTTP path, 'Follow Redirects' and
-     * 'Use KeepAlive' elements.
-     *
-     *@return JPanel The Panel for the path,
-     * 'Follow Redirects' and 'Use KeepAlive' elements.
-     ***************************************/
-    protected JPanel getPathPanel()
-    {
+	protected void init() {
+		this.setLayout(new BorderLayout());
+
+		JPanel webServerPanel = new JPanel();
+
+		webServerPanel.setLayout(new BorderLayout());
+		webServerPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("web_server"))); // $NON-NLS-1$
+		webServerPanel.add(getDomainPanel(), BorderLayout.NORTH);
+		webServerPanel.add(getPortPanel(), BorderLayout.WEST);
+
+		JPanel webRequestPanel = new JPanel();
+
+		webRequestPanel.setLayout(new BorderLayout());
+		webRequestPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("web_request"))); // $NON-NLS-1$
+		JPanel northPanel = new JPanel(new BorderLayout());
+
+		northPanel.add(getProtocolAndMethodPanel(), BorderLayout.NORTH);
+		northPanel.add(getPathPanel(), BorderLayout.SOUTH);
+		webServerPanel.add(northPanel, BorderLayout.SOUTH);
+		webRequestPanel.add(getParameterPanel(), BorderLayout.CENTER);
+
+		this.add(webServerPanel, BorderLayout.NORTH);
+		this.add(webRequestPanel, BorderLayout.CENTER);
+	}
+
+	protected JPanel getPortPanel() {
+		port = new JTextField(6);
+		port.setName(PORT);
+
+		JLabel label = new JLabel(JMeterUtils.getResString("web_server_port")); // $NON-NLS-1$
+		label.setLabelFor(port);
+
+		JPanel panel = new JPanel(new BorderLayout(5, 0));
+		panel.add(label, BorderLayout.WEST);
+		panel.add(port, BorderLayout.CENTER);
+
+		return panel;
+	}
+
+	protected JPanel getDomainPanel() {
+		domain = new JTextField(20);
+		domain.setName(DOMAIN);
+
+		JLabel label = new JLabel(JMeterUtils.getResString("web_server_domain")); // $NON-NLS-1$
+		label.setLabelFor(domain);
+
+		JPanel panel = new JPanel(new BorderLayout(5, 0));
+		panel.add(label, BorderLayout.WEST);
+		panel.add(domain, BorderLayout.CENTER);
+		return panel;
+	}
+
+	/**
+	 * This method defines the Panel for the HTTP path, 'Follow Redirects'
+	 * 'Use KeepAlive', and 'Use multipart for HTTP POST' elements.
+	 * 
+	 * @return JPanel The Panel for the path, 'Follow Redirects' and 'Use
+	 *         KeepAlive' elements.
+	 */
+	protected Component getPathPanel() {
+		path = new JTextField(15);
+		path.setName(PATH);
+
+		JLabel label = new JLabel(JMeterUtils.getResString("path")); //$NON-NLS-1$
+		label.setLabelFor(path);
+
+		followRedirects = new JCheckBox(JMeterUtils.getResString("follow_redirects")); // $NON-NLS-1$
+		followRedirects.setName(FOLLOW_REDIRECTS);
+		followRedirects.setSelected(false);
+
+		autoRedirects = new JCheckBox(JMeterUtils.getResString("follow_redirects_auto")); //$NON-NLS-1$
+		autoRedirects.setName(AUTO_REDIRECTS);
+		autoRedirects.addChangeListener(this);
+		autoRedirects.setSelected(true);// Default changed in 2.3
+
+		useKeepAlive = new JCheckBox(JMeterUtils.getResString("use_keepalive")); // $NON-NLS-1$
+		useKeepAlive.setName(USE_KEEPALIVE);
+		useKeepAlive.setSelected(true);
+
+        useMultipartForPost = new JCheckBox(JMeterUtils.getResString("use_multipart_for_http_post")); // $NON-NLS-1$
+        useMultipartForPost.setName(USE_MULTIPART_FOR_POST);
+        useMultipartForPost.setSelected(false);
+
+		JPanel pathPanel = new JPanel(new BorderLayout(5, 0));
+		pathPanel.add(label, BorderLayout.WEST);
+		pathPanel.add(path, BorderLayout.CENTER);
+		pathPanel.setMinimumSize(pathPanel.getPreferredSize());
+
+		JPanel optionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		optionPanel.add(autoRedirects);
+		optionPanel.add(followRedirects);
+		optionPanel.add(useKeepAlive);
+ 		optionPanel.add(useMultipartForPost);
+		optionPanel.setMinimumSize(optionPanel.getPreferredSize());
+
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+		panel.add(pathPanel);
+		panel.add(optionPanel);
+		return panel;
+	}
+
+	protected JPanel getProtocolAndMethodPanel() {
+		// PROTOCOL
+		protocol = new JTextField(10);
+		protocol.setName(PROTOCOL);
+		// CONTENT_ENCODING
+		contentEncoding = new JTextField(10);
+		contentEncoding.setName(CONTENT_ENCODING);
+
+		JLabel protocolLabel = new JLabel(JMeterUtils.getResString("protocol")); // $NON-NLS-1$
+		protocolLabel.setLabelFor(protocol);
+		JLabel contentEncodingLabel = new JLabel(JMeterUtils.getResString("content_encoding")); // $NON-NLS-1$
+		protocolLabel.setLabelFor(contentEncoding);
+        method = new JLabeledChoice(JMeterUtils.getResString("method"), // $NON-NLS-1$
+                HTTPSamplerBase.getValidMethodsAsArray());
+
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
-        panel.add(new JLabel(JMeterUtils.getResString("path")));
+		panel.add(protocolLabel);
+		panel.add(protocol);
+		panel.add(Box.createHorizontalStrut(5));
 
-        path = new JTextField(15);
-        path.setName(PATH);
-        panel.add(path);
+        panel.add(method);
+		panel.setMinimumSize(panel.getPreferredSize());
+        panel.add(Box.createHorizontalStrut(5));
+		
+		panel.add(contentEncodingLabel);
+		panel.add(contentEncoding);
+		return panel;
+	}
 
-        followRedirects = new JCheckBox(JMeterUtils.getResString("follow_redirects"));
-        followRedirects.setName(FOLLOW_REDIRECTS);
-        // Set this by default so as to stay compliant with the old
-        // behaviour:
-        followRedirects.setSelected(true);
-        panel.add(followRedirects);
+	protected JPanel getParameterPanel() {
+		argsPanel = new HTTPArgumentsPanel();
 
-        useKeepAlive = new JCheckBox(JMeterUtils.getResString("use_keepalive"));
-        useKeepAlive.setName(USE_KEEPALIVE);
-        useKeepAlive.setSelected(true);
-        panel.add(useKeepAlive);
+		return argsPanel;
+	}
 
-        return panel;
-    }
-
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    protected JPanel getProtocolAndMethodPanel()
-    {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
-
-        // PROTOCOL
-        panel.add(new JLabel(JMeterUtils.getResString("protocol")));
-        protocol = new JTextField(4);
-        protocol.setName(PROTOCOL);
-        panel.add(protocol);
-
-        // METHOD
-        post = new JRadioButton(JMeterUtils.getResString("url_config_post"));
-        get = new JRadioButton(JMeterUtils.getResString("url_config_get"));
-        ButtonGroup methodButtonGroup = new ButtonGroup();
-
-        methodButtonGroup.add(post);
-        methodButtonGroup.add(get);
-
-        panel.add(Box.createRigidArea(new Dimension(5, 0)));
-        panel.add(new JLabel(JMeterUtils.getResString("method")));
-
-        post.setSelected(true);
-
-        panel.add(get);
-        panel.add(post);
-
-        return panel;
-    }
-
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    protected JPanel getParameterPanel()
-    {
-        argsPanel = new HTTPArgumentsPanel();
-
-        return argsPanel;
-    }
+	// Disable follow redirects if Autoredirect is selected
+	public void stateChanged(ChangeEvent e) {
+		if (e.getSource() == autoRedirects){
+			if (autoRedirects.isSelected()) {
+				followRedirects.setEnabled(false);
+			} else {
+				followRedirects.setEnabled(true);
+			}
+		}
+	}
 }

@@ -1,68 +1,31 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2002 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.gui;
+
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.HashSet;
@@ -85,177 +48,193 @@ import javax.swing.JSplitPane;
 import javax.swing.JTree;
 import javax.swing.MenuElement;
 import javax.swing.SwingUtilities;
+import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreePath;
 
+import org.apache.jmeter.engine.event.LoopIterationEvent;
+import org.apache.jmeter.gui.action.ActionNames;
 import org.apache.jmeter.gui.action.ActionRouter;
-import org.apache.jmeter.gui.action.GlobalMouseListener;
 import org.apache.jmeter.gui.tree.JMeterCellRenderer;
 import org.apache.jmeter.gui.tree.JMeterTreeListener;
 import org.apache.jmeter.gui.util.JMeterMenuBar;
 import org.apache.jmeter.samplers.Remoteable;
+import org.apache.jmeter.testelement.TestElement;
 import org.apache.jmeter.testelement.TestListener;
+import org.apache.jmeter.testelement.TestPlan;
+import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.gui.ComponentUtil;
-import org.apache.log.Hierarchy;
-import org.apache.log.Logger;
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
 
-public class MainFrame extends JFrame implements TestListener,Remoteable
-{
-	transient private static Logger log =
-			Hierarchy.getDefaultHierarchy().getLoggerFor("jmeter.gui");
-	JPanel all, mainPanel;
-	Box toolPanel;
-	JScrollPane treePanel;
-	JMeterMenuBar menuBar;
-	JTree tree;
-	TreeModel treeModel;
-	ActionListener actionHandler;
-	JMeterTreeListener treeListener;
-	ImageIcon runningIcon = JMeterUtils.getImage("thread.enabled.gif");
-	ImageIcon stoppedIcon = JMeterUtils.getImage("thread.disabled.gif");
-	JButton runningIndicator;
-	private boolean running;
-	int previousDragXLocation = 0;
-	int previousDragYLocation = 0;
+/**
+ * The main JMeter frame, containing the menu bar, test tree, and an area for
+ * JMeter component GUIs.
+ * 
+ * @author Michael Stover
+ */
+public class MainFrame extends JFrame implements TestListener, Remoteable {
+
+    /** The menu bar. */
+	private JMeterMenuBar menuBar;
+
+	/** The main panel where components display their GUIs. */
+	private JScrollPane mainPanel;
+
+	/** The panel where the test tree is shown. */
+	private JScrollPane treePanel;
+
+	/** The test tree. */
+	private JTree tree;
+
+	/** An image which is displayed when a test is running. */
+	private ImageIcon runningIcon = JMeterUtils.getImage("thread.enabled.gif");
+
+	/** An image which is displayed when a test is not currently running. */
+	private ImageIcon stoppedIcon = JMeterUtils.getImage("thread.disabled.gif");
+
+	/** The button used to display the running/stopped image. */
+	private JButton runningIndicator;
+
+	/** The x coordinate of the last location where a component was dragged. */
+	private int previousDragXLocation = 0;
+
+	/** The y coordinate of the last location where a component was dragged. */
+	private int previousDragYLocation = 0;
+
+	/** The set of currently running hosts. */
 	private Set hosts = new HashSet();
-	JDialog stoppingMessage;
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 *
-	 *@param actionHandler  !ToDo (Parameter description)
-	 *@param treeModel      !ToDo (Parameter description)
-	 *@param treeListener   !ToDo (Parameter description)
-	 ***************************************/
-	public MainFrame(ActionListener actionHandler, TreeModel treeModel, JMeterTreeListener
-			treeListener)
-	{
+	/** A message dialog shown while JMeter threads are stopping. */
+	private JDialog stoppingMessage;
+
+    private JLabel totalThreads;
+    private JLabel activeThreads;
+    
+	/**
+	 * Create a new JMeter frame.
+	 * 
+	 * @param actionHandler
+	 *            this parameter is not used
+	 * @param treeModel
+	 *            the model for the test tree
+	 * @param treeListener
+	 *            the listener for the test tree
+	 */
+	public MainFrame(ActionListener actionHandler, TreeModel treeModel, JMeterTreeListener treeListener) {
+		// TODO: actionHandler isn't used -- remove it from the parameter list
+		// this.actionHandler = actionHandler;
+
+		// TODO: Make the running indicator its own class instead of a JButton
 		runningIndicator = new JButton(stoppedIcon);
-		runningIndicator.setMargin(new Insets(0,0,0,0));
+		runningIndicator.setMargin(new Insets(0, 0, 0, 0));
 		runningIndicator.setBorder(BorderFactory.createEmptyBorder());
-		this.treeListener = treeListener;
-		this.actionHandler = actionHandler;
-		this.treeModel = treeModel;
+
+        totalThreads = new JLabel("0");
+        activeThreads = new JLabel("0");
+        
+		tree = makeTree(treeModel, treeListener);
+
 		GuiPackage.getInstance().setMainFrame(this);
 		init();
-		this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+
+		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 	}
 
-	public MainFrame()
-	{
+	/**
+	 * Default constructor for the JMeter frame. This constructor will not
+	 * properly initialize the tree, so don't use it.
+	 */
+	public MainFrame() {
+		// TODO: Can we remove this constructor? JMeter won't behave properly
+		// if it used.
 	}
 
+	// MenuBar related methods
+	// TODO: Do we really need to have all these menubar methods duplicated
+	// here? Perhaps we can make the menu bar accessible through GuiPackage?
 
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param enabled  !ToDo (Parameter description)
-	 ***************************************/
-	public void setFileSaveEnabled(boolean enabled)
-	{
-		menuBar.setFileSaveEnabled(enabled);
-	}
-
-	public void showStoppingMessage(String host)
-	{
-		stoppingMessage = new JDialog(this,
-				JMeterUtils.getResString("stopping_test_title"),true);
-		JLabel stopLabel = new JLabel(JMeterUtils.getResString("stopping_test")+": "+host);
-		stopLabel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
-		stoppingMessage.getContentPane().add(stopLabel);
-		stoppingMessage.pack();
-		ComponentUtil.centerComponentInComponent(this,stoppingMessage);
-		SwingUtilities.invokeLater(new Runnable()
-			{
-				public void run()
-				{
-					if(stoppingMessage != null)
-					{
-						stoppingMessage.show();
-					}
-				}
-			});
-	}
-
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param enabled  !ToDo (Parameter description)
-	 ***************************************/
-	public void setFileLoadEnabled(boolean enabled)
-	{
+	/**
+	 * Specify whether or not the File|Load menu item should be enabled.
+	 * 
+	 * @param enabled
+	 *            true if the menu item should be enabled, false otherwise
+	 */
+	public void setFileLoadEnabled(boolean enabled) {
 		menuBar.setFileLoadEnabled(enabled);
 	}
 
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param menu  !ToDo (Parameter description)
-	 ***************************************/
-	public void setEditAddMenu(JMenu menu)
-	{
-		menuBar.setEditAddMenu(menu);
+	/**
+	 * Specify whether or not the File|Save menu item should be enabled.
+	 * 
+	 * @param enabled
+	 *            true if the menu item should be enabled, false otherwise
+	 */
+	public void setFileSaveEnabled(boolean enabled) {
+		menuBar.setFileSaveEnabled(enabled);
 	}
 
-	public void setEditMenu(JPopupMenu menu)
-	{
+	/**
+	 * Set the menu that should be used for the Edit menu.
+	 * 
+	 * @param menu
+	 *            the new Edit menu
+	 */
+	public void setEditMenu(JPopupMenu menu) {
 		menuBar.setEditMenu(menu);
 	}
 
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param enabled  !ToDo (Parameter description)
-	 ***************************************/
-	public void setEditAddEnabled(boolean enabled)
-	{
-		menuBar.setEditAddEnabled(enabled);
-	}
-
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param enabled  !ToDo (Parameter description)
-	 ***************************************/
-	public void setEditRemoveEnabled(boolean enabled)
-	{
-		menuBar.setEditRemoveEnabled(enabled);
-	}
-
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param enabled  !ToDo (Parameter description)
-	 ***************************************/
-	public void setEditEnabled(boolean enabled)
-	{
+	/**
+	 * Specify whether or not the Edit menu item should be enabled.
+	 * 
+	 * @param enabled
+	 *            true if the menu item should be enabled, false otherwise
+	 */
+	public void setEditEnabled(boolean enabled) {
 		menuBar.setEditEnabled(enabled);
 	}
 
-	/****************************************
-	 * !ToDo (Method description)
-	 ***************************************/
-	public void closeMenu()
-	{
-		if(menuBar.isSelected())
-		{
+	/**
+	 * Set the menu that should be used for the Edit|Add menu.
+	 * 
+	 * @param menu
+	 *            the new Edit|Add menu
+	 */
+	public void setEditAddMenu(JMenu menu) {
+		menuBar.setEditAddMenu(menu);
+	}
+
+	/**
+	 * Specify whether or not the Edit|Add menu item should be enabled.
+	 * 
+	 * @param enabled
+	 *            true if the menu item should be enabled, false otherwise
+	 */
+	public void setEditAddEnabled(boolean enabled) {
+		menuBar.setEditAddEnabled(enabled);
+	}
+
+	/**
+	 * Specify whether or not the Edit|Remove menu item should be enabled.
+	 * 
+	 * @param enabled
+	 *            true if the menu item should be enabled, false otherwise
+	 */
+	public void setEditRemoveEnabled(boolean enabled) {
+		menuBar.setEditRemoveEnabled(enabled);
+	}
+
+	/**
+	 * Close the currently selected menu.
+	 */
+	public void closeMenu() {
+		if (menuBar.isSelected()) {
 			MenuElement[] menuElement = menuBar.getSubElements();
-			if(menuElement != null)
-			{
-				for(int i = 0; i < menuElement.length; i++)
-				{
-					JMenu menu = (JMenu)menuElement[i];
-					if(menu.isSelected())
-					{
+			if (menuElement != null) {
+				for (int i = 0; i < menuElement.length; i++) {
+					JMenu menu = (JMenu) menuElement[i];
+					if (menu.isSelected()) {
 						menu.setPopupMenuVisible(false);
 						menu.setSelected(false);
 						break;
@@ -265,199 +244,276 @@ public class MainFrame extends JFrame implements TestListener,Remoteable
 		}
 	}
 
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param comp  !ToDo (Parameter description)
-	 ***************************************/
-	public void setMainPanel(JComponent comp)
-	{
-		mainPanel.removeAll();
-		Rectangle rect = mainPanel.getVisibleRect();
-		Insets in = mainPanel.getInsets();
-		Dimension dim = new Dimension(((int)rect.getWidth()) - (in.right + in.left) * 2,
-				((int)rect.getHeight()) - (in.top + in.bottom) * 2);
-		Dimension min = comp.getMinimumSize();
-		if(dim.width < min.width)
-		{
-			dim.width = min.width;
-		}
-		if(dim.height < min.height)
-		{
-			dim.height = min.height;
-		}
-		comp.setPreferredSize(dim);
-		comp.validate();
-		mainPanel.add(comp);
-		mainPanel.validate();
-		mainPanel.repaint();
+	/**
+	 * Show a dialog indicating that JMeter threads are stopping on a particular
+	 * host.
+	 * 
+	 * @param host
+	 *            the host where JMeter threads are stopping
+	 */
+	public void showStoppingMessage(String host) {
+		stoppingMessage = new JDialog(this, JMeterUtils.getResString("stopping_test_title"), true); //$NON-NLS-1$
+		JLabel stopLabel = new JLabel(JMeterUtils.getResString("stopping_test") + ": " + host); //$NON-NLS-1$
+		stopLabel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+		stoppingMessage.getContentPane().add(stopLabel);
+		stoppingMessage.pack();
+		ComponentUtil.centerComponentInComponent(this, stoppingMessage);
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				if (stoppingMessage != null) {
+					stoppingMessage.show();
+				}
+			}
+		});
 	}
 
-	/****************************************
+    public void updateCounts() {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                activeThreads.setText(Integer.toString(JMeterContextService.getNumberOfThreads()));
+                totalThreads.setText(Integer.toString(JMeterContextService.getTotalThreads()));
+            }
+        });
+    }
+
+	/***************************************************************************
+	 * !ToDo (Method description)
+	 * 
+	 * @param comp
+	 *            !ToDo (Parameter description)
+	 **************************************************************************/
+	public void setMainPanel(JComponent comp) {
+		mainPanel.setViewportView(comp);
+	}
+
+	/***************************************************************************
 	 * !ToDoo (Method description)
-	 *
-	 *@return   !ToDo (Return description)
-	 ***************************************/
-	public JTree getTree()
-	{
+	 * 
+	 * @return !ToDo (Return description)
+	 **************************************************************************/
+	public JTree getTree() {
 		return tree;
 	}
 
-	public void testStarted(String host)
-	{
-		hosts.add(host);
-		runningIndicator.setIcon(runningIcon);
-		menuBar.setRunning(true,host);
-	}
+	// TestListener implementation
 
-	public void testStarted()
-	{
+	/**
+	 * Called when a test is started on the local system. This implementation
+	 * sets the running indicator and ensures that the menubar is enabled and in
+	 * the running state.
+	 */
+	public void testStarted() {
 		testStarted("local");
 		menuBar.setEnabled(true);
 	}
 
-	public void testEnded()
-	{
+	/**
+	 * Called when a test is started on a specific host. This implementation
+	 * sets the running indicator and ensures that the menubar is in the running
+	 * state.
+	 * 
+	 * @param host
+	 *            the host where the test is starting
+	 */
+	public void testStarted(String host) {
+		hosts.add(host);
+		runningIndicator.setIcon(runningIcon);
+        activeThreads.setText("0");
+        totalThreads.setText("0");
+		menuBar.setRunning(true, host);
+	}
+
+	/**
+	 * Called when a test is ended on the local system. This implementation
+	 * disables the menubar, stops the running indicator, and closes the
+	 * stopping message dialog.
+	 */
+	public void testEnded() {
 		testEnded("local");
 		menuBar.setEnabled(false);
-		if(stoppingMessage != null)
-		{
-			stoppingMessage.dispose();
-			stoppingMessage = null;
-		}
 	}
 
-	public void testEnded(String host)
-	{
+	/**
+	 * Called when a test is ended on the remote system. This implementation
+	 * stops the running indicator and closes the stopping message dialog.
+	 * 
+	 * @param host
+	 *            the host where the test is ending
+	 */
+	public void testEnded(String host) {
 		hosts.remove(host);
-		if(hosts.size() == 0)
-		{
+		if (hosts.size() == 0) {
 			runningIndicator.setIcon(stoppedIcon);
+			JMeterContextService.endTest();
 		}
-		menuBar.setRunning(false,host);
-		if(stoppingMessage != null)
-		{
+		menuBar.setRunning(false, host);
+		if (stoppingMessage != null) {
 			stoppingMessage.dispose();
 			stoppingMessage = null;
 		}
+        activeThreads.setText("0");
+        totalThreads.setText("0");
 	}
 
-	private void init()
-	{
+	/* Implements TestListener#testIterationStart(LoopIterationEvent) */
+	public void testIterationStart(LoopIterationEvent event) {
+	}
+
+	/**
+	 * Create the GUI components and layout.
+	 */
+	private void init() {
 		menuBar = new JMeterMenuBar();
-		createToolBar();
-		createMainPanel();
-		createTreePanel();
-		addThemAll();
-		addWindowListener(new WindowHappenings());
+		setJMenuBar(menuBar);
+
+		JPanel all = new JPanel(new BorderLayout());
+		all.add(createToolBar(), BorderLayout.NORTH);
+
+		JSplitPane treeAndMain = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+
+		treePanel = createTreePanel();
+		treeAndMain.setLeftComponent(treePanel);
+
+		mainPanel = createMainPanel();
+		treeAndMain.setRightComponent(mainPanel);
+
+		treeAndMain.setResizeWeight(.2);
+		treeAndMain.setContinuousLayout(true);
+		all.add(treeAndMain, BorderLayout.CENTER);
+
+		getContentPane().add(all);
+
 		tree.setSelectionRow(1);
-		this.addMouseListener(new GlobalMouseListener());
+		addWindowListener(new WindowHappenings());
 	}
 
-	private TreeCellRenderer getCellRenderer()
-	{
+	/**
+	 * Create the JMeter tool bar pane containing the running indicator.
+	 * 
+	 * @return a panel containing the running indicator
+	 */
+	private Component createToolBar() {
+		Box toolPanel = new Box(BoxLayout.X_AXIS);
+		toolPanel.add(Box.createRigidArea(new Dimension(10, 15)));
+		toolPanel.add(Box.createGlue());
+        toolPanel.add(activeThreads);
+        toolPanel.add(new JLabel(" / "));
+        toolPanel.add(totalThreads);
+        toolPanel.add(Box.createRigidArea(new Dimension(10, 15)));
+        toolPanel.add(runningIndicator);
+		return toolPanel;
+	}
+
+	/**
+	 * Create the panel where the GUI representation of the test tree is
+	 * displayed. The tree should already be created before calling this method.
+	 * 
+	 * @return a scroll pane containing the test tree GUI
+	 */
+	private JScrollPane createTreePanel() {
+		JScrollPane treeP = new JScrollPane(tree);
+		treeP.setMinimumSize(new Dimension(100, 0));
+		return treeP;
+	}
+
+	/**
+	 * Create the main panel where components can display their GUIs.
+	 * 
+	 * @return the main scroll pane
+	 */
+	private JScrollPane createMainPanel() {
+		return new JScrollPane();
+	}
+
+	/**
+	 * Create and initialize the GUI representation of the test tree.
+	 * 
+	 * @param treeModel
+	 *            the test tree model
+	 * @param treeListener
+	 *            the test tree listener
+	 * 
+	 * @return the initialized test tree GUI
+	 */
+	private JTree makeTree(TreeModel treeModel, JMeterTreeListener treeListener) {
+		JTree treevar = new JTree(treeModel) {
+			public String getToolTipText(MouseEvent event) {
+				TreePath path = this.getPathForLocation(event.getX(), event.getY());
+				if (path != null) {
+					Object treeNode = path.getLastPathComponent();
+					if (treeNode instanceof DefaultMutableTreeNode) {
+						Object testElement = ((DefaultMutableTreeNode) treeNode).getUserObject();
+						if (testElement instanceof TestElement) {
+							String comment =
+								((TestElement) testElement).getPropertyAsString(TestPlan.COMMENTS);
+							if (comment != null && comment.length() > 0) {
+								return comment;
+								}
+							}
+						}
+					}
+				return null;
+				}
+			};
+       	treevar.setToolTipText("");
+		treevar.setCellRenderer(getCellRenderer());
+		treevar.setRootVisible(false);
+		treevar.setShowsRootHandles(true);
+
+		treeListener.setJTree(treevar);
+		treevar.addTreeSelectionListener(treeListener);
+		treevar.addMouseListener(treeListener);
+		treevar.addMouseMotionListener(treeListener);
+		treevar.addKeyListener(treeListener);
+
+		return treevar;
+	}
+
+	/**
+	 * Create the tree cell renderer used to draw the nodes in the test tree.
+	 * 
+	 * @return a renderer to draw the test tree nodes
+	 */
+	private TreeCellRenderer getCellRenderer() {
 		DefaultTreeCellRenderer rend = new JMeterCellRenderer();
 		rend.setFont(new Font("Dialog", Font.PLAIN, 11));
 		return rend;
 	}
 
-	private void addThemAll()
-	{
-		this.setJMenuBar(menuBar);
-		all = new JPanel(new GridBagLayout());
-		GridBagConstraints gbc = new GridBagConstraints();
-		{
-			gbc.gridx = 0;
-			gbc.gridy = 0;
-			gbc.gridheight = 1;
-			gbc.gridwidth = 1;
-			gbc.fill = gbc.BOTH;
-			gbc.weightx = 1;
-			gbc.weighty = 0;
-			all.add(toolPanel, gbc.clone());
-		}
-		JSplitPane treeAndMain = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-		treeAndMain.setLeftComponent(treePanel);
-		treeAndMain.setRightComponent(new JScrollPane(mainPanel));
-
-		// The setResizeWeight() method was added to JDK1.3. For now, JMeter should
-		// remain compatible with JDK1.2.
-		//treeAndMain.setResizeWeight(.2);
-
-		treeAndMain.setContinuousLayout(true);
-		{
-			gbc.gridy++;
-			gbc.weighty = 1;
-			all.add(treeAndMain, gbc.clone());
-		}
-		this.getContentPane().add(all);
-	}
-
-	private void createToolBar()
-	{
-		toolPanel = new Box(BoxLayout.X_AXIS);
-		toolPanel.add(Box.createRigidArea(new Dimension(10,15)));
-		toolPanel.add(Box.createGlue());
-		toolPanel.add(runningIndicator);
-	}
-
-	private void createTreePanel()
-	{
-		treePanel = new JScrollPane(makeTree());
-		treePanel.setMinimumSize(new Dimension(100,0));
-	}
-
-	public void drawDraggedComponent(Component dragIcon,int x,int y)
-	{
+	/**
+	 * Repaint pieces of the GUI as needed while dragging. This method should
+	 * only be called from the Swing event thread.
+	 * 
+	 * @param dragIcon
+	 *            the component being dragged
+	 * @param x
+	 *            the current mouse x coordinate
+	 * @param y
+	 *            the current mouse y coordinate
+	 */
+	public void drawDraggedComponent(Component dragIcon, int x, int y) {
 		Dimension size = dragIcon.getPreferredSize();
-		treePanel.paintImmediately(previousDragXLocation,previousDragYLocation,size.width,size.height);
-		this.getLayeredPane().setLayer(dragIcon,400);
-		SwingUtilities.paintComponent(treePanel.getGraphics(),
-				dragIcon,treePanel,x,y,size.width,size.height);
+		treePanel.paintImmediately(previousDragXLocation, previousDragYLocation, size.width, size.height);
+		this.getLayeredPane().setLayer(dragIcon, 400);
+		SwingUtilities.paintComponent(treePanel.getGraphics(), dragIcon, treePanel, x, y, size.width, size.height);
 		previousDragXLocation = x;
 		previousDragYLocation = y;
 	}
 
-	private void createMainPanel()
-	{
-		mainPanel = new JPanel();
-		mainPanel.setLayout(new GridLayout(1, 1));
-		mainPanel.add(Box.createGlue());
-	}
-
-	private JTree makeTree()
-	{
-		tree = new JTree(this.treeModel);
-		tree.setCellRenderer(getCellRenderer());
-		tree.setRootVisible(false);
-		tree.setShowsRootHandles(true);
-		treeListener.setJTree(tree);
-		tree.addTreeSelectionListener(treeListener);
-		tree.addMouseListener(treeListener);
-		tree.addMouseMotionListener(treeListener);
-		tree.addKeyListener(treeListener);
-		return tree;
-	}
-
-	/****************************************
-	 * !ToDo (Class description)
-	 *
-	 *@author    $Author$
-	 *@created   $Date$
-	 *@version   $Revision$
-	 ***************************************/
-	private class WindowHappenings extends WindowAdapter
-	{
-		/****************************************
-		 * !ToDo (Method description)
-		 *
-		 *@param event  !ToDo (Parameter description)
-		 ***************************************/
-		public void windowClosing(WindowEvent event)
-		{
-			ActionRouter.getInstance().actionPerformed(new ActionEvent(
-					this, event.getID(), "exit"));
+	/**
+	 * A window adapter used to detect when the main JMeter frame is being
+	 * closed.
+	 */
+	private static class WindowHappenings extends WindowAdapter {
+		/**
+		 * Called when the main JMeter frame is being closed. Sends a
+		 * notification so that JMeter can react appropriately.
+		 * 
+		 * @param event
+		 *            the WindowEvent to handle
+		 */
+		public void windowClosing(WindowEvent event) {
+			ActionRouter.getInstance().actionPerformed(new ActionEvent(this, event.getID(), ActionNames.EXIT));
 		}
 	}
-	
 }

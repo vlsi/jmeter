@@ -1,56 +1,19 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2002 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
 
 package org.apache.jmeter.gui;
@@ -61,61 +24,153 @@ import java.util.Map;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 
+import org.apache.jmeter.testbeans.gui.TestBeanGUI;
 
 /**
+ * Provides a way to register and retrieve GUI classes and icons.
+ * 
  * @author Oliver Rossmueller
+ * @version $Revision$
  */
-public class GUIFactory {
+public final class GUIFactory {
+	/** A Map from String to JComponent of registered GUI classes. */
+	private static final Map GUI_MAP = new HashMap();
 
-    private static final Map guiMap = new HashMap();
-    private static final Map iconMap = new HashMap();
+	/** A Map from String to ImageIcon of registered icons. */
+	private static final Map ICON_MAP = new HashMap();
 
+	/** A Map from String to ImageIcon of registered icons. */
+	private static final Map DISABLED_ICON_MAP = new HashMap();
 
-    public static ImageIcon getIcon(Class elementClass)
-    {
-        String key = elementClass.getName();
-        ImageIcon icon = (ImageIcon)iconMap.get(key);
+	/**
+	 * Prevent instantiation since this is a static utility class.
+	 */
+	private GUIFactory() {
+	}
 
-        if (icon != null)
-	{
-            return icon;
-        }
-        if (elementClass.getSuperclass() != null)
-	{
-            return getIcon(elementClass.getSuperclass());
-        }
-        return null;
-    }
+	/**
+	 * Get an icon which has previously been registered for this class object.
+	 * 
+	 * @param elementClass
+	 *            the class object which we want to get an icon for
+	 * 
+	 * @return the associated icon, or null if this class or its superclass has
+	 *         not been registered
+	 */
+	public static ImageIcon getIcon(Class elementClass) {
+		return getIcon(elementClass, true);
 
+	}
 
-    public static JComponent getGUI(Class elementClass)
-    {
-        String key = elementClass.getName();
-        JComponent gui = (JComponent)guiMap.get(key);
+	/**
+	 * Get icon/disabledicon which has previously been registered for this class
+	 * object.
+	 * 
+	 * @param elementClass
+	 *            the class object which we want to get an icon for
+	 * @param enabled -
+	 *            is icon enabled
+	 * 
+	 * @return the associated icon, or null if this class or its superclass has
+	 *         not been registered
+	 */
+	public static ImageIcon getIcon(Class elementClass, boolean enabled) {
+		String key = elementClass.getName();
+		ImageIcon icon = (ImageIcon) (enabled ? ICON_MAP.get(key) : DISABLED_ICON_MAP.get(key));
 
-        if (gui != null)
-	{
-            return gui;
-        }
-        if (elementClass.getSuperclass() != null)
-	{
-            return getGUI(elementClass.getSuperclass());
-        }
-        return null;
-    }
+		if (icon != null) {
+			return icon;
+		}
 
+		if (elementClass.getSuperclass() != null) {
+			return getIcon(elementClass.getSuperclass(), enabled);
+		}
 
-    public static void registerIcon(String key, ImageIcon icon)
-    {
-        iconMap.put(key, icon);
-    }
+		return null;
+	}
 
+	/**
+	 * Get a component instance which has previously been registered for this
+	 * class object.
+	 * 
+	 * @param elementClass
+	 *            the class object which we want to get an instance of
+	 * 
+	 * @return an instance of the class, or null if this class or its superclass
+	 *         has not been registered
+	 */
+	public static JComponent getGUI(Class elementClass) {
+		// TODO: This method doesn't appear to be used.
+		String key = elementClass.getName();
+		JComponent gui = (JComponent) GUI_MAP.get(key);
 
-    public static void registerGUI(String key, Class guiClass)
-            throws InstantiationException, IllegalAccessException
-    {
-        JMeterGUIComponent gui = (JMeterGUIComponent)guiClass.newInstance();
-        JComponent component = (JComponent)gui;
-        guiMap.put(key, gui);
-    }
+		if (gui != null) {
+			return gui;
+		}
+
+		if (elementClass.getSuperclass() != null) {
+			return getGUI(elementClass.getSuperclass());
+		}
+
+		return null;
+	}
+
+	/**
+	 * Register an icon so that it can later be retrieved via
+	 * {@link #getIcon(Class)}. The key should match the fully-qualified class
+	 * name for the class used as the parameter when retrieving the icon.
+	 * 
+	 * @param key
+	 *            the name which can be used to retrieve this icon later
+	 * @param icon
+	 *            the icon to store
+	 */
+	public static void registerIcon(String key, ImageIcon icon) {
+		ICON_MAP.put(key, icon);
+	}
+
+	/**
+	 * Register an icon so that it can later be retrieved via
+	 * {@link #getIcon(Class)}. The key should match the fully-qualified class
+	 * name for the class used as the parameter when retrieving the icon.
+	 * 
+	 * @param key
+	 *            the name which can be used to retrieve this icon later
+	 * @param icon
+	 *            the icon to store
+	 */
+	public static void registerDisabledIcon(String key, ImageIcon icon) {
+		DISABLED_ICON_MAP.put(key, icon);
+	}
+
+	/**
+	 * Register a GUI class so that it can later be retrieved via
+	 * {@link #getGUI(Class)}. The key should match the fully-qualified class
+	 * name for the class used as the parameter when retrieving the GUI.
+	 * 
+	 * @param key
+	 *            the name which can be used to retrieve this GUI later
+	 * @param guiClass
+	 *            the class object for the GUI component
+	 * @param testClass
+	 *            the class of the objects edited by this GUI
+	 * 
+	 * @throws InstantiationException
+	 *             if an instance of the GUI class can not be instantiated
+	 * @throws IllegalAccessException
+	 *             if access rights do not permit an instance of the GUI class
+	 *             to be created
+	 */
+	public static void registerGUI(String key, Class guiClass, Class testClass) throws InstantiationException,
+			IllegalAccessException {
+		// TODO: This method doesn't appear to be used.
+		JMeterGUIComponent gui;
+
+		if (guiClass == TestBeanGUI.class) {
+			gui = new TestBeanGUI(testClass);
+		} else {
+			gui = (JMeterGUIComponent) guiClass.newInstance();
+		}
+		GUI_MAP.put(key, gui);
+	}
 }

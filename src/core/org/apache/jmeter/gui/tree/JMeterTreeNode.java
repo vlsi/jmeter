@@ -1,59 +1,27 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2002 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.gui.tree;
 
+import java.awt.Image;
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.util.Collection;
 
 import javax.swing.ImageIcon;
@@ -62,138 +30,116 @@ import javax.swing.tree.DefaultMutableTreeNode;
 
 import org.apache.jmeter.gui.GUIFactory;
 import org.apache.jmeter.gui.GuiPackage;
-import org.apache.jmeter.gui.JMeterGUIComponent;
+import org.apache.jmeter.testbeans.TestBean;
 import org.apache.jmeter.testelement.AbstractTestElement;
 import org.apache.jmeter.testelement.TestElement;
-import org.apache.log.Hierarchy;
+import org.apache.jmeter.testelement.property.BooleanProperty;
+import org.apache.jmeter.testelement.property.StringProperty;
+import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
-/************************************************************
- *  Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author     Michael Stover
- *@created    $Date$
- *@version    1.0
- ***********************************************************/
+/**
+ * @author Michael Stover
+ * @version $Revision$
+ */
+public class JMeterTreeNode extends DefaultMutableTreeNode implements NamedTreeNode {
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-public class JMeterTreeNode extends DefaultMutableTreeNode
-	implements JMeterGUIComponent
-{
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-					"jmeter.gui");
-    JMeterTreeModel treeModel;
-    boolean enabled = true;
+	private JMeterTreeModel treeModel;
 
+	public JMeterTreeNode() {// Allow serializable test to work
+		// TODO: is the serializable test necessary now that JMeterTreeNode is
+		// no longer a GUI component?
+		this(null, null);
+	}
 
-	public JMeterTreeNode(TestElement userObj, JMeterTreeModel treeModel)
-	{
+	public JMeterTreeNode(TestElement userObj, JMeterTreeModel treeModel) {
 		super(userObj);
 		this.treeModel = treeModel;
 	}
 
-	public boolean isEnabled()
-	{
-		return ((AbstractTestElement)createTestElement()).getPropertyAsBoolean(TestElement.ENABLED);
+	public boolean isEnabled() {
+		return ((AbstractTestElement) getTestElement()).getPropertyAsBoolean(TestElement.ENABLED);
 	}
 
-	public void setEnabled(boolean enabled)
-	{
-		createTestElement().setProperty(TestElement.ENABLED,new Boolean(enabled));
+	public void setEnabled(boolean enabled) {
+		getTestElement().setProperty(new BooleanProperty(TestElement.ENABLED, enabled));
+		treeModel.nodeChanged(this);
 	}
 
-	public ImageIcon getIcon()
-	{
-		try
-		{
-			return GUIFactory.getIcon(Class.forName(createTestElement().getPropertyAsString(TestElement.GUI_CLASS)));
-		}
-		catch (ClassNotFoundException e)
-		{
-			log.warn("Can't get icon for class " + 
-					createTestElement(),e);
+	public ImageIcon getIcon() {
+		return getIcon(true);
+	}
+
+	public ImageIcon getIcon(boolean enabled) {
+		try {
+			if (getTestElement() instanceof TestBean) {
+				try {
+					Image img = Introspector.getBeanInfo(getTestElement().getClass())
+							.getIcon(BeanInfo.ICON_COLOR_16x16);
+					// If icon has not been defined, then use GUI_CLASS property
+					if (img == null) {//
+						Object clazz = Introspector.getBeanInfo(getTestElement().getClass()).getBeanDescriptor()
+								.getValue(TestElement.GUI_CLASS);
+						if (clazz == null) {
+							log.error("Can't obtain GUI class for " + getTestElement().getClass().getName());
+							return null;
+						}
+						return GUIFactory.getIcon(Class.forName((String) clazz), enabled);
+					}
+					return new ImageIcon(img);
+				} catch (IntrospectionException e1) {
+					log.error("Can't obtain icon", e1);
+					throw new org.apache.jorphan.util.JMeterError(e1);
+				}
+			}
+			return GUIFactory.getIcon(Class.forName(getTestElement().getPropertyAsString(TestElement.GUI_CLASS)),
+						enabled);
+		} catch (ClassNotFoundException e) {
+			log.warn("Can't get icon for class " + getTestElement(), e);
 			return null;
 		}
 	}
 
-	public Collection getMenuCategories()
-	{
-		try
-		{
-			return GuiPackage.getInstance().getGui(createTestElement()).getMenuCategories();
-		}
-		catch (Exception e)
-		{
-			log.error("Can't get popup menu for gui",e);
+	public Collection getMenuCategories() {
+		try {
+			return GuiPackage.getInstance().getGui(getTestElement()).getMenuCategories();
+		} catch (Exception e) {
+			log.error("Can't get popup menu for gui", e);
 			return null;
 		}
 	}
 
-	public JPopupMenu createPopupMenu()
-	{
-		try
-		{
-			return GuiPackage.getInstance().getGui(createTestElement()).createPopupMenu();
-		}
-		catch (Exception e)
-		{
-			log.error("Can't get popup menu for gui",e);
+	public JPopupMenu createPopupMenu() {
+		try {
+			return GuiPackage.getInstance().getGui(getTestElement()).createPopupMenu();
+		} catch (Exception e) {
+			log.error("Can't get popup menu for gui", e);
 			return null;
 		}
 	}
 
-	public void configure(TestElement element)
-	{
-		
-	}
-    
-    /**
-         * Modifies a given TestElement to mirror the data in the gui components.
-         * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
-         */
-    public void modifyTestElement(TestElement el)
-    {
-        
-    }
-
-	public TestElement createTestElement()
-	{
-		return (TestElement)getUserObject();
+	public TestElement getTestElement() {
+		return (TestElement) getUserObject();
 	}
 
-	public String getStaticLabel()
-	{
-		return ((TestElement)getUserObject()).getPropertyAsString(TestElement.NAME);
+	public String getStaticLabel() {
+		return GuiPackage.getInstance().getGui((TestElement) getUserObject()).getStaticLabel();
 	}
 
-	/************************************************************
-	 *  !ToDo (Method description)
-	 *
-	 *@param  name  !ToDo (Parameter description)
-	 ***********************************************************/
-	public void setName(String name)
-	{
-		((TestElement)getUserObject()).setProperty(TestElement.NAME,name);
+	public String getDocAnchor() {
+		return GuiPackage.getInstance().getGui((TestElement) getUserObject()).getDocAnchor();
 	}
 
-	/************************************************************
-	 *  !ToDoo (Method description)
-	 *
-	 *@return    !ToDo (Return description)
-	 ***********************************************************/
-	public String getName()
-	{
-		return ((TestElement)getUserObject()).getPropertyAsString(TestElement.NAME);
+	public void setName(String name) {
+		((TestElement) getUserObject()).setProperty(new StringProperty(TestElement.NAME, name));
 	}
 
+	public String getName() {
+		return ((TestElement) getUserObject()).getPropertyAsString(TestElement.NAME);
+	}
 
-    public void setNode(JMeterTreeNode node)
-    {
-        
-    }
-
-
-    public void nameChanged()
-    {
-        treeModel.nodeChanged(this);
-    }
+	public void nameChanged() {
+		treeModel.nodeChanged(this);
+	}
 }

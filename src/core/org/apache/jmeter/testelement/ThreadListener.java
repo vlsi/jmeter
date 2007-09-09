@@ -1,34 +1,43 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
 package org.apache.jmeter.testelement;
 
-import org.apache.jmeter.threads.JMeterVariables;
-
 /**
- * Used to pass messages to test elements that are interested in information
- * unique to a particular test thread, such as when new iterations through the
- * test plan are begun, and access to thread-level variable values.
+ * Allow threads to perform startup and closedown if necessary
+ * 
+ * @version $Revision$ on $Date$
  */
 public interface ThreadListener {
-	
 	/**
-	 * Tells all thread listeners that a new iteration has started
-	 * and passes the number of the iteration (starting with 1).
+	 * Called just before the start of the thread 
+     * 
+     * @see org.apache.jmeter.threads.JMeterThread#threadStarted()
+	 * 
 	 */
-	public void iterationStarted(int iterationCount);
-	
+	public void threadStarted();
+
 	/**
-	 * Hands the JMeterVariables object for that thread to the 
-	 * ThreadListener object.  The object should save the 
-	 * reference for use throughout the test.
-	 * <p>
-	 * One thing to be aware of is that if your test element does not
-	 * implement PerThreadClonable, then this method will be called 
-	 * multiple times, as each thread hands off it's JMeterVariables
-	 * object.  In that case, it is your job to store all instances of
-	 * JMeterVariables handed to you, and keep them straight by
-	 * their thread names.
+	 * Called once for each thread at the end of a test
+	 * 
+	 * @see org.apache.jmeter.threads.JMeterThread#threadFinished()
+	 * 
 	 */
-	public void setJMeterVariables(JMeterVariables jmVars);
-	
-	
+	public void threadFinished();
 
 }

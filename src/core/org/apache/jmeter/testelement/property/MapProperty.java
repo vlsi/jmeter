@@ -1,120 +1,165 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
 package org.apache.jmeter.testelement.property;
 
-import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.jmeter.testelement.TestElement;
 
-/**
- * @author Administrator
- *
- * To change this generated comment edit the template variable "typecomment":
- * Window>Preferences>Java>Templates.
- */
-public class MapProperty extends AbstractProperty
-{
-    Map value;
+public class MapProperty extends MultiProperty {
 
-    public MapProperty(String name, Map value)
-    {
-        super(name);
-        this.value = value;
-    }
+	private static final long serialVersionUID = 221L; // Remember to change this when the class changes ...
+	
+    private Map value;
 
-    public MapProperty()
-    {
-        super();
-    }
+	private transient Map savedValue = null;
 
-    /**
-     * @see org.apache.jmeter.testelement.property.JMeterProperty#getStringValue()
-     */
-    public String getStringValue()
-    {
-        return value.toString();
-    }
+	public MapProperty(String name, Map value) {
+		super(name);
+		log.info("map = " + value);
+		this.value = normalizeMap(value);
+		log.info("normalized map = " + this.value);
+	}
 
-    /**
-     * @see org.apache.jmeter.testelement.property.JMeterProperty#getObjectValue()
-     */
-    public Object getObjectValue()
-    {
-        return value;
-    }
+	public MapProperty() {
+		super();
+	}
 
-    /**
-     * @see java.lang.Object#clone()
-     */
-    public Object clone()
-    {
-        MapProperty prop = (MapProperty) super.clone();
-        prop.value = value;
-        return value;
-    }
+	public boolean equals(Object o) {
+		if (o instanceof MapProperty) {
+			if (value != null) {
+				return value.equals(((JMeterProperty) o).getObjectValue());
+			}
+		}
+		return false;
+	}
 
-    public PropertyIterator valueIterator()
-    {
-        return new PropertyIteratorImpl(value.values());
-    }
+	public void setObjectValue(Object v) {
+		if (v instanceof Map) {
+			setMap((Map) v);
+		}
+	}
 
-    /**
-     * @see org.apache.jmeter.testelement.property.JMeterProperty#mergeIn(org.apache.jmeter.testelement.property.JMeterProperty)
-     */
-    public void mergeIn(JMeterProperty prop)
-    {
-        if (prop instanceof MapProperty)
-        {
-            PropertyIterator iter = ((MapProperty) prop).valueIterator();
-            while (iter.hasNext())
-            {
-                JMeterProperty subProp = iter.next();
-                if (!value.containsKey(subProp.getName()))
-                {
-                    value.put(subProp.getName(), subProp);
-                }
-            }
-        }
-    }
+	public void addProperty(JMeterProperty prop) {
+		addProperty(prop.getName(), prop);
+	}
 
-    /**
-     * @see org.apache.jmeter.testelement.property.JMeterProperty#recoverRunningVersion(org.apache.jmeter.testelement.TestElement)
-     */
-    public void recoverRunningVersion(TestElement owner)
-    {
-        Iterator iter = value.keySet().iterator();
-        while (iter.hasNext())
-        {
-            String name = (String) iter.next();
-            JMeterProperty prop = (JMeterProperty) value.get(name);
-            if (prop.isTemporary(owner))
-            {
-                iter.remove();
-                value.remove(name);
-            }
-        }
-    }
+	public JMeterProperty get(String key) {
+		return (JMeterProperty) value.get(key);
+	}
 
-    public void setRunningVersion(boolean running)
-    {
-        super.setRunningVersion(running);
-        PropertyIterator iter = valueIterator();
-        while (iter.hasNext())
-        {
-            iter.next().setRunningVersion(running);
-        }
-    }
+	/**
+	 * Figures out what kind of properties this collection is holding and
+	 * returns the class type.
+	 * 
+	 * @see AbstractProperty#getPropertyType()
+	 */
+	protected Class getPropertyType() {
+		if (value.size() > 0) {
+			return valueIterator().next().getClass();
+		}
+		return NullProperty.class;
+	}
 
-    /**
-         * @see org.apache.jmeter.testelement.property.JMeterProperty#setTemporary(boolean, org.apache.jmeter.testelement.TestElement)
-         */
-    public void setTemporary(boolean temporary, TestElement owner)
-    {
-        super.setTemporary(temporary, owner);
-        PropertyIterator iter = valueIterator();
-        while (iter.hasNext())
-        {
-            iter.next().setTemporary(temporary, owner);
-        }
-    }
+	/**
+	 * @see JMeterProperty#getStringValue()
+	 */
+	public String getStringValue() {
+		return value.toString();
+	}
 
+	/**
+	 * @see JMeterProperty#getObjectValue()
+	 */
+	public Object getObjectValue() {
+		return value;
+	}
+
+	public Object clone() {
+		MapProperty prop = (MapProperty) super.clone();
+		prop.value = cloneMap();
+		return prop;
+	}
+
+	private Map cloneMap() {
+		try {
+			Map newCol = (Map) value.getClass().newInstance();
+			PropertyIterator iter = valueIterator();
+			while (iter.hasNext()) {
+				JMeterProperty item = iter.next();
+				newCol.put(item.getName(), item.clone());
+			}
+			return newCol;
+		} catch (Exception e) {
+			log.error("Couldn't clone map", e);
+			return value;
+		}
+	}
+
+	public PropertyIterator valueIterator() {
+		return getIterator(value.values());
+	}
+
+	public void addProperty(String name, JMeterProperty prop) {
+		if (!value.containsKey(name)) {
+			value.put(name, prop);
+		}
+	}
+
+	public void setMap(Map newMap) {
+		value = normalizeMap(newMap);
+	}
+
+	/**
+	 * @see JMeterProperty#recoverRunningVersion(TestElement)
+	 */
+	public void recoverRunningVersion(TestElement owner) {
+		if (savedValue != null) {
+			value = savedValue;
+		}
+		recoverRunningVersionOfSubElements(owner);
+	}
+
+	public void clear() {
+		value.clear();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see MultiProperty#iterator()
+	 */
+	public PropertyIterator iterator() {
+		return valueIterator();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see JMeterProperty#setRunningVersion(boolean)
+	 */
+	public void setRunningVersion(boolean running) {
+		super.setRunningVersion(running);
+		if (running) {
+			savedValue = value;
+		} else {
+			savedValue = null;
+		}
+	}
 }

@@ -1,136 +1,82 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2002 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
 
 package org.apache.jmeter.gui.action;
+
 import java.awt.event.ActionEvent;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.swing.JComponent;
 import javax.swing.tree.TreePath;
 
+import org.apache.jmeter.exceptions.IllegalUserActionException;
 import org.apache.jmeter.gui.GuiPackage;
 import org.apache.jmeter.gui.tree.JMeterTreeNode;
 import org.apache.jmeter.testelement.TestElement;
-import org.apache.log.Hierarchy;
+import org.apache.jmeter.util.JMeterUtils;
+import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
-/**
- *  !ToDo (Class description)
- *
- *@author     $Author$
- *@created    $Date$
- *@version    $Revision$
- */
-public class AddToTree implements Command
-{
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-			"jmeter.gui");
-	private Map allJMeterComponentCommands;
+public class AddToTree implements Command {
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-	public AddToTree()
-	{
-		allJMeterComponentCommands = new HashMap();
-		allJMeterComponentCommands.put("Add","Add");
-		List classes;
+    private static Set commandSet;
+    
+    static {
+        HashSet commands = new HashSet();
+        commands.add(ActionNames.ADD);
+        commandSet = Collections.unmodifiableSet(commands);
+    }
 
+
+	public AddToTree() {
 	}
-
 
 	/**
-	 *  Gets the Set of actions this Command class responds to.
-	 *
-	 *@return    The ActionNames value
+	 * Gets the Set of actions this Command class responds to.
+	 * 
+	 * @return the ActionNames value
 	 */
-	public Set getActionNames()
-	{
-		return allJMeterComponentCommands.keySet();
+	public Set getActionNames() {
+		return commandSet;
 	}
-
 
 	/**
-	 *  Adds the specified class to the current node of the tree.
-	 *
-	 *@param  e           Description of Parameter
-	 *@param  guiPackage  Description of Parameter
+	 * Adds the specified class to the current node of the tree.
 	 */
-	public void doAction(ActionEvent e)
-	{
-		try
-		{
-			TestElement node = GuiPackage.getInstance().createTestElement(((JComponent)e.getSource()).getName());
-			addObjectToTree(node);
+	public void doAction(ActionEvent e) {
+        GuiPackage guiPackage = GuiPackage.getInstance();
+		try {
+			guiPackage.updateCurrentNode();
+			TestElement testElement = guiPackage.createTestElement(((JComponent) e.getSource()).getName());
+            JMeterTreeNode parentNode = guiPackage.getCurrentNode();
+            JMeterTreeNode node = guiPackage.getTreeModel().addComponent(testElement, parentNode);
+            guiPackage.getMainFrame().getTree().setSelectionPath(new TreePath(node.getPath()));
+        }
+		catch (IllegalUserActionException iuae) {
+            log.error("", iuae); // $NON-NLS-1$
+		    JMeterUtils.reportErrorToUser(iuae.getMessage());
 		}
-		catch(Exception err)
-		{
-			log.error("",err);
+        catch (Exception err) {
+			log.error("", err); // $NON-NLS-1$
+		    JMeterUtils.reportErrorToUser(err.getMessage());
 		}
 	}
-
-	protected void addObjectToTree(TestElement el)
-	{
-		GuiPackage guiPackage = GuiPackage.getInstance();
-		JMeterTreeNode node = new JMeterTreeNode(el, guiPackage.getTreeModel());
-		guiPackage.getTreeModel().insertNodeInto(node,
-				guiPackage.getTreeListener().getCurrentNode(),
-				guiPackage.getTreeListener().getCurrentNode().getChildCount());
-		guiPackage.getMainFrame().getTree().setSelectionPath(
-				new TreePath(node.getPath()));
-	}
-
-
 }

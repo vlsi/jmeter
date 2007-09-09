@@ -1,165 +1,123 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
-package org.apache.jmeter.engine;
-import java.net.InetAddress;
-import java.rmi.Naming;
-import java.rmi.RemoteException;
 
+package org.apache.jmeter.engine;
+
+import java.net.InetAddress;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.Date;
+
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.collections.HashTree;
-import org.apache.log.Hierarchy;
+import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
+/**
+ * @version $Revision$ Updated on: $Date$
+ */
+public class RemoteJMeterEngineImpl extends java.rmi.server.UnicastRemoteObject implements RemoteJMeterEngine {
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-/************************************************************
- *  Description of the Class
- *
- *@author     default
- *@created    March 13, 2001
- ***********************************************************/
-public class RemoteJMeterEngineImpl
-		 extends java.rmi.server.UnicastRemoteObject
-		 implements RemoteJMeterEngine
-{
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-			"jmeter.engine");
-	JMeterEngine backingEngine;
+	private JMeterEngine backingEngine;
 
-	/************************************************************
-	 *  !ToDo (Constructor description)
-	 *
-	 *@exception  RemoteException  Description of Exception
-	 ***********************************************************/
-	public RemoteJMeterEngineImpl() throws RemoteException
-	{
-		try
-		{
+	public static final int DEFAULT_RMI_PORT = 
+		JMeterUtils.getPropDefault("server.rmi.port", 1099); // $NON-NLS-1$
+
+	public RemoteJMeterEngineImpl() throws RemoteException {
+		init(DEFAULT_RMI_PORT);
+	}
+
+	public RemoteJMeterEngineImpl(int port) throws RemoteException {
+		init(port == 0 ? DEFAULT_RMI_PORT : port);
+	}
+
+	private void init(int port) throws RemoteException {
+		log.info("Starting backing engine on " + port);
+		log.debug("This = " + this);
+		try {
+			Registry reg = LocateRegistry.getRegistry(port);
 			backingEngine = new StandardJMeterEngine(InetAddress.getLocalHost().getHostName());
-			Naming.rebind("JMeterEngine", this);
-		}
-		catch(Exception ex)
-		{
-			log.error("rmiregistry needs to be running to start JMeter in server mode",ex);
+			reg.rebind("JMeterEngine", this); // $NON-NLS-1$
+			log.info("Bound to registry on port " + port);
+		} catch (Exception ex) {
+			log.error("rmiregistry needs to be running to start JMeter in server " + "mode\n\t" + ex.toString());
+			// Throw an Exception to ensure caller knows ...
+			throw new RemoteException("Cannot start. See server log file.");
 		}
 	}
-	
-	public void setHost(String host)
-	{
+
+	public void setHost(String host) {
+		log.info("received host: " + host);
 		backingEngine.setHost(host);
 	}
 
-	/************************************************************
-	 *  Adds a feature to the ThreadGroup attribute of the RemoteJMeterEngineImpl
-	 *  object
-	 *
-	 *@param  tGroup               The feature to be added to the ThreadGroup
-	 *      attribute
-	 *@exception  RemoteException  Description of Exception
-	 ***********************************************************/
-	public void configure(HashTree testTree) throws RemoteException
-	{
+	/**
+	 * Adds a feature to the ThreadGroup attribute of the RemoteJMeterEngineImpl
+	 * object.
+	 * 
+	 * @param testTree
+	 *            the feature to be added to the ThreadGroup attribute
+	 */
+	public void configure(HashTree testTree) throws RemoteException {
+		log.info("received test tree");
 		backingEngine.configure(testTree);
 	}
 
-	/************************************************************
-	 *  Description of the Method
-	 *
-	 *@exception  RemoteException  Description of Exception
-	 ***********************************************************/
-	public void runTest() throws RemoteException,JMeterEngineException
-	{
+	public void runTest() throws RemoteException, JMeterEngineException {
+		log.info("running test");
+		log.debug("This = " + this);
+		long now=System.currentTimeMillis();
+		System.out.println("Starting the test @ "+new Date(now)+" ("+now+")");
 		backingEngine.runTest();
 	}
 
-	/************************************************************
-	 *  Description of the Method
-	 *
-	 *@exception  RemoteException  Description of Exception
-	 ***********************************************************/
-	public void reset() throws RemoteException
-	{
+	public void reset() throws RemoteException {
+		log.info("Reset");
 		backingEngine.reset();
 	}
 
-	/************************************************************
-	 *  Description of the Method
-	 *
-	 *@exception  RemoteException  Description of Exception
-	 ***********************************************************/
-	public void stopTest() throws RemoteException
-	{
-		backingEngine.stopTest();
+	public void stopTest() throws RemoteException {
+		log.info("Stopping test");
+		backingEngine.stopTest();// TODO: askThreadsToStop() instead?
 	}
 
-	/************************************************************
-	 *  The main program for the RemoteJMeterEngineImpl class
-	 *
-	 *@param  args  The command line arguments
-	 ***********************************************************/
-	public static void main(String[] args)
-	{
-		try
-		{
-			RemoteJMeterEngine engine = new RemoteJMeterEngineImpl();
-			while(true)
-			{
+	public void exit() throws RemoteException {
+		log.info("Exitting");
+		backingEngine.exit();
+	}
+
+	/**
+	 * The main program for the RemoteJMeterEngineImpl class.
+	 * 
+	 * @param args
+	 *            the command line arguments
+	 */
+	public static void main(String[] args) {
+		log.info("Starting main");
+		try {
+			new RemoteJMeterEngineImpl();
+			while (true) {
 				Thread.sleep(Long.MAX_VALUE);
 			}
-		}
-		catch(Exception ex)
-		{
-			log.error("",ex);
+		} catch (Exception ex) {
+			log.error("", ex); // $NON-NLS-1$
 		}
 
 	}

@@ -1,56 +1,19 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
 
 package org.apache.jmeter.assertions;
@@ -58,51 +21,149 @@ package org.apache.jmeter.assertions;
 import java.io.Serializable;
 
 /**
- * Title:        Jakarta-JMeter
- * Description:
- * Copyright:    Copyright (c) 2001
- * Company:      Apache
  * @author Michael Stover
- * @version 1.0
  */
-
 public class AssertionResult implements Serializable {
+	public static final String RESPONSE_WAS_NULL = "Response was null"; // $NON-NLS-1$
 
+	/** Name of the assertion. */
+	private String name;
+	
+	/** True if the assertion failed. */
 	private boolean failure;
+
+	/** True if there was an error checking the assertion. */
 	private boolean error;
+
+	/** A message describing the failure. */
 	private String failureMessage;
 
-	public AssertionResult()
-	{
+	/**
+	 * Create a new Assertion Result. The result will indicate no failure or
+	 * error.
+	 * @deprecated - use the named constructor
+	 */
+	public AssertionResult() { // Needs to be public for tests
+	}
+	
+	/**
+	 * Create a new Assertion Result. The result will indicate no failure or
+	 * error.
+	 * 
+	 * @param name the name of the assertion
+	 */
+	public AssertionResult(String name) {
+		setName(name);
+	}
+	
+	/**
+	 * Get the name of the assertion
+	 * 
+	 * @return the name of the assertion
+	 */
+	public String getName() {
+		return name;
 	}
 
-	public boolean isFailure()
-	{
+	/**
+	 * Set the name of the assertion
+	 * 
+	 * @param name the name of the assertion
+	 */
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	/**
+	 * Check if the assertion failed. If it failed, the failure message may give
+	 * more details about the failure.
+	 * 
+	 * @return true if the assertion failed, false if the sample met the
+	 *         assertion criteria
+	 */
+	public boolean isFailure() {
 		return failure;
 	}
 
-	public boolean isError()
-	{
+	/**
+	 * Check if an error occurred while checking the assertion. If an error
+	 * occurred, the failure message may give more details about the error.
+	 * 
+	 * @return true if an error occurred while checking the assertion, false
+	 *         otherwise.
+	 */
+	public boolean isError() {
 		return error;
 	}
 
-	public String getFailureMessage()
-	{
+	/**
+	 * Get the message associated with any failure or error. This method may
+	 * return null if no message was set.
+	 * 
+	 * @return a failure or error message, or null if no message has been set
+	 */
+	public String getFailureMessage() {
 		return failureMessage;
 	}
 
-	public void setError(boolean e)
-	{
+	/**
+	 * Set the flag indicating whether or not an error occurred.
+	 * 
+	 * @param e
+	 *            true if an error occurred, false otherwise
+	 */
+	public void setError(boolean e) {
 		error = e;
 	}
 
-	public void setFailure(boolean f)
-	{
+	/**
+	 * Set the flag indicating whether or not a failure occurred.
+	 * 
+	 * @param f
+	 *            true if a failure occurred, false otherwise
+	 */
+	public void setFailure(boolean f) {
 		failure = f;
 	}
 
-	public void setFailureMessage(String message)
-	{
+	/**
+	 * Set the failure message giving more details about a failure or error.
+	 * 
+	 * @param message
+	 *            the message to set
+	 */
+	public void setFailureMessage(String message) {
 		failureMessage = message;
+	}
+
+	/**
+	 * Convenience method for setting up failed results
+	 * 
+	 * @param message
+	 *            the message to set
+	 * @return this
+	 * 
+	 */
+	public AssertionResult setResultForFailure(String message) {
+		error = false;
+		failure = true;
+		failureMessage = message;
+		return this;
+	}
+
+	/**
+	 * Convenience method for setting up results where the response was null
+	 * 
+	 * @return assertion result with appropriate fields set up
+	 */
+	public AssertionResult setResultForNull() {
+		error = false;
+		failure = true;
+		failureMessage = RESPONSE_WAS_NULL;
+		return this;
+	}
+
+	public String toString() {
+		return getName() != null ? getName() : super.toString();
 	}
 }

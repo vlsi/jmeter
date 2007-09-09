@@ -1,265 +1,374 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2002 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.threads.gui;
-import java.awt.Font;
+
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.Collection;
+import java.util.Date;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.ButtonGroup;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JRadioButton;
 import javax.swing.JTextField;
-import javax.swing.border.Border;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
 
 import org.apache.jmeter.control.LoopController;
 import org.apache.jmeter.control.gui.LoopControlPanel;
 import org.apache.jmeter.gui.AbstractJMeterGuiComponent;
+import org.apache.jmeter.gui.action.ActionNames;
 import org.apache.jmeter.gui.tree.JMeterTreeNode;
 import org.apache.jmeter.gui.util.FocusRequester;
+import org.apache.jmeter.gui.util.JDateField;
 import org.apache.jmeter.gui.util.MenuFactory;
-import org.apache.jmeter.gui.util.NumberFieldErrorListener;
+import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.BooleanProperty;
+import org.apache.jmeter.testelement.property.LongProperty;
+import org.apache.jmeter.testelement.property.StringProperty;
 import org.apache.jmeter.threads.ThreadGroup;
 import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.gui.layout.VerticalLayout;
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+public class ThreadGroupGui extends AbstractJMeterGuiComponent implements ItemListener {
+	private LoopControlPanel loopPanel;
 
-public class ThreadGroupGui extends AbstractJMeterGuiComponent
-{
-    LoopControlPanel loopPanel;
+	private VerticalPanel mainPanel;
 
-    private final static String THREAD_NAME = "Thread Field";
-    private final static String RAMP_NAME = "Ramp Up Field";
+	private final static String THREAD_NAME = "Thread Field";
 
-    private JTextField threadInput;
-    private JTextField rampInput;
+	private final static String RAMP_NAME = "Ramp Up Field";
 
-    /****************************************
-     * !ToDo (Constructor description)
-     ***************************************/
-    public ThreadGroupGui()
-    {
-        super();
-        init();
-    }
+	private JTextField threadInput;
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public Collection getMenuCategories()
-    {
-        return null;
-    }
+	private JTextField rampInput;
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public TestElement createTestElement()
-    {
-        ThreadGroup tg = new ThreadGroup();
-        modifyTestElement(tg);
-        return tg;
-    }
+	private JDateField start;
 
-    /**
-         * Modifies a given TestElement to mirror the data in the gui components.
-         * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
-         */
-    public void modifyTestElement(TestElement tg)
-    {
-        super.configureTestElement(tg);
-        if (tg instanceof ThreadGroup)
-        {
-            ((ThreadGroup) tg).setSamplerController((LoopController) loopPanel.createTestElement());
-        }
-        tg.setProperty(ThreadGroup.NUM_THREADS, threadInput.getText());
-        tg.setProperty(ThreadGroup.RAMP_TIME, rampInput.getText());
-    }
+	private JDateField end;
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param tg  !ToDo (Parameter description)
-     ***************************************/
-    public void configure(TestElement tg)
-    {
-        super.configure(tg);
-        threadInput.setText(tg.getProperty(ThreadGroup.NUM_THREADS).toString());
-        rampInput.setText(tg.getProperty(ThreadGroup.RAMP_TIME).toString());
-        loopPanel.configure((TestElement) tg.getProperty(ThreadGroup.MAIN_CONTROLLER));
-    }
+	private JCheckBox scheduler;
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public JPopupMenu createPopupMenu()
-    {
-        JPopupMenu pop = new JPopupMenu();
-        pop.add(
-            MenuFactory.makeMenus(
-                new String[] { MenuFactory.CONTROLLERS, MenuFactory.LISTENERS, MenuFactory.SAMPLERS, MenuFactory.TIMERS, MenuFactory.CONFIG_ELEMENTS },
-                JMeterUtils.getResString("Add"),
-                "Add"));
-        MenuFactory.addEditMenu(pop, true);
-        MenuFactory.addFileMenu(pop);
-        return pop;
-    }
+	private JTextField duration;
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public JPanel createControllerPanel()
-    {
-        loopPanel = new LoopControlPanel(false);
-        LoopController looper = (LoopController) loopPanel.createTestElement();
-        looper.setLoops(-1);
-        loopPanel.configure(looper);
-        return loopPanel;
-    }
+	private JTextField delay; // Relative start-up time
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public String getStaticLabel()
-    {
-        return JMeterUtils.getResString("ThreadGroup");
-    }
+	// Sampler error action buttons
+	private JRadioButton continueBox;
 
-    private void init()
-    {
-        this.setLayout(new VerticalLayout(5, VerticalLayout.LEFT, VerticalLayout.TOP));
+	private JRadioButton stopThrdBox;
 
-        // MAIN PANEL
-        JPanel mainPanel = new JPanel();
-        Border margin = new EmptyBorder(10, 10, 5, 10);
-        mainPanel.setBorder(margin);
-        mainPanel.setLayout(new VerticalLayout(5, VerticalLayout.LEFT));
+	private JRadioButton stopTestBox;
 
-        // TITLE
-        JLabel panelTitleLabel = new JLabel(JMeterUtils.getResString("thread_group_title"));
-        Font curFont = panelTitleLabel.getFont();
-        int curFontSize = curFont.getSize();
-        curFontSize += 4;
-        panelTitleLabel.setFont(new Font(curFont.getFontName(), curFont.getStyle(), curFontSize));
-        mainPanel.add(panelTitleLabel);
+	public ThreadGroupGui() {
+		super();
+		init();
+		initGui();
+	}
 
-        // NAME
-        namePanel = getNamePanel();
-        mainPanel.add(namePanel);
+	public Collection getMenuCategories() {
+		return null;
+	}
 
-        // THREAD PROPERTIES
-        JPanel threadPropsPanel = new JPanel();
-        margin = new EmptyBorder(5, 10, 10, 10);
-        threadPropsPanel.setLayout(new VerticalLayout(0, VerticalLayout.LEFT));
-        threadPropsPanel.setBorder(
-            new CompoundBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), JMeterUtils.getResString("thread_delay_properties")),
-                margin));
+	public TestElement createTestElement() {
+		ThreadGroup tg = new ThreadGroup();
+		modifyTestElement(tg);
+		return tg;
+	}
 
-        // NUMBER OF THREADS
-        JPanel threadPanel = new JPanel();
-        JLabel threadLabel = new JLabel(JMeterUtils.getResString("number_of_threads"));
-        threadPanel.add(threadLabel);
-        threadInput = new JTextField(5);
-        threadInput.setText("1");
-        threadInput.addFocusListener(NumberFieldErrorListener.getNumberFieldErrorListener());
-        threadInput.setName(THREAD_NAME);
-        threadPanel.add(threadInput);
-        threadPropsPanel.add(threadPanel);
-        new FocusRequester(threadInput);
+	/**
+	 * Modifies a given TestElement to mirror the data in the gui components.
+	 * 
+	 * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+	 */
+	public void modifyTestElement(TestElement tg) {
+		super.configureTestElement(tg);
+		if (tg instanceof ThreadGroup) {
+			((ThreadGroup) tg).setSamplerController((LoopController) loopPanel.createTestElement());
+		}
 
-        // RAMP-UP
-        JPanel rampPanel = new JPanel();
-        JLabel rampLabel = new JLabel(JMeterUtils.getResString("ramp_up"));
-        rampPanel.add(rampLabel);
-        rampInput = new JTextField(5);
-        rampInput.setText("1");
-        rampInput.setName(RAMP_NAME);
-        rampInput.addFocusListener(NumberFieldErrorListener.getNumberFieldErrorListener());
-        rampPanel.add(rampInput);
-        threadPropsPanel.add(rampPanel);
+		tg.setProperty(ThreadGroup.NUM_THREADS, threadInput.getText());
+		tg.setProperty(ThreadGroup.RAMP_TIME, rampInput.getText());
+		tg.setProperty(new LongProperty(ThreadGroup.START_TIME, start.getDate().getTime()));
+		tg.setProperty(new LongProperty(ThreadGroup.END_TIME, end.getDate().getTime()));
+		tg.setProperty(new BooleanProperty(ThreadGroup.SCHEDULER, scheduler.isSelected()));
+		tg.setProperty(new StringProperty(ThreadGroup.ON_SAMPLE_ERROR, onSampleError()));
+		tg.setProperty(ThreadGroup.DURATION, duration.getText());
+		tg.setProperty(ThreadGroup.DELAY, delay.getText());
+	}
 
-        // LOOP COUNT
-        threadPropsPanel.add(createControllerPanel());
+	private void setSampleErrorBoxes(ThreadGroup te) {
+		stopTestBox.setSelected(te.getOnErrorStopTest());
+		stopThrdBox.setSelected(te.getOnErrorStopThread());
+		continueBox.setSelected(!te.getOnErrorStopThread() && !te.getOnErrorStopTest());
+	}
 
-        mainPanel.add(threadPropsPanel);
+	private String onSampleError() {
+		if (stopTestBox.isSelected())
+			return ThreadGroup.ON_SAMPLE_ERROR_STOPTEST;
+		if (stopThrdBox.isSelected())
+			return ThreadGroup.ON_SAMPLE_ERROR_STOPTHREAD;
 
-        this.add(mainPanel);
-    }
+		// Defaults to continue
+		return ThreadGroup.ON_SAMPLE_ERROR_CONTINUE;
+	}
 
-    public void setNode(JMeterTreeNode node)
-    {
-        namePanel.setNode(node);
-    }
+	public void configure(TestElement tg) {
+		super.configure(tg);
+		threadInput.setText(tg.getPropertyAsString(ThreadGroup.NUM_THREADS));
+		rampInput.setText(tg.getPropertyAsString(ThreadGroup.RAMP_TIME));
+		loopPanel.configure((TestElement) tg.getProperty(ThreadGroup.MAIN_CONTROLLER).getObjectValue());
+		scheduler.setSelected(tg.getPropertyAsBoolean(ThreadGroup.SCHEDULER));
+
+		if (scheduler.isSelected()) {
+			mainPanel.setVisible(true);
+		} else {
+			mainPanel.setVisible(false);
+		}
+
+		// Check if the property exists
+		String s = tg.getPropertyAsString(ThreadGroup.START_TIME);
+		if (s.length() == 0) {// Must be an old test plan
+			start.setDate(new Date());
+			end.setDate(new Date());
+		} else {
+			start.setDate(new Date(tg.getPropertyAsLong(ThreadGroup.START_TIME)));
+			end.setDate(new Date(tg.getPropertyAsLong(ThreadGroup.END_TIME)));
+		}
+		duration.setText(tg.getPropertyAsString(ThreadGroup.DURATION));
+		delay.setText(tg.getPropertyAsString(ThreadGroup.DELAY));
+
+		setSampleErrorBoxes((ThreadGroup) tg);
+	}
+
+	public void itemStateChanged(ItemEvent ie) {
+		if (ie.getItem().equals(scheduler)) {
+			if (scheduler.isSelected()) {
+				mainPanel.setVisible(true);
+			} else {
+				mainPanel.setVisible(false);
+			}
+		}
+	}
+
+	public JPopupMenu createPopupMenu() {
+		JPopupMenu pop = new JPopupMenu();
+		pop.add(MenuFactory.makeMenus(new String[] { 
+				MenuFactory.CONTROLLERS, 
+				MenuFactory.LISTENERS,
+				MenuFactory.SAMPLERS, 
+				MenuFactory.ASSERTIONS,
+				MenuFactory.TIMERS, 
+				MenuFactory.CONFIG_ELEMENTS, 
+				MenuFactory.PRE_PROCESSORS,
+				MenuFactory.POST_PROCESSORS }, 
+				JMeterUtils.getResString("add"), // $NON-NLS-1$
+				ActionNames.ADD));
+		MenuFactory.addEditMenu(pop, true);
+		MenuFactory.addFileMenu(pop);
+		return pop;
+	}
+
+	private JPanel createControllerPanel() {
+		loopPanel = new LoopControlPanel(false);
+		LoopController looper = (LoopController) loopPanel.createTestElement();
+		looper.setLoops(1);
+		loopPanel.configure(looper);
+		return loopPanel;
+	}
+
+	/**
+	 * Create a panel containing the StartTime field and corresponding label.
+	 * 
+	 * @return a GUI panel containing the StartTime field
+	 */
+	private JPanel createStartTimePanel() {
+		JPanel panel = new JPanel(new BorderLayout(5, 0));
+		JLabel label = new JLabel(JMeterUtils.getResString("starttime")); //$NON-NLS-1$
+		panel.add(label, BorderLayout.WEST);
+		start = new JDateField();
+		panel.add(start, BorderLayout.CENTER);
+		return panel;
+	}
+
+	/**
+	 * Create a panel containing the EndTime field and corresponding label.
+	 * 
+	 * @return a GUI panel containing the EndTime field
+	 */
+	private JPanel createEndTimePanel() {
+		JPanel panel = new JPanel(new BorderLayout(5, 0));
+		JLabel label = new JLabel(JMeterUtils.getResString("endtime")); // $NON-NLS-1$
+		panel.add(label, BorderLayout.WEST);
+		
+		end = new JDateField();
+		panel.add(end, BorderLayout.CENTER);
+		return panel;
+	}
+
+	/**
+	 * Create a panel containing the Duration field and corresponding label.
+	 * 
+	 * @return a GUI panel containing the Duration field
+	 */
+	private JPanel createDurationPanel() {
+		JPanel panel = new JPanel(new BorderLayout(5, 0));
+		JLabel label = new JLabel(JMeterUtils.getResString("duration")); // $NON-NLS-1$
+		panel.add(label, BorderLayout.WEST);
+		duration = new JTextField();
+		panel.add(duration, BorderLayout.CENTER);
+		return panel;
+	}
+
+	/**
+	 * Create a panel containing the Duration field and corresponding label.
+	 * 
+	 * @return a GUI panel containing the Duration field
+	 */
+	private JPanel createDelayPanel() {
+		JPanel panel = new JPanel(new BorderLayout(5, 0));
+		JLabel label = new JLabel(JMeterUtils.getResString("delay")); // $NON-NLS-1$
+		panel.add(label, BorderLayout.WEST);
+		delay = new JTextField();
+		panel.add(delay, BorderLayout.CENTER);
+		return panel;
+	}
+
+	public String getLabelResource() {
+		return "threadgroup"; // $NON-NLS-1$
+	}
+
+	private JPanel createOnErrorPanel() {
+		JPanel panel = new JPanel();
+		panel.setBorder(BorderFactory.createTitledBorder(JMeterUtils.getResString("sampler_on_error_action"))); // $NON-NLS-1$
+
+		ButtonGroup group = new ButtonGroup();
+
+		continueBox = new JRadioButton(JMeterUtils.getResString("sampler_on_error_continue")); // $NON-NLS-1$
+		group.add(continueBox);
+		panel.add(continueBox);
+
+		stopThrdBox = new JRadioButton(JMeterUtils.getResString("sampler_on_error_stop_thread")); // $NON-NLS-1$
+		group.add(stopThrdBox);
+		panel.add(stopThrdBox);
+
+		stopTestBox = new JRadioButton(JMeterUtils.getResString("sampler_on_error_stop_test")); // $NON-NLS-1$
+		group.add(stopTestBox);
+		panel.add(stopTestBox);
+
+		return panel;
+	}
+
+	public void clearGui(){
+		super.clearGui();
+		initGui();
+	}
+	
+	// Initialise the gui field values
+	private void initGui(){
+		threadInput.setText("1"); // $NON-NLS-1$
+		rampInput.setText("1"); // $NON-NLS-1$
+		continueBox.setSelected(true);
+		loopPanel.clearGui();
+		scheduler.setSelected(false);
+		Date today = new Date();
+		end.setDate(today);
+		start.setDate(today);
+		delay.setText(""); // $NON-NLS-1$
+		duration.setText(""); // $NON-NLS-1$
+	}
+
+	private void init() {
+		setLayout(new BorderLayout(0, 5));
+		setBorder(makeBorder());
+
+		Box box = Box.createVerticalBox();
+		box.add(makeTitlePanel());
+		box.add(createOnErrorPanel());
+		add(box, BorderLayout.NORTH);
+
+		// JPanel mainPanel = new JPanel(new BorderLayout());
+
+		// THREAD PROPERTIES
+		VerticalPanel threadPropsPanel = new VerticalPanel();
+		threadPropsPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("thread_properties"))); // $NON-NLS-1$
+
+		// NUMBER OF THREADS
+		JPanel threadPanel = new JPanel(new BorderLayout(5, 0));
+
+		JLabel threadLabel = new JLabel(JMeterUtils.getResString("number_of_threads")); // $NON-NLS-1$
+		threadPanel.add(threadLabel, BorderLayout.WEST);
+
+		threadInput = new JTextField(5);
+		threadInput.setName(THREAD_NAME);
+		threadLabel.setLabelFor(threadInput);
+		threadPanel.add(threadInput, BorderLayout.CENTER);
+
+		threadPropsPanel.add(threadPanel);
+		new FocusRequester(threadInput);
+
+		// RAMP-UP
+		JPanel rampPanel = new JPanel(new BorderLayout(5, 0));
+		JLabel rampLabel = new JLabel(JMeterUtils.getResString("ramp_up")); // $NON-NLS-1$
+		rampPanel.add(rampLabel, BorderLayout.WEST);
+
+		rampInput = new JTextField(5);
+		rampInput.setName(RAMP_NAME);
+		rampLabel.setLabelFor(rampInput);
+		rampPanel.add(rampInput, BorderLayout.CENTER);
+
+		threadPropsPanel.add(rampPanel);
+
+		// LOOP COUNT
+		threadPropsPanel.add(createControllerPanel());
+
+		// mainPanel.add(threadPropsPanel, BorderLayout.NORTH);
+		// add(mainPanel, BorderLayout.CENTER);
+
+		scheduler = new JCheckBox(JMeterUtils.getResString("scheduler")); // $NON-NLS-1$
+		scheduler.addItemListener(this);
+		threadPropsPanel.add(scheduler);
+		mainPanel = new VerticalPanel();
+		mainPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), 
+				JMeterUtils.getResString("scheduler_configuration"))); // $NON-NLS-1$
+		mainPanel.add(createStartTimePanel());
+		mainPanel.add(createEndTimePanel());
+		mainPanel.add(createDurationPanel());
+		mainPanel.add(createDelayPanel());
+		mainPanel.setVisible(false);
+		VerticalPanel intgrationPanel = new VerticalPanel();
+		intgrationPanel.add(threadPropsPanel);
+		intgrationPanel.add(mainPanel);
+		add(intgrationPanel, BorderLayout.CENTER);
+	}
+
+	public void setNode(JMeterTreeNode node) {
+		getNamePanel().setNode(node);
+	}
+
+	public Dimension getPreferredSize() {
+		return getMinimumSize();
+	}
 }

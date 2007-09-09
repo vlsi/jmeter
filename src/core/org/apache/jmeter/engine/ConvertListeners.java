@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
 package org.apache.jmeter.engine;
 
 import java.rmi.RemoteException;
@@ -14,69 +32,63 @@ import org.apache.jmeter.testelement.TestListener;
 import org.apache.jmeter.threads.ThreadGroup;
 import org.apache.jorphan.collections.HashTree;
 import org.apache.jorphan.collections.HashTreeTraverser;
-import org.apache.log.Hierarchy;
+import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 /**
  * @author mstover
- *
- * To change this generated comment edit the template variable "typecomment":
- * Window>Preferences>Java>Templates.
  */
 public class ConvertListeners implements HashTreeTraverser {
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-			"jmeter.engine");
-	/**
-	 * @see ListedHashTreeVisitor#addNode(Object, ListedHashTree)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see HashTreeTraverser#addNode(Object, HashTree)
 	 */
 	public void addNode(Object node, HashTree subTree) {
-		if(node instanceof ThreadGroup)
-			{
-				log.info("num threads = "+((ThreadGroup)node).getNumThreads());
-			}
+		if (node instanceof ThreadGroup) {
+			log.info("num threads = " + ((ThreadGroup) node).getNumThreads());
+		}
 		Iterator iter = subTree.list().iterator();
-		while(iter.hasNext())
-		{
+		while (iter.hasNext()) {
 			Object item = iter.next();
-			if(item instanceof ThreadGroup)
-			{
-				log.info("num threads = "+((ThreadGroup)item).getNumThreads());
+			if (item instanceof ThreadGroup) {
+				log.info("num threads = " + ((ThreadGroup) item).getNumThreads());
 			}
-			if(item instanceof Remoteable && (item instanceof TestListener || item instanceof SampleListener))
-			{
+			if (item instanceof Remoteable 
+					&& (item instanceof TestListener || item instanceof SampleListener)) {
 				try {
 					RemoteSampleListener rtl = new RemoteSampleListenerImpl(item);
-					if(item instanceof TestListener && item instanceof SampleListener)
-					{
+					if (item instanceof TestListener && item instanceof SampleListener) {
 						RemoteListenerWrapper wrap = new RemoteListenerWrapper(rtl);
-						subTree.replace(item,wrap);
-					}
-					else if(item instanceof TestListener)
-					{
+						subTree.replace(item, wrap);
+					} else if (item instanceof TestListener) {
 						RemoteTestListenerWrapper wrap = new RemoteTestListenerWrapper(rtl);
-						subTree.replace(item,wrap);
-					}
-					else
-					{
+						subTree.replace(item, wrap);
+					} else {
 						RemoteSampleListenerWrapper wrap = new RemoteSampleListenerWrapper(rtl);
-						subTree.replace(item,wrap);
+						subTree.replace(item, wrap);
 					}
-				} catch(RemoteException e) {
-					log.error("",e);
+				} catch (RemoteException e) {
+					log.error("", e); // $NON-NLS-1$
 				}
 			}
 		}
 	}
 
-	/**
-	 * @see ListedHashTreeVisitor#subtractNode()
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see HashTreeTraverser#subtractNode()
 	 */
 	public void subtractNode() {
 	}
 
-	/**
-	 * @see ListedHashTreeVisitor#processPath()
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see HashTreeTraverser#processPath()
 	 */
 	public void processPath() {
 	}

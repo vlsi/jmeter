@@ -1,261 +1,217 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.protocol.http.util;
 
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import junit.framework.TestCase;
-
 import org.apache.jmeter.config.Argument;
 import org.apache.jmeter.config.Arguments;
+import org.apache.jmeter.testelement.property.BooleanProperty;
+import org.apache.jmeter.testelement.property.PropertyIterator;
+import org.apache.jorphan.logging.LoggingManager;
+import org.apache.log.Logger;
 
-/**
- * @author Administrator
- *
- * To change this generated comment edit the template variable "typecomment":
- * Window>Preferences>Java>Templates.
+//For unit tests, @see TestHTTPArgument
+
+/*
+ * 
+ * @version $Revision$ $Date$
  */
-public class HTTPArgument extends Argument implements Serializable
-{
+public class HTTPArgument extends Argument implements Serializable {
+	private static final Logger log = LoggingManager.getLoggerForClass();
 
-    private static final String ALWAYS_ENCODE = "HTTPArgument.always_encode";
-    private static final String USE_EQUALS = "HTTPArgument.use_equals";
+	private static final String ALWAYS_ENCODE = "HTTPArgument.always_encode";
 
-    private static EncoderCache cache = new EncoderCache(1000);
+	private static final String USE_EQUALS = "HTTPArgument.use_equals";
 
-    /****************************************
-     * Constructor for the Argument object
-     *
-     *@param name   Description of Parameter
-     *@param value  Description of Parameter
-     *@param metadata Description of Parameter
-     ***************************************/
-    public HTTPArgument(String name, Object value, Object metadata)
-    {
-        this(name, value, false);
-        this.setMetaData(metadata);
-    }
-    
-    public void setUseEquals(boolean ue)
-    {
-        if(ue)
-        {
-            setMetaData("=");
-        }
-        else
-        {
-            setMetaData("");
-        }
-        setProperty(USE_EQUALS,new Boolean(ue));
-    }
-    
-    public boolean isUseEquals()
-    {
-        boolean eq = getPropertyAsBoolean(USE_EQUALS);
-        if(getMetaData().equals("=") || (getValue() != null && getValue().toString().length() > 0))
-        {
-            setUseEquals(true);
-            return true;
-        }
-        return eq;
-        
-    }
+	private static EncoderCache cache = new EncoderCache(1000);
 
-    public void setAlwaysEncoded(boolean ae)
-    {
-        setProperty(ALWAYS_ENCODE, new Boolean(ae));
-    }
+	/**
+	 * Constructor for the Argument object.
+	 */
+	public HTTPArgument(String name, String value, String metadata) {
+		this(name, value, false);
+		this.setMetaData(metadata);
+	}
 
-    public boolean isAlwaysEncoded()
-    {
-        return getPropertyAsBoolean(ALWAYS_ENCODE);
-    }
+	public void setUseEquals(boolean ue) {
+		if (ue) {
+			setMetaData("=");
+		} else {
+			setMetaData("");
+		}
+		setProperty(new BooleanProperty(USE_EQUALS, ue));
+	}
 
-    /****************************************
-     * Constructor for the Argument object
-     *
-     *@param name   Description of Parameter
-     *@param value  Description of Parameter
-     ***************************************/
-    public HTTPArgument(String name, Object value)
-    {
-        this(name, value, false);
+	public boolean isUseEquals() {
+		boolean eq = getPropertyAsBoolean(USE_EQUALS);
+		if (getMetaData().equals("=") || (getValue() != null && getValue().length() > 0)) {
+			setUseEquals(true);
+			return true;
+		}
+		return eq;
+
+	}
+
+	public void setAlwaysEncoded(boolean ae) {
+		setProperty(new BooleanProperty(ALWAYS_ENCODE, ae));
+	}
+
+	public boolean isAlwaysEncoded() {
+		return getPropertyAsBoolean(ALWAYS_ENCODE);
+	}
+
+	/**
+	 * Constructor for the Argument object.
+	 */
+	public HTTPArgument(String name, String value) {
+		this(name, value, false);
+	}
+
+    public HTTPArgument(String name, String value, boolean alreadyEncoded) {
+        // We assume the argument value is encoded according to the HTTP spec, i.e. UTF-8
+        this(name, value, alreadyEncoded, EncoderCache.URL_ARGUMENT_ENCODING);
     }
 
-    public HTTPArgument(String name, Object value, boolean alreadyEncoded)
-    {
+    /**
+     * Construct a new HTTPArgument instance
+     * 
+     * @param name the name of the parameter
+     * @param value the value of the parameter
+     * @param alreadyEncoded true if the name and value is already encoded
+     * @param contentEncoding the encoding used for the parameter value
+     */
+    public HTTPArgument(String name, String value, boolean alreadyEncoded, String contentEncoding) {
         setAlwaysEncoded(true);
-        if (alreadyEncoded)
-        {
-            name = URLDecoder.decode(name);
-            value = URLDecoder.decode(value.toString());
+        if (alreadyEncoded) {
+            try {
+                // We assume the name is always encoded according to spec
+                name = URLDecoder.decode(name, EncoderCache.URL_ARGUMENT_ENCODING);
+                // The value is encoded in the specified encoding
+                value = URLDecoder.decode(value, contentEncoding);
+            } catch (UnsupportedEncodingException e) {
+                log.error(contentEncoding + " encoding not supported!");
+                throw new Error(e.toString());
+            }
         }
         setName(name);
         setValue(value);
+        setMetaData("=");
     }
 
-    public HTTPArgument(String name, Object value, Object metaData, boolean alreadyEncoded)
-    {
-        this(name, value, alreadyEncoded);
+    public HTTPArgument(String name, String value, String metaData, boolean alreadyEncoded) {
+        // We assume the argument value is encoded according to the HTTP spec, i.e. UTF-8
+        this(name, value, metaData, alreadyEncoded, EncoderCache.URL_ARGUMENT_ENCODING);
+    }
+
+    /**
+     * Construct a new HTTPArgument instance
+     * 
+     * @param name the name of the parameter
+     * @param value the value of the parameter
+     * @param metaData the separator to use between name and value
+     * @param alreadyEncoded true if the name and value is already encoded
+     * @param contentEncoding the encoding used for the parameter value
+     */
+    public HTTPArgument(String name, String value, String metaData, boolean alreadyEncoded, String contentEncoding) {
+        this(name, value, alreadyEncoded, contentEncoding);
         setMetaData(metaData);
     }
 
-    public HTTPArgument(Argument arg)
-    {
+    public HTTPArgument(Argument arg) {
         this(arg.getName(), arg.getValue(), arg.getMetaData());
     }
 
-    /****************************************
+    /**
      * Constructor for the Argument object
-     ***************************************/
-    public HTTPArgument()
-    {}
+     */
+    public HTTPArgument() {
+    }
 
-    /****************************************
-     * Sets the Name attribute of the Argument object
-     *
-     *@param newName  The new Name value
-     ***************************************/
-    public void setName(String newName)
-    {
-        if (newName == null || !newName.equals(getName()))
-        {
-            super.setName(newName);
+	/**
+	 * Sets the Name attribute of the Argument object.
+	 * 
+	 * @param newName
+	 *            the new Name value
+	 */
+	public void setName(String newName) {
+		if (newName == null || !newName.equals(getName())) {
+			super.setName(newName);
+		}
+	}
+
+    /**
+     * Get the argument value encoded using UTF-8
+     * 
+     * @return the argument value encoded in UTF-8
+     */
+    public String getEncodedValue() {
+        // Encode according to the HTTP spec, i.e. UTF-8
+        try {
+            return getEncodedValue(EncoderCache.URL_ARGUMENT_ENCODING);
+        } catch (UnsupportedEncodingException e) {
+            // This can't happen (how should utf8 not be supported!?!),
+            // so just throw an Error:
+            throw new Error("Should not happen: " + e.toString());
         }
     }
 
-    public String getEncodedValue()
-    {
-        if (isAlwaysEncoded())
-        {
-            return cache.getEncoded(getValue().toString());
-        }
-        else
-        {
-            return getValue().toString();
-        }
-    }
-
-    public String getEncodedName()
-    {
-        if (isAlwaysEncoded())
-        {
-            return cache.getEncoded(getName());
-        }
-        else
-        {
-            return getName();
-        }
-
-    }
-
-    public static void convertArgumentsToHTTP(Arguments args)
-    {
-        List newArguments = new LinkedList();
-        Iterator iter = args.getArguments().iterator();
-        while (iter.hasNext())
-        {
-            Argument arg = (Argument) iter.next();
-            if (!(arg instanceof HTTPArgument))
-            {
-                newArguments.add(new HTTPArgument(arg));
-            }
-            else
-            {
-                newArguments.add(arg);
-            }
-        }
-        args.removeAllArguments();
-        args.setArguments(newArguments);
-    }
-
-    public static class Test extends TestCase
-    {
-        public Test(String name)
-        {
-            super(name);
-        }
-
-        public void testCloning() throws Exception
-        {
-            HTTPArgument arg = new HTTPArgument("name.?", "value_ here");
-            assertEquals("name.%3F", arg.getEncodedName());
-            assertEquals("value_+here", arg.getEncodedValue());
-            HTTPArgument clone = (HTTPArgument) arg.clone();
-            assertEquals("name.%3F", clone.getEncodedName());
-            assertEquals("value_+here", clone.getEncodedValue());
-        }
-
-        public void testConversion() throws Exception
-        {
-            Arguments args = new Arguments();
-            args.addArgument("name.?", "value_ here");
-            args.addArgument("name$of property", "value_.+");
-            HTTPArgument.convertArgumentsToHTTP(args);
-            List argList = args.getArguments();
-            HTTPArgument httpArg = (HTTPArgument) argList.get(0);
-            assertEquals("name.%3F", httpArg.getEncodedName());
-            assertEquals("value_+here", httpArg.getEncodedValue());
-            httpArg = (HTTPArgument) argList.get(1);
-            assertEquals("name%24of+property", httpArg.getEncodedName());
-            assertEquals("value_.%2B", httpArg.getEncodedValue());
+    /**
+     * Get the argument value encoded in the specified encoding
+     * 
+     * @param contentEncoding the encoding to use when encoding the argument value
+     * @return the argument value encoded in the specified encoding
+     * @throws UnsupportedEncodingException
+     */
+    public String getEncodedValue(String contentEncoding) throws UnsupportedEncodingException {
+        if (isAlwaysEncoded()) {
+            return cache.getEncoded(getValue(), contentEncoding);
+        } else {
+            return getValue();
         }
     }
 
+	public String getEncodedName() {
+		if (isAlwaysEncoded()) {
+			return cache.getEncoded(getName());
+		} else {
+			return getName();
+		}
+
+	}
+
+	public static void convertArgumentsToHTTP(Arguments args) {
+		List newArguments = new LinkedList();
+		PropertyIterator iter = args.getArguments().iterator();
+		while (iter.hasNext()) {
+			Argument arg = (Argument) iter.next().getObjectValue();
+			if (!(arg instanceof HTTPArgument)) {
+				newArguments.add(new HTTPArgument(arg));
+			} else {
+				newArguments.add(arg);
+			}
+		}
+		args.removeAllArguments();
+		args.setArguments(newArguments);
+	}
 }

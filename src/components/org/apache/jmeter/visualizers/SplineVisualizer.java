@@ -1,63 +1,26 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.visualizers;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.Image;
@@ -75,415 +38,292 @@ import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jmeter.visualizers.gui.AbstractVisualizer;
 import org.apache.jorphan.gui.layout.VerticalLayout;
 
-/****************************************
+/**
  * This class implements a statistical analyser that takes samples to process a
  * Spline interpolated curve. Currently, it tries to look mostly like the
  * GraphVisualizer.
- *
- *@author    <a href="mailto:norguet@bigfoot.com">Jean-Pierre Norguet</a>
- *@created   $Date$
- *@version   0.9.1
- ***************************************/
-public class SplineVisualizer extends AbstractVisualizer implements ImageVisualizer, GraphListener, Clearable
-{
+ * 
+ */
+public class SplineVisualizer extends AbstractVisualizer implements ImageVisualizer, GraphListener, Clearable {
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final Color BACKGROUND_COLOR = getBackground();
+	private static final String SUFFIX_MS = " ms";  //$NON-NLS-1$
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final Color MINIMUM_COLOR = new Color(0F, 0.5F, 0F);
+	protected final Color BACKGROUND_COLOR = getBackground();
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final Color MAXIMUM_COLOR = new Color(0.9F, 0F, 0F);
+	protected final Color MINIMUM_COLOR = new Color(0F, 0.5F, 0F);
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final Color AVERAGE_COLOR = new Color(0F, 0F, 0.75F);
+	protected final Color MAXIMUM_COLOR = new Color(0.9F, 0F, 0F);
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final Color INCOMING_COLOR = Color.black;
+	protected final Color AVERAGE_COLOR = new Color(0F, 0F, 0.75F);
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final int NUMBERS_TO_DISPLAY = 4;
+	protected final Color INCOMING_COLOR = Color.black;
 
-    /****************************************
-     * !ToDo (Field description)
-     ***************************************/
-    protected final boolean FILL_UP_WITH_ZEROS = false;
+	protected final int NUMBERS_TO_DISPLAY = 4;
 
-    transient private SplineGraph graph = null;
+	protected final boolean FILL_UP_WITH_ZEROS = false;
 
-    private JLabel minimumLabel = null;
-    private JLabel maximumLabel = null;
-    private JLabel averageLabel = null;
-    private JLabel incomingLabel = null;
+	transient private SplineGraph graph = null;
 
-    private JLabel minimumNumberLabel = null;
-    private JLabel maximumNumberLabel = null;
-    private JLabel averageNumberLabel = null;
-    private JLabel incomingNumberLabel = null;
-    transient private SplineModel model;
+	private JLabel minimumLabel = null;
 
-    /****************************************
-     * !ToDo (Constructor description)
-     ***************************************/
-    public SplineVisualizer()
-    {
-        super();
-        model = new SplineModel();
-        graph = new SplineGraph();
-        this.model.setListener(this);
-        setGUI();
-    }
+	private JLabel maximumLabel = null;
 
-    public void add(SampleResult res)
-    {
-        model.add(res);
-    }
+	private JLabel averageLabel = null;
 
-    public String getStaticLabel()
-    {
-        return JMeterUtils.getResString("spline_visualizer_title");
-    }
+	private JLabel incomingLabel = null;
 
-    public void updateGui(Sample s)
-    {
-        updateGui();
-    }
+	private JLabel minimumNumberLabel = null;
 
-    public void clear()
-    {
-        model.clear();
-    }
+	private JLabel maximumNumberLabel = null;
 
-    /****************************************
-     * !ToDo (Method description)
-     ***************************************/
-    public void setGUI()
-    {
-        Color backColor = BACKGROUND_COLOR;
+	private JLabel averageNumberLabel = null;
 
-        this.setBackground(backColor);
+	private JLabel incomingNumberLabel = null;
 
-        this.setLayout(new BorderLayout());
+	transient private SplineModel model;
 
-        // MAIN PANEL
-        JPanel mainPanel = new JPanel();
-        Border margin = new EmptyBorder(10, 10, 5, 10);
+	public SplineVisualizer() {
+		super();
+		model = new SplineModel();
+		graph = new SplineGraph();
+		this.model.setListener(this);
+		setGUI();
+	}
 
-        mainPanel.setBorder(margin);
-        mainPanel.setLayout(new VerticalLayout(5, VerticalLayout.LEFT));
+	public void add(SampleResult res) {
+		model.add(res);
+	}
 
-        // TITLE
-        JLabel panelTitleLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_title"));
-        Font curFont = panelTitleLabel.getFont();
-        int curFontSize = curFont.getSize();
+	public String getLabelResource() {
+		return "spline_visualizer_title"; //$NON-NLS-1$
+	}
 
-        curFontSize += 4;
-        panelTitleLabel.setFont(new Font(curFont.getFontName(), curFont.getStyle(), curFontSize));
-        mainPanel.add(panelTitleLabel);
+	public void updateGui(Sample s) {
+		updateGui();
+	}
 
-        // NAME
-        mainPanel.add(getNamePanel());
-        mainPanel.add(getFilePanel());
-        maximumLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_maximum"));
-        maximumLabel.setForeground(MAXIMUM_COLOR);
-        maximumLabel.setBackground(backColor);
-        averageLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_average"));
-        averageLabel.setForeground(AVERAGE_COLOR);
-        averageLabel.setBackground(backColor);
-        incomingLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_incoming"));
-        incomingLabel.setForeground(INCOMING_COLOR);
-        incomingLabel.setBackground(backColor);
-        minimumLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_minimum"));
-        minimumLabel.setForeground(MINIMUM_COLOR);
-        minimumLabel.setBackground(backColor);
+	public void clearData() {
+		model.clearData();
+	}
 
-        maximumNumberLabel = new JLabel("0 ms");
-        maximumNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
-        maximumNumberLabel.setForeground(MAXIMUM_COLOR);
-        maximumNumberLabel.setBackground(backColor);
-        averageNumberLabel = new JLabel("0 ms");
-        averageNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
-        averageNumberLabel.setForeground(AVERAGE_COLOR);
-        averageNumberLabel.setBackground(backColor);
-        incomingNumberLabel = new JLabel("0 ms");
-        incomingNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
-        incomingNumberLabel.setForeground(INCOMING_COLOR);
-        incomingNumberLabel.setBackground(backColor);
-        minimumNumberLabel = new JLabel("0 ms");
-        minimumNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
-        minimumNumberLabel.setForeground(MINIMUM_COLOR);
-        minimumNumberLabel.setBackground(backColor);
+	public void setGUI() {
+		Color backColor = BACKGROUND_COLOR;
 
-        // description Panel
-        JPanel labelPanel = new JPanel();
+		this.setBackground(backColor);
 
-        labelPanel.setLayout(new GridLayout(0, 1));
-        labelPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
-        labelPanel.setBackground(backColor);
-        labelPanel.add(maximumLabel);
-        labelPanel.add(averageLabel);
-        if (model.SHOW_INCOMING_SAMPLES)
-        {
-            labelPanel.add(incomingLabel);
-        }
-        labelPanel.add(minimumLabel);
-        // number Panel
-        JPanel numberPanel = new JPanel();
+		this.setLayout(new BorderLayout());
 
-        numberPanel.setLayout(new GridLayout(0, 1));
-        numberPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
-        numberPanel.setBackground(backColor);
-        numberPanel.add(maximumNumberLabel);
-        numberPanel.add(averageNumberLabel);
-        if (model.SHOW_INCOMING_SAMPLES)
-        {
-            numberPanel.add(incomingNumberLabel);
-        }
-        numberPanel.add(minimumNumberLabel);
-        // information display Panel
-        JPanel infoPanel = new JPanel();
+		// MAIN PANEL
+		JPanel mainPanel = new JPanel();
+		Border margin = new EmptyBorder(10, 10, 5, 10);
 
-        infoPanel.setLayout(new BorderLayout());
-        infoPanel.add(labelPanel, BorderLayout.CENTER);
-        infoPanel.add(numberPanel, BorderLayout.EAST);
+		mainPanel.setBorder(margin);
+		mainPanel.setLayout(new VerticalLayout(5, VerticalLayout.BOTH));
 
-        this.add(mainPanel, BorderLayout.NORTH);
-        this.add(infoPanel, BorderLayout.WEST);
-        this.add(graph, BorderLayout.CENTER);
-        // everyone is free to swing on its side :)
-        // add(infoPanel, BorderLayout.EAST);
-    }
+		// NAME
+		mainPanel.add(makeTitlePanel());
 
-    /****************************************
-     * !ToDo (Method description)
-     ***************************************/
-    public void updateGui()
-    {
-        repaint();
-        synchronized (this)
-        {
-            setMinimum(model.getMinimum());
-            setMaximum(model.getMaximum());
-            setAverage(model.getAverage());
-            setIncoming(model.getCurrent());
-        }
-    }
+		maximumLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_maximum")); //$NON-NLS-1$
+		maximumLabel.setForeground(MAXIMUM_COLOR);
+		maximumLabel.setBackground(backColor);
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public String toString()
-    {
-        return "Show the samples analysis as a Spline curve";
-    }
+		averageLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_average")); //$NON-NLS-1$
+		averageLabel.setForeground(AVERAGE_COLOR);
+		averageLabel.setBackground(backColor);
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param measure  !ToDo (Parameter description)
-     *@return         !ToDo (Return description)
-     ***************************************/
-    public String formatMeasureToDisplay(long measure)
-    {
-        String numberString = String.valueOf(measure);
+		incomingLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_incoming")); //$NON-NLS-1$
+		incomingLabel.setForeground(INCOMING_COLOR);
+		incomingLabel.setBackground(backColor);
 
-        if (FILL_UP_WITH_ZEROS)
-        {
-            for (int i = numberString.length(); i < NUMBERS_TO_DISPLAY; i++)
-            {
-                numberString = "0" + numberString;
-            }
-        }
-        return numberString;
-    }
+		minimumLabel = new JLabel(JMeterUtils.getResString("spline_visualizer_minimum")); //$NON-NLS-1$
+		minimumLabel.setForeground(MINIMUM_COLOR);
+		minimumLabel.setBackground(backColor);
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param n  !ToDo (Parameter description)
-     ***************************************/
-    public void setMinimum(long n)
-    {
-        String text = this.formatMeasureToDisplay(n) + " ms";
+		maximumNumberLabel = new JLabel("0 ms"); //$NON-NLS-1$
+		maximumNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
+		maximumNumberLabel.setForeground(MAXIMUM_COLOR);
+		maximumNumberLabel.setBackground(backColor);
 
-        this.minimumNumberLabel.setText(text);
-    }
+		averageNumberLabel = new JLabel("0 ms"); //$NON-NLS-1$
+		averageNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
+		averageNumberLabel.setForeground(AVERAGE_COLOR);
+		averageNumberLabel.setBackground(backColor);
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param n  !ToDo (Parameter description)
-     ***************************************/
-    public void setMaximum(long n)
-    {
-        String text = this.formatMeasureToDisplay(n) + " ms";
+		incomingNumberLabel = new JLabel("0 ms"); //$NON-NLS-1$
+		incomingNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
+		incomingNumberLabel.setForeground(INCOMING_COLOR);
+		incomingNumberLabel.setBackground(backColor);
 
-        this.maximumNumberLabel.setText(text);
-    }
+		minimumNumberLabel = new JLabel("0 ms"); //$NON-NLS-1$
+		minimumNumberLabel.setHorizontalAlignment(JLabel.RIGHT);
+		minimumNumberLabel.setForeground(MINIMUM_COLOR);
+		minimumNumberLabel.setBackground(backColor);
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param n  !ToDo (Parameter description)
-     ***************************************/
-    public void setAverage(long n)
-    {
-        String text = this.formatMeasureToDisplay(n) + " ms";
+		// description Panel
+		JPanel labelPanel = new JPanel();
 
-        this.averageNumberLabel.setText(text);
-    }
+		labelPanel.setLayout(new GridLayout(0, 1));
+		labelPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
+		labelPanel.setBackground(backColor);
+		labelPanel.add(maximumLabel);
+		labelPanel.add(averageLabel);
+		if (model.SHOW_INCOMING_SAMPLES) {
+			labelPanel.add(incomingLabel);
+		}
+		labelPanel.add(minimumLabel);
+		// number Panel
+		JPanel numberPanel = new JPanel();
 
-    /****************************************
-     * !ToDo (Method description)
-     *
-     *@param n  !ToDo (Parameter description)
-     ***************************************/
-    public void setIncoming(long n)
-    {
-        String text = this.formatMeasureToDisplay(n) + " ms";
+		numberPanel.setLayout(new GridLayout(0, 1));
+		numberPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
+		numberPanel.setBackground(backColor);
+		numberPanel.add(maximumNumberLabel);
+		numberPanel.add(averageNumberLabel);
+		if (model.SHOW_INCOMING_SAMPLES) {
+			numberPanel.add(incomingNumberLabel);
+		}
+		numberPanel.add(minimumNumberLabel);
+		// information display Panel
+		JPanel infoPanel = new JPanel();
 
-        this.incomingNumberLabel.setText(text);
-    }
+		infoPanel.setLayout(new BorderLayout());
+		infoPanel.add(labelPanel, BorderLayout.CENTER);
+		infoPanel.add(numberPanel, BorderLayout.EAST);
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public JPanel getControlPanel()
-    {
-        return this;
-    }
+		this.add(mainPanel, BorderLayout.NORTH);
+		this.add(infoPanel, BorderLayout.WEST);
+		this.add(graph, BorderLayout.CENTER);
+		// everyone is free to swing on its side :)
+		// add(infoPanel, BorderLayout.EAST);
+	}
 
-    /****************************************
-     * !ToDoo (Method description)
-     *
-     *@return   !ToDo (Return description)
-     ***************************************/
-    public Image getImage()
-    {
-        Image result = graph.createImage(graph.getWidth(), graph.getHeight());
+	public void updateGui() {
+		repaint();
+		synchronized (this) {
+			setMinimum(model.getMinimum());
+			setMaximum(model.getMaximum());
+			setAverage(model.getAverage());
+			setIncoming(model.getCurrent());
+		}
+	}
 
-        graph.paintComponent(result.getGraphics());
+	public String toString() {
+		return "Show the samples analysis as a Spline curve";
+	}
 
-        return result;
-    }
+	public String formatMeasureToDisplay(long measure) {
+		String numberString = String.valueOf(measure);
 
-    /****************************************
-     * Component showing a Spline curve.
-     *
-     *@author    $Author$
-     *@created   $Date$
-     *@version   $Revision$
-     ***************************************/
-    public class SplineGraph extends JComponent
-    {
+		if (FILL_UP_WITH_ZEROS) {
+			for (int i = numberString.length(); i < NUMBERS_TO_DISPLAY; i++) {
+				numberString = "0" + numberString; //$NON-NLS-1$
+			}
+		}
+		return numberString;
+	}
 
-        /****************************************
-         * !ToDo (Field description)
-         ***************************************/
-        public boolean reinterpolated = false;
+	public void setMinimum(long n) {
+		String text = this.formatMeasureToDisplay(n) + SUFFIX_MS;
 
-        /****************************************
-         * !ToDo (Field description)
-         ***************************************/
-        protected final Color WAITING_COLOR = Color.darkGray;
+		this.minimumNumberLabel.setText(text);
+	}
 
-        /****************************************
-         * !ToDo (Field description)
-         ***************************************/
-        protected int lastWidth = -1;
+	public void setMaximum(long n) {
+		String text = this.formatMeasureToDisplay(n) + SUFFIX_MS;
 
-        /****************************************
-         * !ToDo (Field description)
-         ***************************************/
-        protected int lastHeight = -1;
+		this.maximumNumberLabel.setText(text);
+	}
 
-        /****************************************
-         * !ToDo (Field description)
-         ***************************************/
-        protected int[] plot = null;
+	public void setAverage(long n) {
+		String text = this.formatMeasureToDisplay(n) + SUFFIX_MS; 
 
-        /****************************************
-         * !ToDo (Constructor description)
-         ***************************************/
-        public SplineGraph()
-        {}
+		this.averageNumberLabel.setText(text);
+	}
 
-        /****************************************
-         * Clear the Spline graph and get ready for the next wave.
-         ***************************************/
-        public void clear()
-        {
-            lastWidth = -1;
-            lastHeight = -1;
-            plot = null;
-            this.repaint();
-        }
+	public void setIncoming(long n) {
+		String text = this.formatMeasureToDisplay(n) + SUFFIX_MS;
 
-        /****************************************
-         * !ToDo (Method description)
-         *
-         *@param g  !ToDo (Parameter description)
-         ***************************************/
-        public void paintComponent(Graphics g)
-        {
-            super.paintComponent(g);
+		this.incomingNumberLabel.setText(text);
+	}
 
-            Dimension dimension = this.getSize();
-            int width = dimension.width;
-            int height = dimension.height;
+	public JPanel getControlPanel() {
+		return this;
+	}
 
-            if (model.getDataCurve() == null)
-            {
-                g.setColor(this.getBackground());
-                g.fillRect(0, 0, width, height);
-                g.setColor(WAITING_COLOR);
-                g.drawString(JMeterUtils.getResString("spline_visualizer_waitingmessage"), (width - 120) / 2, height - (height - 12) / 2);
-                return;
-            }
+	public Image getImage() {
+		Image result = graph.createImage(graph.getWidth(), graph.getHeight());
 
-            boolean resized = true;
+		graph.paintComponent(result.getGraphics());
 
-            if (width == lastWidth && height == lastHeight)
-            {
-                // dimension of the SplineGraph is the same
-                resized = false;
-            }
-            else
-            {
-                // dimension changed
-                resized = true;
-                lastWidth = width;
-                lastHeight = height;
-            }
+		return result;
+	}
 
-            this.plot = model.getDataCurve().getPlots(width, height); // rounds!
+	/**
+	 * Component showing a Spline curve.
+	 * 
+	 */
+	public class SplineGraph extends JComponent {
+		public boolean reinterpolated = false;
 
-            int n = plot.length;
-            int curY = plot[0];
+		protected final Color WAITING_COLOR = Color.darkGray;
 
-            for (int i = 1; i < n; i++)
-            {
-                g.setColor(Color.black);
-                g.drawLine(i - 1, height - curY - 1, i, height - plot[i] - 1);
-                curY = plot[i];
-            }
-        }
-    }
+		protected int lastWidth = -1;
+
+		protected int lastHeight = -1;
+
+		protected int[] plot = null;
+
+		public SplineGraph() {
+		}
+
+		/**
+		 * Clear the Spline graph and get ready for the next wave.
+		 */
+		public void clear() {
+			lastWidth = -1;
+			lastHeight = -1;
+			plot = null;
+			this.repaint();
+		}
+
+		public void paintComponent(Graphics g) {
+			super.paintComponent(g);
+
+			Dimension dimension = this.getSize();
+			int width = dimension.width;
+			int height = dimension.height;
+
+			if (model.getDataCurve() == null) {
+				g.setColor(this.getBackground());
+				g.fillRect(0, 0, width, height);
+				g.setColor(WAITING_COLOR);
+				g.drawString(JMeterUtils.getResString("spline_visualizer_waitingmessage"),  //$NON-NLS-1$
+						(width - 120) / 2, height - (height - 12) / 2);
+				return;
+			}
+
+			// boolean resized = true;
+
+			if (width == lastWidth && height == lastHeight) {
+				// dimension of the SplineGraph is the same
+				// resized = false;
+			} else {
+				// dimension changed
+				// resized = true;
+				lastWidth = width;
+				lastHeight = height;
+			}
+
+			this.plot = model.getDataCurve().getPlots(width, height); // rounds!
+
+			int n = plot.length;
+			int curY = plot[0];
+
+			for (int i = 1; i < n; i++) {
+				g.setColor(Color.black);
+				g.drawLine(i - 1, height - curY - 1, i, height - plot[i] - 1);
+				curY = plot[i];
+			}
+		}
+	}
 }

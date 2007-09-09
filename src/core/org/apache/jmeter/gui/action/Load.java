@@ -1,335 +1,170 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.gui.action;
+
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Set;
 
 import javax.swing.JFileChooser;
+import javax.swing.JTree;
+import javax.swing.tree.TreePath;
 
-import junit.framework.TestCase;
-
-import org.apache.jmeter.control.gui.WorkBenchGui;
 import org.apache.jmeter.exceptions.IllegalUserActionException;
 import org.apache.jmeter.gui.GuiPackage;
-import org.apache.jmeter.gui.JMeterGUIComponent;
+import org.apache.jmeter.gui.tree.JMeterTreeNode;
 import org.apache.jmeter.gui.util.FileDialoger;
 import org.apache.jmeter.save.SaveService;
+import org.apache.jmeter.services.FileServer;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.TestPlan;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.collections.HashTree;
-import org.apache.log.Hierarchy;
+import org.apache.jorphan.logging.LoggingManager;
+import org.apache.jorphan.util.JOrphanUtils;
 import org.apache.log.Logger;
 
-/****************************************
- * Title: JMeter Description: Copyright: Copyright (c) 2000 Company: Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
-public class Load implements Command
-{
-	transient private static Logger log = Hierarchy.getDefaultHierarchy().getLoggerFor(
-			"jmeter.gui");
-	private static Set commands = new HashSet();
+import com.thoughtworks.xstream.converters.ConversionException;
 
-	static
-	{
-		commands.add("open");
+/**
+ * Handles the Open (load a new file) and Merge commands.
+ *
+ */
+public class Load implements Command {
+	private static final Logger log = LoggingManager.getLoggerForClass();
+
+	private static final boolean expandTree = JMeterUtils.getPropDefault("onload.expandtree", true); //$NON-NLS-1$
+	
+	private static Set commands = new HashSet();
+	static {
+		commands.add(ActionNames.OPEN);
+		commands.add(ActionNames.MERGE);
 	}
 
-	/****************************************
-	 * !ToDo (Constructor description)
-	 ***************************************/
-	public Load() { }
+	public Load() {
+		super();
+	}
 
-	/****************************************
-	 * !ToDoo (Method description)
-	 *
-	 *@return   !ToDo (Return description)
-	 ***************************************/
-	public Set getActionNames()
-	{
+	public Set getActionNames() {
 		return commands;
 	}
 
-	/****************************************
-	 * !ToDo (Method description)
-	 *
-	 *@param e  !ToDo (Parameter description)
-	 ***************************************/
-	public void doAction(ActionEvent e)
-	{
-		JFileChooser chooser = FileDialoger.promptToOpenFile(new String[]{".jmx"});
-		if(chooser == null)
-		{
+	public void doAction(ActionEvent e) {
+		JFileChooser chooser = FileDialoger.promptToOpenFile(new String[] { ".jmx" }); //$NON-NLS-1$
+		if (chooser == null) {
 			return;
 		}
-		boolean isTestPlan = false;
 		InputStream reader = null;
-		File f = null;
-		try
-		{
-			f = chooser.getSelectedFile();
-			if(f != null)
-			{
+		try {
+            File f = chooser.getSelectedFile();
+			if (f != null) {
+                boolean isTestPlan = false;
+                boolean merging = e.getActionCommand().equals(ActionNames.MERGE);
+
+				if (merging) {
+					log.info("Merging file: " + f);
+				} else {
+					log.info("Loading file: " + f);
+                    // Close the test plan currently open
+					if (!Close.performAction(e)) return;
+
+					FileServer.getFileServer().setBasedir(f.getAbsolutePath());
+				}
 				reader = new FileInputStream(f);
-				HashTree tree = SaveService.loadSubTree(reader);
-				isTestPlan = insertLoadedTree(e.getID(), tree);
+				HashTree tree = SaveService.loadTree(reader);
+				isTestPlan = insertLoadedTree(e.getID(), tree, merging);
+                
+                // don't change name if merging
+                if (!merging && isTestPlan) {
+                    GuiPackage.getInstance().setTestPlanFile(f.getAbsolutePath());
+                }
 			}
-		}
-		catch(Exception ex)
+		} catch (NoClassDefFoundError ex) // Allow for missing optional jars
 		{
-			JMeterUtils.reportErrorToUser(ex.getMessage());
-		}
-		finally
-		{
+            log.warn("Missing jar file", ex);
+			String msg = ex.getMessage();
+			if (msg == null) {
+				msg = "Missing jar file - see log for details";
+			}
+			JMeterUtils.reportErrorToUser(msg);
+        } catch (ConversionException ex) {
+            log.warn("Could not convert file "+ex);
+            JMeterUtils.reportErrorToUser(SaveService.CEtoString(ex));
+		} catch (Exception ex) {
+            log.warn("Unexpected error", ex);
+			String msg = ex.getMessage();
+			if (msg == null) {
+				msg = "Unexpected error - see log for details";
+			}
+			JMeterUtils.reportErrorToUser(msg);
+		} finally {
+            JOrphanUtils.closeQuietly(reader);
+			GuiPackage.getInstance().updateCurrentGui();
 			GuiPackage.getInstance().getMainFrame().repaint();
-		}
-		if(isTestPlan && f != null)
-		{
-			((Save)ActionRouter.getInstance().getAction("save",
-					"org.apache.jmeter.gui.action.Save")).setTestPlanFile(f.getAbsolutePath());
 		}
 	}
 
 	/**
 	 * Returns a boolean indicating whether the loaded tree was a full test plan
-	 * */
-	public boolean insertLoadedTree(int id, HashTree tree) throws Exception, IllegalUserActionException {
-		//convertTree(tree);
-		boolean isTestPlan = GuiPackage.getInstance().addSubTree(tree);
-		tree = GuiPackage.getInstance().getCurrentSubTree();				
-		ActionRouter.getInstance().actionPerformed(new ActionEvent(
-			tree.get(tree.getArray()[tree.size()-1]),id,CheckDirty.SUB_TREE_LOADED));
+	 */
+	public boolean insertLoadedTree(int id, HashTree tree, boolean merging) throws Exception, IllegalUserActionException {
+		// convertTree(tree);
+		if (tree == null) {
+			throw new Exception("Error in TestPlan - see log file");
+		}
+		boolean isTestPlan = tree.getArray()[0] instanceof TestPlan;
+
+		// If we are loading a new test plan, initialize the tree with the testplan node we are loading
+		if(isTestPlan && !merging) {
+			GuiPackage.getInstance().getTreeModel().clearTestPlan((TestElement)tree.getArray()[0]);
+		}
+
+		HashTree newTree = GuiPackage.getInstance().addSubTree(tree);
+		GuiPackage.getInstance().updateCurrentGui();
+		GuiPackage.getInstance().getMainFrame().getTree().setSelectionPath(
+				new TreePath(((JMeterTreeNode) newTree.getArray()[0]).getPath()));
+		tree = GuiPackage.getInstance().getCurrentSubTree();
+		// Send different event wether we are merging a test plan into another test plan,
+		// or loading a testplan from scratch
+		ActionEvent actionEvent = null;
+		if(!merging) {
+			actionEvent = new ActionEvent(tree.get(tree.getArray()[tree.size() - 1]), id, ActionNames.SUB_TREE_LOADED);
+		}
+		else {
+			actionEvent = new ActionEvent(tree.get(tree.getArray()[tree.size() - 1]), id, ActionNames.SUB_TREE_MERGED);
+		}
+
+		ActionRouter.getInstance().actionPerformed(actionEvent);
+	    if (expandTree) {
+			JTree jTree = GuiPackage.getInstance().getMainFrame().getTree();
+			   for(int i = 0; i < jTree.getRowCount(); i++) {
+			     jTree.expandRow(i);
+			   }
+	    }
+
 		return isTestPlan;
 	}
-
-	private void convertTree(HashTree tree) throws Exception
-	{
-		Iterator iter = new LinkedList(tree.list()).iterator();
-		while (iter.hasNext())
-		{
-			TestElement item = (TestElement)iter.next();
-			convertTree(tree.getTree(item));
-			JMeterGUIComponent comp = generateGUIComponent(item);
-			tree.replace(item,comp);
-		}
-	}
-
-	private JMeterGUIComponent generateGUIComponent(TestElement item) throws Exception
-	{
-			JMeterGUIComponent gui = null;
-			try {
-				gui = (JMeterGUIComponent)Class.forName((String)item.getProperty(TestElement.GUI_CLASS)).newInstance();
-			} catch(Exception e) {
-				log.warn("Couldn't get gui for "+item,e);
-				gui = new WorkBenchGui();
-			} 
-			gui.configure(item);
-			return gui;
-	}
-	
-	
-	/************************************************************
-	 *  !ToDo (Class description)
-	 *
-	 *@author     $Author$
-	 *@created    $Date$
-	 *@version    $Revision$
-	 ***********************************************************/
-	public static class Test extends TestCase {
-		File testFile1, testFile2, testFile3,testFile4,testFile5,testFile6,testFile7,
-				testFile8,testFile9,testFile10,testFile11,testFile12,testFile13;
-		static Load loader = new Load();
-
-		public Test(String name) {
-			super(name);
-		}
-
-		/************************************************************
-		 *  !ToDo
-		 ***********************************************************/
-		public void setUp() {
-			testFile1 =
-				new File(System.getProperty("user.dir") + "/testfiles", "Test Plan.jmx");
-			testFile2 =
-				new File(
-					System.getProperty("user.dir") + "/testfiles",
-					"Modification Manager.jmx");
-			testFile3 =
-				new File(System.getProperty("user.dir") + "/testfiles", "proxy.jmx");
-			testFile4 =
-				new File(System.getProperty("user.dir") + "/testfiles", "AssertionTestPlan.jmx");
-			testFile5 =
-				new File(System.getProperty("user.dir") + "/testfiles", "AuthManagerTestPlan.jmx");
-			testFile6 =
-				new File(System.getProperty("user.dir") + "/testfiles", "HeaderManagerTestPlan.jmx");
-			testFile7 =
-				new File(System.getProperty("user.dir") + "/testfiles", "InterleaveTestPlan.jmx");
-			testFile8 =
-				new File(System.getProperty("user.dir") + "/testfiles", "InterleaveTestPlan2.jmx");
-			testFile9 =
-				new File(System.getProperty("user.dir") + "/testfiles", "LoopTestPlan.jmx");
-			testFile10 =
-				new File(System.getProperty("user.dir") + "/testfiles", "OnceOnlyTestPlan.jmx");
-			testFile11 =
-				new File(System.getProperty("user.dir") + "/testfiles", "ProxyServerTestPlan.jmx");
-			testFile12 =
-				new File(System.getProperty("user.dir") + "/testfiles", "SimpleTestPlan.jmx");
-			testFile13 =
-				new File(System.getProperty("user.dir") + "/testfiles", "URLRewritingExample.jmx");
-		}
-
-		/************************************************************
-		 *  !ToDo
-		 *
-		 *@exception  Exception  !ToDo (Exception description)
-		 ***********************************************************/
-
-		public void testFile3() throws Exception {
-			HashTree tree = getTree(testFile3);
-			//loader.updateTree(tree);
-			log.debug("tree contents: "+tree.list());
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile4() throws Exception {
-			HashTree tree = getTree(testFile4);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile5() throws Exception {
-			HashTree tree = getTree(testFile5);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile6() throws Exception {
-			HashTree tree = getTree(testFile6);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile7() throws Exception {
-			HashTree tree = getTree(testFile7);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile8() throws Exception {
-			HashTree tree = getTree(testFile8);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile9() throws Exception {
-			HashTree tree = getTree(testFile9);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile10() throws Exception {
-			HashTree tree = getTree(testFile10);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile11() throws Exception {
-			HashTree tree = getTree(testFile11);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-		
-		public void testFile12() throws Exception {
-			HashTree tree = getTree(testFile12);
-			//loader.updateTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.testelement.TestPlan);
-			loader.convertTree(tree);
-			assertTrue(tree.getArray()[0] instanceof org.apache.jmeter.control.gui.TestPlanGui);
-		}
-
-		private HashTree getTree(File f) throws Exception {
-				FileInputStream reader = new FileInputStream(f);
-				HashTree tree = SaveService.loadSubTree(reader);
-				return tree;
-		}
+    
+	public boolean insertLoadedTree(int id, HashTree tree) throws Exception, IllegalUserActionException {
+		return insertLoadedTree(id, tree, false);
 	}
 }

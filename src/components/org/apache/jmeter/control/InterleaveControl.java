@@ -1,387 +1,184 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.control;
+
 import java.io.Serializable;
 
-import org.apache.jmeter.samplers.AbstractSampler;
 import org.apache.jmeter.samplers.Sampler;
-import org.apache.jmeter.testelement.PerSampleClonable;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.IntegerProperty;
 
-/****************************************
- * Title: Description: Copyright: Copyright (c) 2001 Company:
- *
- *@author    Michael Stover
- *@created   March 13, 2001
- *@version   1.0
- ***************************************/
+public class InterleaveControl extends GenericController implements Serializable {
+	private static final String STYLE = "InterleaveControl.style";// $NON-NLS-1$
 
-public class InterleaveControl extends GenericController implements Serializable
-{
+	public static final int IGNORE_SUB_CONTROLLERS = 0;
 
-	private static final String STYLE = "InterleaveControl.style";
-	public static final int DEFAULT_STYLE = 0;
-	public static final int NEW_STYLE = 1;
-	private boolean interleave;
-	private boolean doNotIncrement = false;
+	public static final int USE_SUB_CONTROLLERS = 1;
 
-	/****************************************
+	private boolean skipNext;
+
+	transient private TestElement searchStart = null;
+
+	private boolean currentReturnedAtLeastOne;
+
+	private boolean stillSame = true;
+
+	/***************************************************************************
 	 * Constructor for the InterleaveControl object
-	 ***************************************/
-	public InterleaveControl()
-	{
-		
+	 **************************************************************************/
+	public InterleaveControl() {
 	}
 
-	public void initialize()
-	{
-		super.initialize();
-		interleave = false;
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.apache.jmeter.control.GenericController#reInitialize()
+	 */
+	public void reInitialize() {
+		setFirst(true);
+		currentReturnedAtLeastOne = false;
+		searchStart = null;
+		stillSame = true;
+		skipNext = false;
+		incrementIterCount();
+		recoverRunningVersion();
 	}
 
-	public void reInitialize()
-	{
-		super.initialize();
-		interleave = false;
+	public void setStyle(int style) {
+		setProperty(new IntegerProperty(STYLE, style));
 	}
 
-	public boolean hasNext()
-	{
-		boolean retVal;
-		Object controller = getCurrentController();
-		if(controller == null)
-		{
-			retVal = hasNextAtEnd();
-		}
-		else if(controller instanceof Controller)
-		{
-			if(((Controller)controller).hasNext())
-			{
-				retVal = true;
-			}
-			else
-			{
-				currentHasNextIsFalse();
-				retVal = hasNext();
-			}
-		}
-		else
-		{
-			retVal = true;
-		}
-		if(controller == null)
-		{
-			reInitialize();
-		}
-		if(interleave)
-		{
-			interleave = false;
-			return false;
-		}
-		return retVal;
-	}
-	
-	protected void removeCurrentController()
-	{
-		setInterleave(NEW_STYLE);
-		super.removeCurrentController();
-	}
-
-	protected void incrementCurrent()
-	{
-		setInterleave(NEW_STYLE);
-		super.incrementCurrent();
-	}
-
-	protected void setInterleave(int style)
-	{
-		if(getStyle() == style)
-		{
-			interleave = true;
-		}
-	}
-	
-	public void setStyle(int style)
-	{
-		setProperty(STYLE,new Integer(style));
-	}
-	
-	public int getStyle()
-	{
+	public int getStyle() {
 		return getPropertyAsInt(STYLE);
 	}
 
-	public Sampler next()
-	{
-		setInterleave(DEFAULT_STYLE);
-		TestElement controller = getCurrentController();
-		if(controller == null)
-		{
-			nextAtEnd();
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.apache.jmeter.control.Controller#next()
+	 */
+	public Sampler next() {
+		if (isSkipNext()) {
+			reInitialize();
+			return null;
+		}
+		return super.next();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see GenericController#nextIsAController(Controller)
+	 */
+	protected Sampler nextIsAController(Controller controller) throws NextIsNullException {
+		Sampler sampler = controller.next();
+		if (sampler == null) {
+			currentReturnedNull(controller);
 			return next();
 		}
-		if(controller instanceof Sampler)
-		{
+		currentReturnedAtLeastOne = true;
+		if (getStyle() == IGNORE_SUB_CONTROLLERS) {
 			incrementCurrent();
-			return (Sampler)controller;
+			skipNext = true;
+		} else {
+			searchStart = null;
 		}
-		else
-		{
-			Controller c = (Controller)controller;
-			if(c.hasNext())
-			{
-				Sampler s = c.next();
-				if(getStyle() == DEFAULT_STYLE)
-				{
-					incrementCurrent();
-				}
-				return s;
-			}
-			else if(c.isDone())
-			{
-				removeCurrentController();
-				return next();
-			}
-			else
-			{
-				incrementCurrent();
-				return next();
-			}
+		return sampler;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.apache.jmeter.control.GenericController#nextIsASampler(Sampler)
+	 */
+	protected Sampler nextIsASampler(Sampler element) throws NextIsNullException {
+		skipNext = true;
+		incrementCurrent();
+		return element;
+	}
+
+	/**
+	 * If the current is null, reset and continue searching. The searchStart
+	 * attribute will break us off when we start a repeat.
+	 * 
+	 * @see org.apache.jmeter.testelement.AbstractTestElement#nextIsNull()
+	 */
+	protected Sampler nextIsNull() {
+		resetCurrent();
+		return next();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see GenericController#setCurrentElement(TestElement)
+	 */
+	protected void setCurrentElement(TestElement currentElement) throws NextIsNullException {
+		// Set the position when next is first called, and don't overwrite
+		// until reInitialize is called.
+		if (searchStart == null) {
+			searchStart = currentElement;
+		} else if (searchStart == currentElement && !stillSame) {
+			// We've gone through the whole list and are now back at the start
+			// point of our search.
+			reInitialize();
+			throw new NextIsNullException();
 		}
 	}
 
-	public static class Test extends junit.framework.TestCase
-	{
-		public Test(String name)
-		{
-			super(name);
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see GenericController#currentReturnedNull(Controller)
+	 */
+	protected void currentReturnedNull(Controller c) {
+		if (c.isDone()) {
+			removeCurrentElement();
+		} else if (getStyle() == USE_SUB_CONTROLLERS) {
+			incrementCurrent();
 		}
+	}
 
-		public void testProcessing() throws Exception
-		{
-			GenericController controller = new GenericController();
-			InterleaveControl sub_1 = new InterleaveControl();
-			sub_1.setStyle(DEFAULT_STYLE);
-			sub_1.addTestElement(makeSampler("one"));
-			sub_1.addTestElement(makeSampler("two"));
-			controller.addTestElement(sub_1);
-			controller.addTestElement(makeSampler("three"));
-			LoopController sub_2 = new LoopController();
-			sub_2.setLoops(3);
-			GenericController sub_3 = new GenericController();
-			sub_2.addTestElement(makeSampler("four"));
-			sub_3.addTestElement(makeSampler("five"));
-			sub_3.addTestElement(makeSampler("six"));
-			sub_2.addTestElement(sub_3);
-			sub_2.addTestElement(makeSampler("seven"));
-			controller.addTestElement(sub_2);
-			String[] interleaveOrder = new String[]{"one","two"};
-			String[] order = new String[]{"dummy","three","four","five","six","seven",
-						"four","five","six","seven","four","five","six","seven"};
-			int counter = 14;
-			for (int i = 0; i < 4; i++)
-			{
-				assertEquals(14,counter);
-				counter = 0;
-				while(controller.hasNext())
-				{
-					TestElement sampler = controller.next();
-					if(counter == 0)
-					{
-						assertEquals(interleaveOrder[i%2],sampler.getProperty(TestElement.NAME));
-					}
-					else
-					{
-						assertEquals(order[counter],sampler.getProperty(TestElement.NAME));
-					}
-					counter++;
-				}
-			}
-		}
-		
-		public void testProcessing2() throws Exception
-		{
-			GenericController controller = new GenericController();
-			InterleaveControl sub_1 = new InterleaveControl();
-			sub_1.setStyle(DEFAULT_STYLE);
-			sub_1.addTestElement(makeSampler("one"));
-			sub_1.addTestElement(makeSampler("two"));
-			controller.addTestElement(sub_1);
-			controller.addTestElement(makeSampler("three"));
-			LoopController sub_2 = new LoopController();
-			sub_2.setLoops(3);
-			GenericController sub_3 = new GenericController();
-			sub_2.addTestElement(makeSampler("four"));
-			sub_3.addTestElement(makeSampler("five"));
-			sub_3.addTestElement(makeSampler("six"));
-			sub_2.addTestElement(sub_3);
-			sub_2.addTestElement(makeSampler("seven"));
-			sub_1.addTestElement(sub_2);
-			String[] order = new String[]{"one","three","two","three","four","three",
-						"one","three","two","three","five","three","one","three",
-						"two","three","six","three","one","three"};
-			int counter = 0;
-			while (counter < order.length)
-			{
-				while(controller.hasNext())
-				{
-					TestElement sampler = controller.next();
-					assertEquals("failed on "+counter,
-							order[counter],sampler.getProperty(TestElement.NAME));
-					counter++;
-				}
-			}
-		}
-		
-		public void testProcessing3() throws Exception
-		{
-			GenericController controller = new GenericController();
-			InterleaveControl sub_1 = new InterleaveControl();
-			sub_1.setStyle(NEW_STYLE);
-			sub_1.addTestElement(makeSampler("one"));
-			sub_1.addTestElement(makeSampler("two"));
-			controller.addTestElement(sub_1);
-			controller.addTestElement(makeSampler("three"));
-			LoopController sub_2 = new LoopController();
-			sub_2.setLoops(3);
-			GenericController sub_3 = new GenericController();
-			sub_2.addTestElement(makeSampler("four"));
-			sub_3.addTestElement(makeSampler("five"));
-			sub_3.addTestElement(makeSampler("six"));
-			sub_2.addTestElement(sub_3);
-			sub_2.addTestElement(makeSampler("seven"));
-			sub_1.addTestElement(sub_2);
-			String[] order = new String[]{"one","three","two","three","four","five",
-						"six","seven","four","five","six","seven","four","five",
-						"six","seven","three","one","three","two","three"};
-			int counter = 0;
-			while (counter < order.length)
-			{
-				while(controller.hasNext())
-				{
-					TestElement sampler = controller.next();
-					assertEquals("failed on "+counter,order[counter],sampler.getProperty(TestElement.NAME));
-					counter++;
-				}
-			}
-		}
-		
-		public void testProcessing4() throws Exception
-		{
-			GenericController controller = new GenericController();
-			InterleaveControl sub_1 = new InterleaveControl();
-			sub_1.setStyle(DEFAULT_STYLE);
-			controller.addTestElement(sub_1);
-			GenericController sub_2 = new GenericController();
-			sub_2.addTestElement(makeSampler("one"));
-			sub_2.addTestElement(makeSampler("two"));
-			sub_1.addTestElement(sub_2);
-			GenericController sub_3 = new GenericController();
-			sub_3.addTestElement(makeSampler("three"));
-			sub_3.addTestElement(makeSampler("four"));
-			sub_1.addTestElement(sub_3);
-			String[] order = new String[]{"one","three","two","four"};
-			int counter = 0;
-			while (counter < order.length)
-			{
-				while(controller.hasNext())
-				{
-					TestElement sampler = controller.next();
-					assertEquals("failed on "+counter,order[counter],sampler.getProperty(TestElement.NAME));
-					counter++;
-				}
-			}
-		}
-		
-		public void testProcessing5() throws Exception
-		{
-			GenericController controller = new GenericController();
-			InterleaveControl sub_1 = new InterleaveControl();
-			sub_1.setStyle(NEW_STYLE);
-			controller.addTestElement(sub_1);
-			GenericController sub_2 = new GenericController();
-			sub_2.addTestElement(makeSampler("one"));
-			sub_2.addTestElement(makeSampler("two"));
-			sub_1.addTestElement(sub_2);
-			GenericController sub_3 = new GenericController();
-			sub_3.addTestElement(makeSampler("three"));
-			sub_3.addTestElement(makeSampler("four"));
-			sub_1.addTestElement(sub_3);
-			String[] order = new String[]{"one","two","three","four"};
-			int counter = 0;
-			while (counter < order.length)
-			{
-				while(controller.hasNext())
-				{
-					TestElement sampler = controller.next();
-					assertEquals("failed on "+counter,order[counter],sampler.getProperty(TestElement.NAME));
-					counter++;
-				}
-			}
-		}
+	/**
+	 * @return skipNext
+	 */
+	protected boolean isSkipNext() {
+		return skipNext;
+	}
 
-		private TestElement makeSampler(String name)
-		{
-		  	TestSampler s= new TestSampler();
-			s.setName(name);
-			return s;
+	/**
+	 * @param skipNext
+	 */
+	protected void setSkipNext(boolean skipNext) {
+		this.skipNext = skipNext;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.apache.jmeter.control.GenericController#incrementCurrent()
+	 */
+	protected void incrementCurrent() {
+		if (currentReturnedAtLeastOne) {
+			skipNext = true;
 		}
-		public class TestSampler extends AbstractSampler
-						implements PerSampleClonable {
-		  public void addCustomTestElement(TestElement t) { }
-		  public org.apache.jmeter.samplers.SampleResult sample(org.apache.jmeter.samplers.Entry e) { return null; }
-		}
+		stillSame = false;
+		super.incrementCurrent();
 	}
 }

@@ -1,132 +1,142 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
- 
 
 package org.apache.jorphan.collections;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.log.Logger;
+// NOTUSED import org.apache.jorphan.logging.LoggingManager;
+// NOTUSED import org.apache.log.Logger;
 
-import org.apache.jorphan.logging.LoggingManager;
-
-/**********************************************************************
- * SortedHashTree is a different implementation of the {@link HashTree} collection class. 
- * In the ListedHashTree,
- * The ordering of values in the tree is made explicit via the compare() function of objects
- * added to the tree.  This works in exactly the same fashion as it does for a SortedSet.
- *
- *@author    mstover1 at apache.org
+/**
+ * SortedHashTree is a different implementation of the {@link HashTree}
+ * collection class. In the SortedHashTree, the ordering of values in the tree
+ * is made explicit via the compare() function of objects added to the tree.
+ * This works in exactly the same fashion as it does for a SortedSet.
+ * 
  * @see HashTree
  * @see HashTreeTraverser
-***********************************************************************/
-public class SortedHashTree extends HashTree implements Serializable
-{
-	
-	private static Logger log = LoggingManager.getLoggerFor("jorphan.collections");
+ * 
+ * @author mstover1 at apache.org
+ * @version $Revision$
+ */
+public class SortedHashTree extends HashTree implements Serializable {
+	// NOTUSED private static Logger log = LoggingManager.getLoggerForClass();
+	protected transient Comparator comparator;
 
-  public SortedHashTree()
-  {
-	 data = new TreeMap();
-  }
-
-  public SortedHashTree(Object key)
-  {
-	 data = new TreeMap();
-	 data.put(key,new SortedHashTree());
-  }
-
-  public SortedHashTree(Collection keys)
-  {
-	 data = new TreeMap();
-	 Iterator it = keys.iterator();
-	 while(it.hasNext())
-		data.put(it.next(),new SortedHashTree());
-  }
-
-  public SortedHashTree(Object[] keys)
-  {
-	 data = new TreeMap();
-	 for(int x = 0;x < keys.length;x++)
-		data.put(keys[x],new SortedHashTree());
-  }
-  
-  public HashTree createNewTree()
-  {
-  	return new SortedHashTree();
-  }
-  
-  public HashTree createNewTree(Object key)
-	{
-		return new SortedHashTree(key);
+	public SortedHashTree() {
+		data = new TreeMap();
 	}
 
-	public HashTree createNewTree(Collection values)
-	{
-		return new SortedHashTree(values);
+	public SortedHashTree(Comparator comper) {
+		comparator = comper;
+		data = new TreeMap(comparator);
 	}
-	
-	public Object clone()
-	{
-		HashTree newTree = new SortedHashTree();
-		newTree.data = (Map)((HashMap)data).clone();
+
+	public SortedHashTree(Object key) {
+		data = new TreeMap();
+		data.put(key, new SortedHashTree());
+	}
+
+	public SortedHashTree(Object key, Comparator comper) {
+		comparator = comper;
+		data = new TreeMap(comparator);
+		data.put(key, new SortedHashTree(comparator));
+	}
+
+	public SortedHashTree(Collection keys) {
+		data = new TreeMap();
+		Iterator it = keys.iterator();
+		while (it.hasNext()) {
+			data.put(it.next(), new SortedHashTree());
+		}
+	}
+
+	public SortedHashTree(Collection keys, Comparator comper) {
+		comparator = comper;
+		data = new TreeMap(comparator);
+		Iterator it = keys.iterator();
+		while (it.hasNext()) {
+			data.put(it.next(), new SortedHashTree(comparator));
+		}
+	}
+
+	public SortedHashTree(Object[] keys) {
+		data = new TreeMap();
+		for (int x = 0; x < keys.length; x++) {
+			data.put(keys[x], new SortedHashTree());
+		}
+	}
+
+	public SortedHashTree(Object[] keys, Comparator comper) {
+		comparator = comper;
+		data = new TreeMap(comparator);
+		for (int x = 0; x < keys.length; x++) {
+			data.put(keys[x], new SortedHashTree(comparator));
+		}
+	}
+
+	protected HashTree createNewTree() {
+		if (comparator == null) {
+			return new SortedHashTree();
+		} else {
+			return new SortedHashTree(comparator);
+		}
+	}
+
+	protected HashTree createNewTree(Object key) {
+		if (comparator == null) {
+			return new SortedHashTree(key);
+		} else {
+			return new SortedHashTree(key, comparator);
+		}
+	}
+
+	protected HashTree createNewTree(Collection values) {
+		if (comparator == null) {
+			return new SortedHashTree(values);
+		} else {
+			return new SortedHashTree(values, comparator);
+		}
+	}
+
+	public Object clone() {
+		HashTree newTree = null;
+		if (comparator == null) {
+			newTree = new SortedHashTree();
+		} else {
+			newTree = new SortedHashTree(comparator);
+		}
+		newTree.data = (Map) ((HashMap) data).clone();
 		return newTree;
+	}
+
+	/**
+	 * @param comparator
+	 *            The comparator to set.
+	 */
+	public void setComparator(Comparator comparator) {
+		this.comparator = comparator;
 	}
 }

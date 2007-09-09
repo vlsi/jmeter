@@ -1,452 +1,409 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
+
 package org.apache.jmeter.assertions.gui;
+
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.util.Iterator;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.ButtonGroup;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.border.Border;
-import javax.swing.border.EmptyBorder;
 
 import org.apache.jmeter.assertions.ResponseAssertion;
 import org.apache.jmeter.gui.util.PowerTableModel;
 import org.apache.jmeter.gui.util.TextAreaCellRenderer;
 import org.apache.jmeter.gui.util.TextAreaTableCellEditor;
 import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.property.PropertyIterator;
 import org.apache.jmeter.util.JMeterUtils;
 
-/****************************************
- * Title: Jakarta-JMeter Description: Copyright: Copyright (c) 2001 Company:
- * Apache
- *
- *@author    Michael Stover
- *@created   $Date$
- *@version   1.0
- ***************************************/
+/**
+ * GUI interface for a {@link ResponseAssertion}.
+ * 
+ */
+public class AssertionGui extends AbstractAssertionGui {
+	/** The name of the table column in the list of patterns. */
+	private static final String COL_NAME = JMeterUtils.getResString("assertion_patterns_to_test"); //$NON-NLS-1$
 
-public class AssertionGui extends AbstractAssertionGui implements FocusListener
-{
-    static final String COL_NAME = JMeterUtils.getResString("assertion_patterns_to_test");
+	/** Radio button indicating that the text response should be tested. */
+	private JRadioButton responseStringButton;
 
-    private JRadioButton responseStringButton, labelButton, containsBox, matchesBox;
-    private JCheckBox notBox;
-    private JTable stringTable;
-    private JButton addPattern, deletePattern;
-    PowerTableModel tableModel;
+	/** Radio button indicating that the URL should be tested. */
+	private JRadioButton urlButton;
 
-    /****************************************
-     * !ToDo (Constructor description)
-     ***************************************/
-    public AssertionGui()
-    {
-        init();
-    }
+	/** Radio button indicating that the responseMessage should be tested. */
+	private JRadioButton responseMessageButton;
 
-    public String getStaticLabel()
-    {
-        return JMeterUtils.getResString("assertion_title");
-    }
+	/** Radio button indicating that the responseCode should be tested. */
+	private JRadioButton responseCodeButton;
 
-    public TestElement createTestElement()
-    {
-        ResponseAssertion el = new ResponseAssertion();
-        modifyTestElement(el);
-        return el;
-    }
+	/** Radio button indicating that the headers should be tested. */
+	private JRadioButton responseHeadersButton;
+
+	/**
+	 * Checkbox to indicate whether the response should be forced successful
+	 * before testing. This is intended for use when checking the status code or
+	 * status message.
+	 */
+	private JCheckBox assumeSuccess;
+
+	/**
+	 * Radio button indicating to test if the field contains one of the
+	 * patterns.
+	 */
+	private JRadioButton containsBox;
+
+	/**
+	 * Radio button indicating to test if the field matches one of the patterns.
+	 */
+	private JRadioButton matchesBox;
+
+	/**
+	 * Radio button indicating if the field equals the first pattern.
+	 */
+	private JRadioButton equalsBox;
 
     /**
-     * Modifies a given TestElement to mirror the data in the gui components.
-     * @see org.apache.jmeter.gui.JMeterGUIComponent#modifyTestElement(TestElement)
+	 * Checkbox indicating to test that the field does NOT contain/match the
+	 * patterns.
+	 */
+	private JCheckBox notBox;
+
+	/** A table of patterns to test against. */
+	private JTable stringTable;
+
+	/** Button to add a new pattern. */
+	private JButton addPattern;
+
+	/** Button to delete a pattern. */
+	private JButton deletePattern;
+
+	/** Table model for the pattern table. */
+	private PowerTableModel tableModel;
+
+	/**
+	 * Create a new AssertionGui panel.
+	 */
+	public AssertionGui() {
+		init();
+	}
+
+	public String getLabelResource() {
+		return "assertion_title"; // $NON-NLS-1$
+	}
+
+	/* Implements JMeterGUIComponent.createTestElement() */
+	public TestElement createTestElement() {
+		ResponseAssertion el = new ResponseAssertion();
+		modifyTestElement(el);
+		return el;
+	}
+
+	/* Implements JMeterGUIComponent.modifyTestElement(TestElement) */
+	public void modifyTestElement(TestElement el) {
+		configureTestElement(el);
+		if (el instanceof ResponseAssertion) {
+			ResponseAssertion ra = (ResponseAssertion) el;
+
+			ra.clearTestStrings();
+			String[] testStrings = tableModel.getData().getColumn(COL_NAME);
+			for (int i = 0; i < testStrings.length; i++) {
+				ra.addTestString(testStrings[i]);
+			}
+
+			if (responseStringButton.isSelected()) {
+				ra.setTestFieldResponseData();
+			} else if (responseCodeButton.isSelected()) {
+				ra.setTestFieldResponseCode();
+			} else if (responseMessageButton.isSelected()) {
+				ra.setTestFieldResponseMessage();
+			} else if (responseHeadersButton.isSelected()) {
+				ra.setTestFieldResponseHeaders();
+			} else { // Assume URL
+				ra.setTestFieldURL();
+			}
+
+			ra.setAssumeSuccess(assumeSuccess.isSelected());
+
+			if (containsBox.isSelected()) {
+				ra.setToContainsType();
+			} else if (equalsBox.isSelected()) {
+                ra.setToEqualsType();
+			} else {
+				ra.setToMatchType();
+			}
+
+			if (notBox.isSelected()) {
+				ra.setToNotType();
+			} else {
+				ra.unsetNotType();
+			}
+		}
+	}
+    
+    /**
+     * Implements JMeterGUIComponent.clearGui
      */
-    public void modifyTestElement(TestElement el)
-    {
-        configureTestElement(el);
-        if (el instanceof ResponseAssertion)
-        {
-            ResponseAssertion ra = (ResponseAssertion) el;
-            ra.clearTestStrings();
-            String[] testStrings = tableModel.getData().getColumn(COL_NAME);
-            for (int i = 0; i < testStrings.length; i++)
-            {
-                ra.addTestString(testStrings[i]);
-            }
-            if (labelButton.isSelected())
-            {
-                ra.setTestField(ResponseAssertion.SAMPLE_LABEL);
-            }
-            else
-            {
-                ra.setTestField(ResponseAssertion.RESPONSE_DATA);
-            }
-            if (containsBox.isSelected())
-            {
-                ra.setToContainsType();
-            }
-            else
-            {
-                ra.setToMatchType();
-            }
-            if (notBox.isSelected())
-            {
-                ra.setToNotType();
-            }
-            else
-            {
-                ra.unsetNotType();
-            }
-        }
-    }
-
-    /****************************************
-     * !ToDo (Method description)
-     ***************************************/
-    public void configure(TestElement el)
-    {
-        super.configure(el);
-        ResponseAssertion model = (ResponseAssertion) el;
-        if (model.isContainsType())
-        {
-            containsBox.setSelected(true);
-            matchesBox.setSelected(false);
-        }
-        else
-        {
-            containsBox.setSelected(false);
-            matchesBox.setSelected(true);
-        }
-        if (model.isNotType())
-        {
-            notBox.setSelected(true);
-        }
-        else
-        {
-            notBox.setSelected(false);
-        }
-
-        if (ResponseAssertion.RESPONSE_DATA.equals(model.getTestField()))
-        {
-            responseStringButton.setSelected(true);
-            labelButton.setSelected(false);
-        }
-        else
-        {
-            responseStringButton.setSelected(false);
-            labelButton.setSelected(true);
-        }
+    public void clearGui() {
+        super.clearGui();
+        
         tableModel.clearData();
-        Iterator tests = model.getTestStrings().iterator();
-        while (tests.hasNext())
-        {
-            tableModel.addRow(new Object[] { tests.next()});
-        }
-        tableModel.fireTableDataChanged();
-    }
 
-    private void init()
-    {
-        this.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.gridheight = 1;
-        gbc.gridwidth = 1;
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1;
-        gbc.weighty = 1;
-
-        // MAIN PANEL
-        JPanel mainPanel = new JPanel();
-        add(mainPanel, gbc.clone());
-        //gbc.fill = gbc.NONE;
-        gbc.weighty = 0;
-        mainPanel.setLayout(new GridBagLayout());
-        Border margin = new EmptyBorder(10, 10, 5, 10);
-        mainPanel.setBorder(margin);
-
-        // TITLE
-        JLabel panelTitleLabel = new JLabel(JMeterUtils.getResString("assertion_title"));
-        Font curFont = panelTitleLabel.getFont();
-        int curFontSize = curFont.getSize();
-        curFontSize += 4;
-        panelTitleLabel.setFont(new Font(curFont.getFontName(), curFont.getStyle(), curFontSize));
-        mainPanel.add(panelTitleLabel, gbc.clone());
-        gbc.gridy++;
-
-        // NAME
-        mainPanel.add(getNamePanel(), gbc.clone());
-        gbc.gridx++;
-        //gbc.fill = gbc.HORIZONTAL;
-        mainPanel.add(Box.createHorizontalGlue(), gbc.clone());
-        gbc.gridx--;
-        //gbc.fill = gbc.NONE;
-        gbc.gridy++;
-        mainPanel.add(createFieldPanel(), gbc.clone());
-        gbc.gridy++;
-        mainPanel.add(createTypePanel(), gbc.clone());
-        gbc.gridy++;
-        //gbc.fill = gbc.BOTH;
-        gbc.weighty = 1;
-        gbc.gridwidth = 2;
-        mainPanel.add(createStringPanel(), gbc.clone());
-    }
-
-    private JPanel createFieldPanel()
-    {
-        JPanel panel = new JPanel();
-        panel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), JMeterUtils.getResString("assertion_resp_field")));
-        responseStringButton = new JRadioButton(JMeterUtils.getResString("assertion_text_resp"));
-        labelButton = new JRadioButton(JMeterUtils.getResString("assertion_url_samp"));
-        ButtonGroup group = new ButtonGroup();
-        group.add(responseStringButton);
-        group.add(labelButton);
-        panel.add(responseStringButton);
-        panel.add(labelButton);
         responseStringButton.setSelected(true);
-        return panel;
-    }
-
-    private JPanel createTypePanel()
-    {
-        JPanel panel = new JPanel();
-        panel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), JMeterUtils.getResString("assertion_pattern_match_rules")));
-        containsBox = new JRadioButton(JMeterUtils.getResString("assertion_contains"));
-        matchesBox = new JRadioButton(JMeterUtils.getResString("assertion_matches"));
-        notBox = new JCheckBox(JMeterUtils.getResString("assertion_not"));
-        ButtonGroup group = new ButtonGroup();
-        group.add(matchesBox);
-        group.add(containsBox);
-        panel.add(containsBox);
-        panel.add(matchesBox);
-        panel.add(notBox);
+        urlButton.setSelected(false);
+        responseCodeButton.setSelected(false);
+        responseMessageButton.setSelected(false);
+        responseHeadersButton.setSelected(false);
+        assumeSuccess.setSelected(false);
+        
         containsBox.setSelected(true);
-        return panel;
-    }
+        matchesBox.setSelected(false);
+        equalsBox.setSelected(false);
+        notBox.setSelected(false);
+    }    
 
-    /****************************************
-     * Description of the Method
-     *
-     *@param e  Description of Parameter
-     ***************************************/
-    public void focusLost(FocusEvent e)
-    {
-        try
-        {
-            stringTable.getCellEditor().stopCellEditing();
-        }
-        catch (NullPointerException err)
-        {}
-    }
+	/**
+	 * A newly created component can be initialized with the contents of a Test
+	 * Element object by calling this method. The component is responsible for
+	 * querying the Test Element object for the relevant information to display
+	 * in its GUI.
+	 * 
+	 * @param el
+	 *            the TestElement to configure
+	 */
+	public void configure(TestElement el) {
+		super.configure(el);
+		ResponseAssertion model = (ResponseAssertion) el;
 
-    /****************************************
-     * Description of the Method
-     *
-     *@param e  Description of Parameter
-     ***************************************/
-    public void focusGained(FocusEvent e)
-    {}
+		if (model.isContainsType()) {
+			containsBox.setSelected(true);
+			matchesBox.setSelected(false);
+            equalsBox.setSelected(false);
+        } else if (model.isEqualsType()) {
+			containsBox.setSelected(false);
+			matchesBox.setSelected(false);
+            equalsBox.setSelected(true);
+		} else {
+			containsBox.setSelected(false);
+			matchesBox.setSelected(true);
+            equalsBox.setSelected(false);
+		}
 
-    private JPanel createStringPanel()
-    {
-        JPanel panel = new JPanel();
-        stringTable = new JTable(0, 1);
-        stringTable.addFocusListener(this);
-        tableModel = new PowerTableModel(new String[] { COL_NAME }, new Class[] { String.class });
-        stringTable.setModel(tableModel);
-        TextAreaCellRenderer renderer = new TextAreaCellRenderer();
-        stringTable.setDefaultEditor(String.class, new TextAreaTableCellEditor());
-        stringTable.setRowHeight(renderer.getPreferredHeight());
-        stringTable.setDefaultRenderer(String.class, renderer);
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), JMeterUtils.getResString("assertion_patterns_to_test")));
-        panel.add(new JScrollPane(stringTable), BorderLayout.CENTER);
-        addPattern = new JButton(JMeterUtils.getResString("add"));
-        deletePattern = new JButton(JMeterUtils.getResString("delete"));
-        addPattern.addActionListener(new AddPatternListener());
-        deletePattern.addActionListener(new ClearPatternsListener());
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(addPattern);
-        buttonPanel.add(deletePattern);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        deletePattern.setEnabled(false);
+		if (model.isNotType()) {
+			notBox.setSelected(true);
+		} else {
+			notBox.setSelected(false);
+		}
 
-        return panel;
-    }
+		if (model.isTestFieldResponseData()) {
+			responseStringButton.setSelected(true);
+		} else if (model.isTestFieldResponseCode()) {
+			responseCodeButton.setSelected(true);
+		} else if (model.isTestFieldResponseMessage()) {
+			responseMessageButton.setSelected(true);
+		} else if (model.isTestFieldResponseHeaders()) {
+			responseHeadersButton.setSelected(true);
+		} else // Assume it is the URL
+		{
+			urlButton.setSelected(true);
+		}
 
-    /****************************************
-     * !ToDo (Class description)
-     *
-     *@author    $Author$
-     *@created   $Date$
-     *@version   $Revision$
-     ***************************************/
-    private class ClearPatternsListener implements ActionListener
-    {
-        /****************************************
-         * !ToDo (Method description)
-         *
-         *@param e  !ToDo (Parameter description)
-         ***************************************/
-        public void actionPerformed(ActionEvent e)
-        {
-            int index = stringTable.getSelectedRow();
-            stringTable.getCellEditor(index, stringTable.getSelectedColumn()).cancelCellEditing();
-            if (index > -1)
-            {
-                tableModel.removeRow(index);
-                tableModel.fireTableDataChanged();
-            }
-            if (stringTable.getModel().getRowCount() == 0)
-            {
-                deletePattern.setEnabled(false);
-            }
-        }
-    }
+		assumeSuccess.setSelected(model.getAssumeSuccess());
 
-    /****************************************
-     * !ToDo (Class description)
-     *
-     *@author    $Author$
-     *@created   $Date$
-     *@version   $Revision$
-     ***************************************/
-    private class AddPatternListener implements ActionListener
-    {
-        /****************************************
-         * !ToDo (Method description)
-         *
-         *@param e  !ToDo (Parameter description)
-         ***************************************/
-        public void actionPerformed(ActionEvent e)
-        {
-            tableModel.addNewRow();
-            deletePattern.setEnabled(true);
-            tableModel.fireTableDataChanged();
-        }
-    }
+		tableModel.clearData();
+		PropertyIterator tests = model.getTestStrings().iterator();
+		while (tests.hasNext()) {
+			tableModel.addRow(new Object[] { tests.next().getStringValue() });
+		}
 
-    /****************************************
-     * !ToDo (Class description)
-     *
-     *@author    $Author$
-     *@created   $Date$
-     *@version   $Revision$
-     ***************************************/
-    private class PatternRenderer extends DefaultListCellRenderer
-    {
-        /****************************************
-         * !ToDoo (Method description)
-         *
-         *@param list          !ToDo (Parameter description)
-         *@param value         !ToDo (Parameter description)
-         *@param index         !ToDo (Parameter description)
-         *@param isSelected    !ToDo (Parameter description)
-         *@param cellHasFocus  !ToDo (Parameter description)
-         *@return              !ToDo (Return description)
-         ***************************************/
-        public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus)
-        {
-            String displayText = value.toString();
-            if (displayText.length() > 10)
-            {
-                displayText = displayText.substring(0, 10);
-            }
+		if (model.getTestStrings().size() == 0) {
+			deletePattern.setEnabled(false);
+		} else {
+			deletePattern.setEnabled(true);
+		}
 
-            JLabel label = new JLabel(displayText);
+		tableModel.fireTableDataChanged();
+	}
 
-            if (isSelected)
-            {
-                label.setBackground(Color.blue);
-                label.setForeground(Color.white);
-                label.setOpaque(true);
-            }
-            else
-            {
-                label.setForeground(Color.black);
-                label.setBackground(Color.white);
-            }
+	/**
+	 * Initialize the GUI components and layout.
+	 */
+	private void init() {
+		setLayout(new BorderLayout());
+		Box box = Box.createVerticalBox();
+		setBorder(makeBorder());
 
-            if (cellHasFocus)
-            {
-                label.setBorder(BorderFactory.createEtchedBorder());
-            }
+		box.add(makeTitlePanel());
+		box.add(createFieldPanel());
+		box.add(createTypePanel());
+		add(box, BorderLayout.NORTH);
+		add(createStringPanel(), BorderLayout.CENTER);
+	}
 
-            label.setText(displayText);
+	/**
+	 * Create a panel allowing the user to choose which response field should be
+	 * tested.
+	 * 
+	 * @return a new panel for selecting the response field
+	 */
+	private JPanel createFieldPanel() {
+		JPanel panel = new JPanel();
+		panel.setBorder(BorderFactory.createTitledBorder(JMeterUtils.getResString("assertion_resp_field"))); //$NON-NLS-1$
 
-            return label;
-        }
-    }
+		responseStringButton = new JRadioButton(JMeterUtils.getResString("assertion_text_resp")); //$NON-NLS-1$
+		urlButton = new JRadioButton(JMeterUtils.getResString("assertion_url_samp")); //$NON-NLS-1$
+		responseCodeButton = new JRadioButton(JMeterUtils.getResString("assertion_code_resp")); //$NON-NLS-1$
+		responseMessageButton = new JRadioButton(JMeterUtils.getResString("assertion_message_resp")); //$NON-NLS-1$
+		responseHeadersButton = new JRadioButton(JMeterUtils.getResString("assertion_headers")); //$NON-NLS-1$
 
+		ButtonGroup group = new ButtonGroup();
+		group.add(responseStringButton);
+		group.add(urlButton);
+		group.add(responseCodeButton);
+		group.add(responseMessageButton);
+		group.add(responseHeadersButton);
+
+		panel.add(responseStringButton);
+		panel.add(urlButton);
+		panel.add(responseCodeButton);
+		panel.add(responseMessageButton);
+		panel.add(responseHeadersButton);
+
+		responseStringButton.setSelected(true);
+
+		assumeSuccess = new JCheckBox(JMeterUtils.getResString("assertion_assume_success")); //$NON-NLS-1$
+		panel.add(assumeSuccess);
+
+		return panel;
+	}
+
+	/**
+	 * Create a panel allowing the user to choose what type of test should be
+	 * performed.
+	 * 
+	 * @return a new panel for selecting the type of assertion test
+	 */
+	private JPanel createTypePanel() {
+		JPanel panel = new JPanel();
+		panel.setBorder(BorderFactory.createTitledBorder(JMeterUtils.getResString("assertion_pattern_match_rules"))); //$NON-NLS-1$
+
+		ButtonGroup group = new ButtonGroup();
+
+		containsBox = new JRadioButton(JMeterUtils.getResString("assertion_contains")); //$NON-NLS-1$
+		group.add(containsBox);
+		containsBox.setSelected(true);
+		panel.add(containsBox);
+
+		matchesBox = new JRadioButton(JMeterUtils.getResString("assertion_matches")); //$NON-NLS-1$
+		group.add(matchesBox);
+		panel.add(matchesBox);
+
+		equalsBox = new JRadioButton(JMeterUtils.getResString("assertion_equals")); //$NON-NLS-1$
+		group.add(equalsBox);
+		panel.add(equalsBox);
+
+		notBox = new JCheckBox(JMeterUtils.getResString("assertion_not")); //$NON-NLS-1$
+		panel.add(notBox);
+
+		return panel;
+	}
+
+	/**
+	 * Create a panel allowing the user to supply a list of string patterns to
+	 * test against.
+	 * 
+	 * @return a new panel for adding string patterns
+	 */
+	private JPanel createStringPanel() {
+		tableModel = new PowerTableModel(new String[] { COL_NAME }, new Class[] { String.class });
+		stringTable = new JTable(tableModel);
+
+		TextAreaCellRenderer renderer = new TextAreaCellRenderer();
+		stringTable.setRowHeight(renderer.getPreferredHeight());
+		stringTable.setDefaultRenderer(String.class, renderer);
+		stringTable.setDefaultEditor(String.class, new TextAreaTableCellEditor());
+		stringTable.setPreferredScrollableViewportSize(new Dimension(100, 70));
+
+		JPanel panel = new JPanel();
+		panel.setLayout(new BorderLayout());
+		panel.setBorder(BorderFactory.createTitledBorder(JMeterUtils.getResString("assertion_patterns_to_test"))); //$NON-NLS-1$
+
+		panel.add(new JScrollPane(stringTable), BorderLayout.CENTER);
+		panel.add(createButtonPanel(), BorderLayout.SOUTH);
+
+		return panel;
+	}
+
+	/**
+	 * Create a panel with buttons to add and delete string patterns.
+	 * 
+	 * @return the new panel with add and delete buttons
+	 */
+	private JPanel createButtonPanel() {
+		addPattern = new JButton(JMeterUtils.getResString("add")); //$NON-NLS-1$
+		addPattern.addActionListener(new AddPatternListener());
+
+		deletePattern = new JButton(JMeterUtils.getResString("delete")); //$NON-NLS-1$
+		deletePattern.addActionListener(new ClearPatternsListener());
+		deletePattern.setEnabled(false);
+
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.add(addPattern);
+		buttonPanel.add(deletePattern);
+		return buttonPanel;
+	}
+
+	/**
+	 * An ActionListener for deleting a pattern.
+	 * 
+	 */
+	private class ClearPatternsListener implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+			int index = stringTable.getSelectedRow();
+			if (index > -1) {
+				stringTable.getCellEditor(index, stringTable.getSelectedColumn()).cancelCellEditing();
+				tableModel.removeRow(index);
+				tableModel.fireTableDataChanged();
+			}
+			if (stringTable.getModel().getRowCount() == 0) {
+				deletePattern.setEnabled(false);
+			}
+		}
+	}
+
+	/**
+	 * An ActionListener for adding a pattern.
+	 * 
+	 */
+	private class AddPatternListener implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+			tableModel.addNewRow();
+			deletePattern.setEnabled(true);
+			tableModel.fireTableDataChanged();
+		}
+	}
 }

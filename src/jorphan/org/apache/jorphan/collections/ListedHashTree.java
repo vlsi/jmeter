@@ -1,299 +1,229 @@
 /*
- * ====================================================================
- * The Apache Software License, Version 1.1
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2001 The Apache Software Foundation.  All rights
- * reserved.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- *
- * 3. The end-user documentation included with the redistribution,
- * if any, must include the following acknowledgment:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowledgment may appear in the software itself,
- * if and wherever such third-party acknowledgments normally appear.
- *
- * 4. The names "Apache" and "Apache Software Foundation" and
- * "Apache JMeter" must not be used to endorse or promote products
- * derived from this software without prior written permission. For
- * written permission, please contact apache@apache.org.
- *
- * 5. Products derived from this software may not be called "Apache",
- * "Apache JMeter", nor may "Apache" appear in their name, without
- * prior written permission of the Apache Software Foundation.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * ====================================================================
- *
- * This software consists of voluntary contributions made by many
- * individuals on behalf of the Apache Software Foundation.  For more
- * information on the Apache Software Foundation, please see
- * <http://www.apache.org/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
  */
- 
+
 package org.apache.jorphan.collections;
-import java.io.*;
-import java.util.*;
 
-/****************************************
- * ListedHashTree is a different implementation of the {@link HashTree} collection class. 
- * In the ListedHashTree,
- * the order in which values are added is preserved (not to be confused with
- * {@link SortedHashTree}, which sorts the order of the values using the compare()
- * function).  Any listing of nodes or iteration through the list of nodes of a
- * ListedHashTree will be given in the order in which the nodes were added to the
- * tree.
- *
- *@author    mstover1 at apache.org
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * ListedHashTree is a different implementation of the {@link HashTree}
+ * collection class. In the ListedHashTree, the order in which values are added
+ * is preserved (not to be confused with {@link SortedHashTree}, which sorts
+ * the order of the values using the compare() function). Any listing of nodes
+ * or iteration through the list of nodes of a ListedHashTree will be given in
+ * the order in which the nodes were added to the tree.
+ * 
  * @see HashTree
- ***************************************/
-public class ListedHashTree extends HashTree implements Serializable,Cloneable
-{
-
+ * @author mstover1 at apache.org
+ * @version $Revision$
+ */
+public class ListedHashTree extends HashTree implements Serializable, Cloneable {
 	private List order;
 
-	public ListedHashTree()
-	{
+	public ListedHashTree() {
 		data = new HashMap();
 		order = new LinkedList();
 	}
-	
-	public Object clone()
-	{
+
+	public Object clone() {
 		ListedHashTree newTree = new ListedHashTree();
-		newTree.data = (Map)((HashMap)data).clone();
-		newTree.order = (List)((LinkedList)order).clone();
+		cloneTree(newTree);
 		return newTree;
 	}
 
-	public ListedHashTree(Object key)
-	{
+	public ListedHashTree(Object key) {
 		data = new HashMap();
 		order = new LinkedList();
 		data.put(key, new ListedHashTree());
 		order.add(key);
 	}
 
-	public ListedHashTree(Collection keys)
-	{
+	public ListedHashTree(Collection keys) {
 		data = new HashMap();
 		order = new LinkedList();
 		Iterator it = keys.iterator();
-		while(it.hasNext())
-		{
+		while (it.hasNext()) {
 			Object temp = it.next();
 			data.put(temp, new ListedHashTree());
 			order.add(temp);
 		}
 	}
 
-	public ListedHashTree(Object[] keys)
-	{
+	public ListedHashTree(Object[] keys) {
 		data = new HashMap();
 		order = new LinkedList();
-		for(int x = 0; x < keys.length; x++)
-		{
+		for (int x = 0; x < keys.length; x++) {
 			data.put(keys[x], new ListedHashTree());
 			order.add(keys[x]);
 		}
 	}
 
-	public void set(Object key, Object value)
-	{
-		if(!data.containsKey(key))
-		{
+	public void set(Object key, Object value) {
+		if (!data.containsKey(key)) {
 			order.add(key);
 		}
-		super.set(key,value);
+		super.set(key, value);
 	}
 
-	public void set(Object key, HashTree t)
-	{
-		if(!data.containsKey(key))
-		{
+	public void set(Object key, HashTree t) {
+		if (!data.containsKey(key)) {
 			order.add(key);
 		}
-		super.set(key,t);
+		super.set(key, t);
 	}
 
-	public void set(Object key, Object[] values)
-	{		
-		if(!data.containsKey(key))
-		{
+	public void set(Object key, Object[] values) {
+		if (!data.containsKey(key)) {
 			order.add(key);
 		}
-		super.set(key,values);
+		super.set(key, values);
 	}
 
-	public void set(Object key, Collection values)
-	{
-		if(!data.containsKey(key))
-		{
+	public void set(Object key, Collection values) {
+		if (!data.containsKey(key)) {
 			order.add(key);
 		}
-		super.set(key,values);
+		super.set(key, values);
 	}
 
-	public void replace(Object currentKey, Object newKey)
-	{
+	public void replace(Object currentKey, Object newKey) {
 		HashTree tree = getTree(currentKey);
 		data.remove(currentKey);
 		data.put(newKey, tree);
 		order.set(order.indexOf(currentKey), newKey);
 	}
-	
-	public HashTree createNewTree()
-	{
+
+	public HashTree createNewTree() {
 		return new ListedHashTree();
 	}
-	
-	public HashTree createNewTree(Object key)
-	{
+
+	public HashTree createNewTree(Object key) {
 		return new ListedHashTree(key);
 	}
-	
-	public HashTree createNewTree(Collection values)
-	{
+
+	public HashTree createNewTree(Collection values) {
 		return new ListedHashTree(values);
 	}
 
-	public void add(Object key)
-	{
-		if(!data.containsKey(key))
-		{
-			data.put(key, createNewTree());
+	public HashTree add(Object key) {
+		if (!data.containsKey(key)) {
+			HashTree newTree = createNewTree();
+			data.put(key, newTree);
 			order.add(key);
+			return newTree;
+		} else {
+			return getTree(key);
 		}
 	}
 
-	public Collection list()
-	{
+	public Collection list() {
 		return order;
 	}
 
-	public Object remove(Object key)
-	{
+	public Object remove(Object key) {
 		order.remove(key);
 		return data.remove(key);
 	}
 
-	public Object[] getArray()
-	{
+	public Object[] getArray() {
 		return order.toArray();
 	}
 
-	public int hashCode()
-	{
-		return data.hashCode() * 7 + 3;
+	// Make sure the hashCode depends on the order as well
+	public int hashCode() {
+		int hc = 17;
+		hc = hc * 37 + (order == null ? 0 : order.hashCode());
+		hc = hc * 37 + super.hashCode();
+		return hc;
 	}
 
-	public boolean equals(Object o)
-	{
-		boolean flag = true;
-		if(o instanceof ListedHashTree)
-		{
-			ListedHashTree oo = (ListedHashTree)o;
-			Iterator it = order.iterator();
-			Iterator it2 = oo.order.iterator();
-			if(size() != oo.size())
-			{
-				flag = false;
-			}
-			while(it.hasNext() && it2.hasNext() && flag)
-			{
-				if(!it.next().equals(it2.next()))
-				{
-					flag = false;
-				}
-			}
-			if(flag)
-			{
-				it = order.iterator();
-				while(it.hasNext() && flag)
-				{
-					Object temp = it.next();
-					flag = get(temp).equals(oo.get(temp));
-				}
-			}
-		}
-		else
-		{
-			flag = false;
-		}
-		return flag;
+	public boolean equals(Object o) {
+		if (!(o instanceof ListedHashTree))
+			return false;
+		ListedHashTree lht = (ListedHashTree) o;
+		return (super.equals(lht) && order.equals(lht.order));
+
+		// boolean flag = true;
+		// if (o instanceof ListedHashTree)
+		// {
+		// ListedHashTree oo = (ListedHashTree) o;
+		// Iterator it = order.iterator();
+		// Iterator it2 = oo.order.iterator();
+		// if (size() != oo.size())
+		// {
+		// flag = false;
+		// }
+		// while (it.hasNext() && it2.hasNext() && flag)
+		// {
+		// if (!it.next().equals(it2.next()))
+		// {
+		// flag = false;
+		// }
+		// }
+		// if (flag)
+		// {
+		// it = order.iterator();
+		// while (it.hasNext() && flag)
+		// {
+		// Object temp = it.next();
+		// flag = get(temp).equals(oo.get(temp));
+		// }
+		// }
+		// }
+		// else
+		// {
+		// flag = false;
+		// }
+		// return flag;
 	}
 
-	public Set keySet()
-	{
+	public Set keySet() {
 		return data.keySet();
 	}
 
-	public int size()
-	{
+	public int size() {
 		return data.size();
 	}
 
-	void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException
-	{
+	private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
 		ois.defaultReadObject();
 	}
 
-	void writeObject(ObjectOutputStream oos) throws IOException
-	{
+	private void writeObject(ObjectOutputStream oos) throws IOException {
 		oos.defaultWriteObject();
 	}
 
-	public static class Test extends junit.framework.TestCase
-	{
-		/****************************************
-		 * !ToDo (Constructor description)
-		 *
-		 *@param name  !ToDo (Parameter description)
-		 ***************************************/
-		public Test(String name)
-		{
-			super(name);
-		}
-
-		/****************************************
-		 * !ToDo
-		 *
-		 *@exception Exception  !ToDo (Exception description)
-		 ***************************************/
-		public void testAddObjectAndTree() throws Exception
-		{
-			ListedHashTree tree = new ListedHashTree("key");
-			ListedHashTree newTree = new ListedHashTree("value");
-			tree.add("key", newTree);
-			assertEquals(tree.list().size(), 1);
-			assertEquals("key",tree.getArray()[0]);
-			assertEquals(1,tree.getTree("key").list().size());
-			assertEquals(0,tree.getTree("key").getTree("value").size());
-			assertEquals(tree.getTree("key").getArray()[0], "value");
-			this.assertNotNull(tree.getTree("key").get("value"));
-		}
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.util.Map#clear()
+	 */
+	public void clear() {
+		super.clear();
+		order.clear();
 	}
-
 }
