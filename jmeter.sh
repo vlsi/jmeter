@@ -1,4 +1,4 @@
-#!/bin/sh
+#! /bin/sh
 
 ##   Licensed to the Apache Software Foundation (ASF) under one or more
 ##   contributor license agreements.  See the NOTICE file distributed with
@@ -15,16 +15,16 @@
 ##   See the License for the specific language governing permissions and
 ##   limitations under the License.
 
-##   To change the RMI/Server port:
-##
-##   SERVER_PORT=1234 jmeter-server
-##
+## Basic JMeter startup script for Un*x systems
+## See the "jmeter" script for details of options that can be used for Sun JVMs
 
-set OLDCLASSPATH=$CLASSPATH
-export OLDCLASSPATH
-set CLASSPATH=`dirname $0`/../lib/ext/ApacheJMeter_core.jar:`dirname $0`/../lib/jorphan.jar:`dirname $0`/../lib/logkit-1.2.jar
-export CLASSPATH
-rmiregistry $SERVER_PORT &
-set CLASSPATH=$OLDCLASSPATH
-export CLASSPATH
-`dirname $0`/jmeter -Dserver_port=${SERVER_PORT:-1099} -s -j jmeter-server.log "$@"
+##   ==============================================
+##   Environment variables:
+##   JVM_ARGS - optional java args, e.g. -Dprop=val
+##
+##   ==============================================
+
+# Hopefully this is an universal option:
+SERVER=-server
+
+java $SERVER $JVM_ARGS -jar `dirname $0`/ApacheJMeter.jar "$@"

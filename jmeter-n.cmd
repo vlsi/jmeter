@@ -1,11 +1,11 @@
 @echo off
 
-rem   $Id$
-rem   Copyright 2001-2004 The Apache Software Foundation
-rem 
-rem   Licensed under the Apache License, Version 2.0 (the "License");
-rem   you may not use this file except in compliance with the License.
-rem   You may obtain a copy of the License at
+rem   Licensed to the Apache Software Foundation (ASF) under one or more
+rem   contributor license agreements.  See the NOTICE file distributed with
+rem   this work for additional information regarding copyright ownership.
+rem   The ASF licenses this file to You under the Apache License, Version 2.0
+rem   (the "License"); you may not use this file except in compliance with
+rem   the License.  You may obtain a copy of the License at
 rem 
 rem       http://www.apache.org/licenses/LICENSE-2.0
 rem 
@@ -34,10 +34,6 @@ pause
 goto END
 :WinNT
 
-rem Change to directory containing this file, which must be in bin
-echo Changing to JMeter home directory
-cd /D %~dp0
-
 rem Check file is supplied
 if a == a%1 goto winNT2
 rem Check it has extension .jmx
@@ -45,9 +41,15 @@ if a%~x1 == a.jmx goto winNT3
 :winNT2
 echo Please supply a script name with the extension .jmx
 pause
-goto :EOF
+goto END
 :winNT3
 
-jmeter -n -t %1 -l %~dpn1.jtl
+rem Change to script directory
+pushd %~dp1
+
+rem use same directory to find jmeter script
+call "%~dp0"jmeter -n -t "%~nx1" -j "%~n1.log" -l "%~n1.jtl"
+
+popd
 
 :END
