@@ -214,12 +214,15 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
     private static final String SAVE_IDLE_TIME       = "jmeter.save.saveservice.idle_time"; // $NON_NLS-1$
     // N.B. Remember to update the equals and hashCode methods when adding new variables.
 
+    private static final String SAVE_PRE_POST_TIME   = "jmeter.save.saveservice.pre_post_processor_times"; // $NON_NLS-1$
+
     // Initialise values from properties
     private boolean time = _time, latency = _latency, timestamp = _timestamp, success = _success, label = _label,
             code = _code, message = _message, threadName = _threadName, dataType = _dataType, encoding = _encoding,
             assertions = _assertions, subresults = _subresults, responseData = _responseData,
             samplerData = _samplerData, xml = _xml, fieldNames = _fieldNames, responseHeaders = _responseHeaders,
-            requestHeaders = _requestHeaders, responseDataOnError = _responseDataOnError;
+            requestHeaders = _requestHeaders, responseDataOnError = _responseDataOnError,
+            prePostTimes = _prePostTimes;
 
     private boolean saveAssertionResultsFailureMessage = _saveAssertionResultsFailureMessage;
 
@@ -250,7 +253,7 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
     // Defaults from properties:
     private static final boolean _time, _timestamp, _success, _label, _code, _message, _threadName, _xml,
             _responseData, _dataType, _encoding, _assertions, _latency, _subresults, _samplerData, _fieldNames,
-            _responseHeaders, _requestHeaders;
+            _responseHeaders, _requestHeaders, _prePostTimes;
 
     private static final boolean _responseDataOnError;
 
@@ -398,6 +401,8 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
         _sampleCount=TRUE.equalsIgnoreCase(props.getProperty(SAVE_SAMPLE_COUNT, FALSE));
 
         _idleTime=TRUE.equalsIgnoreCase(props.getProperty(SAVE_IDLE_TIME, FALSE));
+
+        _prePostTimes=TRUE.equalsIgnoreCase(props.getProperty(SAVE_PRE_POST_TIME, FALSE));
     }
 
     // Don't save this, as not settable via GUI
@@ -457,6 +462,7 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
         timestamp = value;
         url = value;
         xml = value;
+        prePostTimes = value;
     }
 
     private Object readResolve(){
@@ -516,6 +522,7 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
             s.hostname == hostname &&
             s.sampleCount == sampleCount &&
             s.idleTime == idleTime &&
+            s.prePostTimes == prePostTimes &&
             s.threadCounts == threadCounts;
 
         boolean stringValues = false;
@@ -564,6 +571,7 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
         hash = 31 * hash + (formatter != null  ? formatter.hashCode() : 0);
         hash = 31 * hash + (sampleCount ? 1 : 0);
         hash = 31 * hash + (idleTime ? 1 : 0);
+        hash = 31 * hash + (prePostTimes ? 1 : 0);
 
         return hash;
     }
@@ -833,5 +841,13 @@ public class SampleSaveConfiguration implements Cloneable, Serializable {
 
     public void setIdleTime(boolean save) {
         idleTime = save;
+    }
+
+    public boolean savePrePostTime() {
+        return prePostTimes;
+    }
+
+    public void setPrePostTime(boolean save) {
+        prePostTimes = save;
     }
 }

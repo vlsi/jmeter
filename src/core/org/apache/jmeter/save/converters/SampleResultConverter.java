@@ -94,6 +94,9 @@ public class SampleResultConverter extends AbstractCollectionConverter {
     private static final String ATT_IDLETIME          = "it"; //$NON-NLS-1$
     private static final String ATT_THREADNAME        = "tn"; //$NON-NLS-1$
     private static final String ATT_TIME_STAMP        = "ts"; //$NON-NLS-1$
+    private static final String ATT_PRE_PROCESSOR_TIME_STAMP = "pt"; //$NON-NLS-1$
+    private static final String ATT_TIMERS_TIME_STAMP        = "tt"; //$NON-NLS-1$
+    private static final String ATT_LISTENERS_TIME_STAMP     = "ls"; //$NON-NLS-1$
 
     /**
      * Returns the converter version; used to check for possible
@@ -244,6 +247,17 @@ public class SampleResultConverter extends AbstractCollectionConverter {
         }
         if (save.saveTimestamp()) {
             writer.addAttribute(ATT_TIME_STAMP, Long.toString(res.getTimeStamp()));
+        }
+        if (save.savePrePostTime()) {
+            long t = res.getPreProcessorsStartedAt();
+            if (t != 0) {
+                writer.addAttribute(ATT_PRE_PROCESSOR_TIME_STAMP, Long.toString(t));
+            }
+            t = res.getTimersStartedAt();
+            if (t != 0) {
+                writer.addAttribute(ATT_TIMERS_TIME_STAMP, Long.toString(t));
+            }
+            writer.addAttribute(ATT_LISTENERS_TIME_STAMP, Long.toString(res.getListenersFinishedAt()));
         }
         if (save.saveSuccess()) {
             writer.addAttribute(ATT_SUCCESS, Boolean.toString(res.isSuccessful()));

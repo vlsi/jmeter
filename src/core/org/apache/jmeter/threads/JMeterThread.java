@@ -93,6 +93,9 @@ public class JMeterThread implements Runnable, Interruptible {
 
     private final ListenerNotifier notifier;
 
+    // This is used to access SampleResult#currentTimeMillis() to note the timestamp of pre/post processors
+    private SampleResult clockSource = new SampleResult();
+
     /*
      * The following variables are set by StandardJMeterEngine.
      * This is done before start() is called, so the values will be published to the thread safely
@@ -413,12 +416,23 @@ public class JMeterThread implements Runnable, Interruptible {
                 threadContext.setCurrentSampler(current);
                 // Get the sampler ready to sample
                 SamplePackage pack = compiler.configureSampler(current);
-                runPreProcessors(pack.getPreProcessors());
+
+                long preProcessorsStartedAt = 0;
+                List<PreProcessor> preProcessors = pack.getPreProcessors();
+                if (!preProcessors.isEmpty()) {
+                    preProcessorsStartedAt = clockSource.currentTimeInMillis();
+                    runPreProcessors(preProcessors);
+                }
 
                 // Hack: save the package for any transaction controllers
                 threadVars.putObject(PACKAGE_OBJECT, pack);
 
-                delay(pack.getTimers());
+                long timersStartedAt = 0;
+                List<Timer> timers = pack.getTimers();
+                if (!timers.isEmpty()) {
+                    timersStartedAt = clockSource.currentTimeInMillis();
+                    delay(timers);
+                }
                 Sampler sampler = pack.getSampler();
                 sampler.setThreadContext(threadContext);
                 // TODO should this set the thread names for all the subsamples?
@@ -432,6 +446,9 @@ public class JMeterThread implements Runnable, Interruptible {
                 currentSampler = null;
                 // TODO: remove this useless Entry parameter
 
+                result.setPreProcessorsStartTimestamp(preProcessorsStartedAt);
+                result.setTimersStartTimestamp(timersStartedAt);
+
                 // If we got any results, then perform processing on the result
                 if (result != null) {
                     result.setGroupThreads(threadGroup.getNumberOfThreads());
@@ -443,6 +460,7 @@ public class JMeterThread implements Runnable, Interruptible {
                     // Do not send subsamples to listeners which receive the transaction sample
                     List<SampleListener> sampleListeners = getSampleListeners(pack, transactionPack, transactionSampler);
                     notifyListeners(sampleListeners, result);
+                    result.setListenersFinishedAt(clockSource.currentTimeInMillis());
                     compiler.done(pack);
                     // Add the result as subsample of transaction if we are in a transaction
                     if(transactionSampler != null) {

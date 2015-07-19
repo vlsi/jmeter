@@ -155,6 +155,15 @@ public class SampleResult implements Serializable {
     /** Start of pause (if any) */
     private long pauseTime = 0;
 
+    /** timestamp when preprocessors started */
+    private long preProcessorsStartedAt;
+
+    /** timestamp when timers (delays) started */
+    private long timersStartedAt;
+
+    /** timestamp when post-processors and listeners finished */
+    private long listenersFinishedAt;
+
     private List<AssertionResult> assertionResults;
 
     private List<SampleResult> subResults;
@@ -178,7 +187,7 @@ public class SampleResult implements Serializable {
 
     /** time to first response */
     private long latency = 0;
-    
+
     /** Should thread start next iteration ? */
     private boolean startNextThreadLoop = false;
 
@@ -974,6 +983,27 @@ public class SampleResult implements Serializable {
         return startTime;
     }
 
+    /**
+     * @return the start time of preprocessors, or 0 when no pre-processors in use
+     */
+    public long getPreProcessorsStartedAt() {
+        return preProcessorsStartedAt;
+    }
+
+    /**
+     * @return the start time of timers, or 0 when no timers in use
+     */
+    public long getTimersStartedAt() {
+        return timersStartedAt;
+    }
+
+    /**
+     * @return the finish time of post processors and listeners
+     */
+    public long getListenersFinishedAt() {
+        return listenersFinishedAt;
+    }
+
     /*
      * Helper methods N.B. setStartTime must be called before setEndTime
      *
@@ -998,6 +1028,30 @@ public class SampleResult implements Serializable {
         } else {
             elapsedTime = endTime - startTime - idleTime;
         }
+    }
+
+    /**
+     * Sets the start time of preprocessors, or 0 when no pre-processors in use
+     * @param start the start time of preprocessors
+     */
+    public void setPreProcessorsStartedAt(long start) {
+        preProcessorsStartedAt = start;
+    }
+
+    /**
+     * Sets the start time of timers, or 0 when no timers in use
+     * @param start the start time of timers
+     */
+    public void setTimersStartedAt(long start) {
+        preProcessorsStartedAt = start;
+    }
+
+    /**
+     * Sets the finish time of post processors and listeners
+     * @param finish the finish time of post processors and listeners
+     */
+    public void setListenersFinishedAt(long finish) {
+        listenersFinishedAt = finish;
     }
 
     /**

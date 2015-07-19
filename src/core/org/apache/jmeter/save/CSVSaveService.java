@@ -90,6 +90,9 @@ public final class CSVSaveService {
     private static final String CSV_ENCODING = "Encoding"; // $NON-NLS-1$
     private static final String CSV_HOSTNAME = "Hostname"; // $NON-NLS-1$
     private static final String CSV_IDLETIME = "IdleTime"; // $NON-NLS-1$
+    private static final String CSV_PREPROCESSORSSTARTED = "PreprocessorsStarted"; // $NON-NLS-1$
+    private static final String CSV_TIMERSTARTED = "TimersStarted"; // $NON-NLS-1$
+    private static final String CSV_LISTENERSFINISHED = "ListenersFinished"; // $NON-NLS-1$
 
     // Used to enclose variable name labels, to distinguish from any of the
     // above labels
@@ -349,6 +352,18 @@ public final class CSVSaveService {
                 result.setIdleTime(Long.parseLong(text));
             }
 
+            if (saveConfig.savePrePostTime()) {
+                field = CSV_PREPROCESSORSSTARTED;
+                text = parts[i++];
+                result.setIdleTime(Long.parseLong(text));
+                field = CSV_TIMERSTARTED;
+                text = parts[i++];
+                result.setIdleTime(Long.parseLong(text));
+                field = CSV_LISTENERSFINISHED;
+                text = parts[i++];
+                result.setIdleTime(Long.parseLong(text));
+            }
+
             if (i + saveConfig.getVarCount() < parts.length) {
                 log.warn("Line: " + lineNumber + ". Found " + parts.length
                         + " fields, expected " + i
@@ -481,6 +496,15 @@ public final class CSVSaveService {
 
         if (saveConfig.saveIdleTime()) {
             text.append(CSV_IDLETIME);
+            text.append(delim);
+        }
+
+        if (saveConfig.savePrePostTime()) {
+            text.append(CSV_PREPROCESSORSSTARTED);
+            text.append(delim);
+            text.append(CSV_TIMERSTARTED);
+            text.append(delim);
+            text.append(CSV_LISTENERSFINISHED);
             text.append(delim);
         }
 
@@ -941,6 +965,13 @@ public final class CSVSaveService {
 
         if (saveConfig.saveIdleTime()) {
             text.append(event.getResult().getIdleTime());
+        }
+
+        if (saveConfig.savePrePostTime()) {
+            SampleResult res = event.getResult();
+            text.append(res.getPreProcessorsStartedAt());
+            text.append(res.getTimersStartedAt());
+            text.append(res.getListenersFinishedAt());
         }
 
         for (int i = 0; i < SampleEvent.getVarCount(); i++) {
