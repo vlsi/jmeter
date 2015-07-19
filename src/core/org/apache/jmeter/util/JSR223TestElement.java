@@ -24,15 +24,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.script.Bindings;
-import javax.script.Compilable;
-import javax.script.CompiledScript;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
+import javax.script.*;
 
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.io.IOUtils;
@@ -63,6 +59,13 @@ public abstract class JSR223TestElement extends ScriptingTestElement
     public static ScriptEngineManager getInstance() {
             return LazyHolder.INSTANCE;
     }
+
+    private final static ThreadLocal<Map<String, ScriptEngine>> ENGINES = new ThreadLocal<Map<String, ScriptEngine>>() {
+        @Override
+        protected Map<String, ScriptEngine> initialValue() {
+            return new HashMap<>();
+        }
+    };
     
     private static final long serialVersionUID = 233L;
 
@@ -83,10 +86,17 @@ public abstract class JSR223TestElement extends ScriptingTestElement
     protected ScriptEngine getScriptEngine() throws ScriptException {
         final String lang = getScriptLanguage();
 
+        Map<String, ScriptEngine> engines = ENGINES.get();
+        ScriptEngine engine = engines.get(lang);
+        if (engine != null) {
+            return engine;
+        }
+
         ScriptEngine scriptEngine = getInstance().getEngineByName(lang);
         if (scriptEngine == null) {
             throw new ScriptException("Cannot find engine named: '"+lang+"', ensure you set language field in JSR223 Test Element:"+getName());
         }
+        engines.put(lang, scriptEngine);
 
         return scriptEngine;
     }
@@ -124,6 +134,7 @@ public abstract class JSR223TestElement extends ScriptingTestElement
         bindings.put("prev", prev); // $NON-NLS-1$ (this name is fixed)
     }
 
+    private final static ThreadLocal<ScriptContext> CTX = new ThreadLocal<>();
 
     /**
      * This method will run inline script or file script with special behaviour for file script:
@@ -169,7 +180,26 @@ public abstract class JSR223TestElement extends ScriptingTestElement
                                 }
                             }
                         }
-                        return compiledScript.eval(bindings);
+                        ScriptContext scriptContext = CTX.get();
+                        System.out.println("scriptContext = " + scriptContext);
+                        if (scriptContext == null) {
+                            ScriptContext ctxt = scriptEngine.getContext();
+                            SimpleScriptContext tempctxt = new SimpleScriptContext();
+                            tempctxt.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
+
+                            Bindings globals =
+                                ctxt.getBindings(ScriptContext.GLOBAL_SCOPE);
+                            System.out.println("globals = " + globals);
+                            tempctxt.setBindings(
+                                globals,
+                                ScriptContext.GLOBAL_SCOPE);
+                            tempctxt.setWriter(ctxt.getWriter());
+                            tempctxt.setReader(ctxt.getReader());
+                            tempctxt.setErrorWriter(ctxt.getErrorWriter());
+                            scriptContext = tempctxt;
+                            CTX.set(scriptContext);
+                        }
+                        return compiledScript.eval(scriptContext);
                     } else {
                         // TODO Charset ?
                         fileReader = new BufferedReader(new FileReader(scriptFile), 
@@ -197,7 +227,22 @@ public abstract class JSR223TestElement extends ScriptingTestElement
                         }
                     }
                 }
-                return compiledScript.eval(bindings);
+                ScriptContext scriptContext = CTX.get();
+                if (scriptContext == null) {
+                    ScriptContext ctxt = scriptEngine.getContext();
+                    SimpleScriptContext tempctxt = new SimpleScriptContext();
+                    tempctxt.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
+
+                    Bindings globals = ctxt.getBindings(ScriptContext.GLOBAL_SCOPE);
+                    tempctxt.setBindings(globals, ScriptContext.GLOBAL_SCOPE);
+                    tempctxt.setWriter(ctxt.getWriter());
+                    tempctxt.setReader(ctxt.getReader());
+                    tempctxt.setErrorWriter(ctxt.getErrorWriter());
+                    scriptContext = tempctxt;
+                    CTX.set(scriptContext);
+                }
+                return compiledScript.eval(scriptContext);
+//                return compiledScript.eval(bindings);
             } else {
                 return scriptEngine.eval(getScript(), bindings);
             }

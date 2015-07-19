@@ -26,6 +26,7 @@ import java.util.Set;
 import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
+import javax.script.SimpleBindings;
 
 import org.apache.jmeter.config.ConfigTestElement;
 import org.apache.jmeter.engine.util.ConfigMergabilityIndicator;
@@ -65,7 +66,7 @@ public class JSR223Sampler extends JSR223TestElement implements Cloneable, Sampl
         result.sampleStart();
         try {
             ScriptEngine scriptEngine = getScriptEngine();
-            Bindings bindings = scriptEngine.createBindings();
+            Bindings bindings = new SimpleBindings();//scriptEngine.createBindings();
             bindings.put("SampleResult",result);
             Object ret = processFileOrScript(scriptEngine, bindings);
             if (ret != null && (result.getResponseData() == null || result.getResponseData()==SampleResult.EMPTY_BA)){

@@ -130,7 +130,13 @@ CLASS_UNLOAD="-XX:+CMSClassUnloadingEnabled"
 DUMP="-XX:+HeapDumpOnOutOfMemoryError"
 
 SERVER="-server"
+# -Dnashorn.option.global.per.engine=true"
+# -Dnashorn.option.global.per.engine=true"
+# -Dnashorn.option.print.code=true -Dnashorn.option.print.mem.usage=true -Dnashorn.option.print.code=true -Dnashorn.option.global.per.engine=true -Dnashorn.option.lazy.compilation=true -Dnashorn.codegen.debug=true "
+#-Dnashorn.option.print.code=true -Dnashorn.option.print.code=true -Dnashorn.option.optimistic.types=true -Dnashorn.option.log=true -Dnashorn.option.global.per.engine=true "
 
-ARGS="$SERVER $DUMP $HEAP $NEW $SURVIVOR $TENURING $EVACUATION $PERM $CLASS_UNLOAD"
+# /Users/vladimirsitnikov/Documents/work/jdk8-nashorn/src/ 
+
+ARGS="$SERVER $DUMP $HEAP $NEW $SURVIVOR $TENURING $EVACUATION $PERM $CLASS_UNLOAD -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=settings=profile2,duration=600s,filename=tmp.jfr"
 
 java $ARGS $JVM_ARGS $JMETER_OPTS -jar "$PRGDIR/ApacheJMeter.jar" "$@"
