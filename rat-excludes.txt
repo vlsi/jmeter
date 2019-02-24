@@ -1,6 +1,10 @@
 rat-excludes.txt
+gradle/wrapper/gradle-wrapper.jar
+gradlew
+gradlew.bat
 .*
 .*/**
+**/*.iml
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 eclipse.md
@@ -16,6 +20,12 @@ bin/report-output/**
 bin/report-template/**
 bin/testfiles/**
 build/**
+buildSrc/.gradle/**
+buildSrc/build/**
+src/*/build/**
+src/*/out/**
+src/protocol/*/build/**
+src/protocol/*/out/**
 build-local.properties
 dist/*.md5
 dist/*.sha512
@@ -32,9 +42,10 @@ licenses/src/**
 local/**
 printable_docs/**
 reports/**
-res/META-INF/jmeter_as_ascii_art.txt
-src/core/org/apache/jmeter/help.txt
+src/launcher/src/main/resources/org/apache/jmeter/jmeter_as_ascii_art.txt
+src/core/src/main/resources/org/apache/jmeter/help.txt
 test/resources/**
+**/test/resources/**
 **/*.log
 **/download_jmeter.cgi
 xdocs/extending/HTML_REPORT_README.TXT
