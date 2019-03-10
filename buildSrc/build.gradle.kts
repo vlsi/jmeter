@@ -22,6 +22,13 @@ plugins {
 
 repositories {
     jcenter()
+    gradlePluginPortal()
+}
+
+dependencies {
+    compile("de.marcphilipp.gradle:nexus-publish-plugin:0.2.0")
+    compile("io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.20.0")
+    compile("org.ajoberstar.grgit:grgit-gradle:3.1.1")
 }
 
 kotlinDslPluginOptions {

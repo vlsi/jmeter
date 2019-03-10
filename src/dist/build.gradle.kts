@@ -19,6 +19,7 @@
 import org.apache.jmeter.buildtools.LineEndings
 import org.apache.jmeter.buildtools.filter
 import org.apache.jmeter.buildtools.from
+import org.apache.jmeter.buildtools.release.ApacheReleaseExtension
 import versions.BuildTools
 import versions.Libs
 
@@ -442,43 +443,52 @@ val javadocAggregate by tasks.registering(Javadoc::class) {
     setDestinationDir(file("$buildDir/docs/javadocAggregate"))
 }
 
-val distZip by tasks.registering(Zip::class) {
-    group = distributionGroup
-    description = "Creates binary distribution with CRLF line endings for text files"
-    dependsOn(populateLibs)
-
-    archiveBaseName.set("apache-jmeter")
-    with(binaryLayout(LineEndings.CRLF))
+// Generates distZip, distTar, distZipSource, and distTarSource tasks
+// The archives and checksums are put to build/distributions
+for (type in listOf("binary", "source")) {
+    for (archive in listOf(Zip::class, Tar::class)) {
+        val archiveTask = tasks.register("dist${archive.simpleName}${type.replace("binary", "").capitalize()}", archive) {
+            val eol = if (archive == Zip::class) LineEndings.LF else LineEndings.CRLF
+            group = distributionGroup
+            description = "Creates $type distribution with $eol line endings for text files"
+            if (this is Tar) {
+                compression = Compression.GZIP
+            }
+            // Gradle defaults to the following pattern, and JMeter was using apache-jmeter-5.1_src.zip
+            // [baseName]-[appendix]-[version]-[classifier].[extension]
+            archiveBaseName.set("apache-jmeter-${rootProject.version}${if (type == "source") "_src" else ""}")
+            with(licenseNotice(eol))
+            with(if (type == "source") sourceLayout(eol) else binaryLayout(eol))
+            doLast {
+                ant.withGroovyBuilder {
+                    "checksum"("file" to archiveFile.get(),
+                        "algorithm" to "SHA-512",
+                        "fileext" to ".sha512")
+                }
+            }
+        }
+        tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure {
+            dependsOn(archiveTask)
+        }
+        rootProject.configure<ApacheReleaseExtension> {
+            archives.addAll(archiveTask)
+        }
+    }
 }
 
-val distTar by tasks.registering(Tar::class) {
-    group = distributionGroup
-    description = "Creates binary distribution with LF line endings for text files"
-    compression = Compression.GZIP
-    dependsOn(populateLibs)
-
-    archiveBaseName.set("apache-jmeter")
-    with(binaryLayout(LineEndings.LF))
+val cleanWs by tasks.registering() {
+    doLast {
+        val wsDir = "$buildDir/cleanWs"
+//        project.exec {
+//            commandLine("git", "clone", "--depth", "100", "--reference", "$rootDir", "https://github.com/apache/jmeter.git", wsDir)
+//            standardOutput = System.out
+//        }
+        project.exec {
+            workingDir = file(wsDir)
+//            commandLine("/bin/sh", "gradlew", "check")
+            commandLine("./gradlew", "check")
+            standardOutput = System.out
+        }
+    }
 }
 
-val distZipSource by tasks.registering(Zip::class) {
-    group = distributionGroup
-    description = "Creates source distribution with CRLF line endings for text files"
-
-    archiveBaseName.set("apache-jmeter_src")
-    with(sourceLayout(LineEndings.CRLF))
-}
-
-val distTarSource by tasks.registering(Tar::class) {
-    group = distributionGroup
-    description = "Creates source distribution with LF line endings for text files"
-    compression = Compression.GZIP
-
-    archiveBaseName.set("apache-jmeter_src")
-    with(sourceLayout(LineEndings.LF))
-}
-
-
-tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure {
-    dependsOn(distTar, distZip, distTarSource, distZipSource)
-}

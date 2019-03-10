@@ -19,7 +19,7 @@
 import com.github.spotbugs.SpotBugsPlugin
 import com.github.spotbugs.SpotBugsTask
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import versions.*
+import versions.BuildToolVersions
 
 plugins {
     java
@@ -31,19 +31,45 @@ plugins {
     witness
     signing
     publishing
+    // Automatic publish to Nexus repository. Versions are specified in `apache-release` plugin
+    id("io.codearte.nexus-staging")
+    id("de.marcphilipp.nexus-publish")
 }
 
-(version as io.ehdev.version.Version).apply {
+with(version as io.ehdev.version.Version) {
     major = 5
     minor = 2
     patch = 0
+    releaseBuild = true
 }
 
 apply(from = "$rootDir/gradle/dependencyVerification.gradle.kts")
+apply(from = "$rootDir/gradle/release.gradle.kts")
 
 // Do not enable spotbugs by default. Execute it only when -PenableSpotBugs (or -DenableSpotbugs) is present
 fun Project.enableSpotBugs() = hasProperty("enableSpotBugs") || hasProperty("enableSpotbugs")
-fun Project.reportsForHumans() = !(System.getenv()["CI"]?.toBoolean() ?: false)
+fun reportsForHumans() = !(System.getenv()["CI"]?.toBoolean() ?: false)
+
+// See https://github.com/vlsi/asflike-release-environment
+val nexusApi = if (true) "http://127.0.0.1:8080" else "https://repository.apache.org"
+
+nexusStaging {
+    packageGroup = "org.apache.jmeter"
+    username = project.property("asfNexusUsername").toString()
+    password = project.property("asfNexusPassword").toString()
+    serverUrl = "$nexusApi/service/local/"
+}
+
+nexusPublishing {
+    serverUrl.set(uri("$nexusApi/service/local/"))
+    snapshotRepositoryUrl.set(uri("$nexusApi/content/repositories/snapshots/"))
+}
+
+if (false) {
+    nexusStaging {
+        stagingProfileId = "4d29c092016673" //when not defined will be got from server using "packageGroup"
+    }
+}
 
 val lastEditYear by extra {
     file("$rootDir/NOTICE")
@@ -56,7 +82,7 @@ val lastEditYear by extra {
             }
 }
 
-tasks.withType<org.nosphere.apache.rat.RatTask> {
+tasks.withType<org.nosphere.apache.rat.RatTask>().configureEach {
     excludes.set(rootDir.resolve("rat-excludes.txt").readLines())
 }
 
@@ -144,7 +170,7 @@ allprojects {
         repositories {
             jcenter()
             ivy {
-                url = `java.net`.URI("https://github.com/bulenkov/Darcula/raw/")
+                url = uri("https://github.com/bulenkov/Darcula/raw/")
                 patternLayout {
                     artifact("[revision]/build/[module].[ext]")
                 }
