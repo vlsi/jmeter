@@ -60,33 +60,9 @@ tasks.withType<org.nosphere.apache.rat.RatTask> {
     excludes.set(rootDir.resolve("rat-excludes.txt").readLines())
 }
 
-// Can't use .registering() due to
-// DefaultTaskCollection#configureEach(Action) on task set cannot be executed in the current context
-val jacocoMerge by tasks.creating(JacocoMerge::class) {
-    // It is too late to evaluate tasks.withType<Test>(), so we just wait for all the test tasks
-    // to add themselves to the merge task (see tasks.withType<Test> below)
-    // Unfortunately, jacocoplugin does not support late evaluation of tasks.withType<Test>
-
-    doFirst {
-        // It might happen certain projects to produce no coverage data, then we just ignore those
-        setExecutionData(executionData.filter { it.exists() })
-    }
-}
-
 val jacocoReport by tasks.registering(JacocoReport::class) {
     group = "Coverage reports"
     description = "Generates an aggregate report from all subprojects"
-    dependsOn(jacocoMerge)
-    executionData(jacocoMerge.destinationFile)
-    allprojects {
-        val sourceSets = this.extensions.findByType<SourceSetContainer>()
-        if (sourceSets != null) {
-            val mainCode = sourceSets.main.get()
-            additionalSourceDirs.from(mainCode.allJava.srcDirs)
-            sourceDirectories.from(mainCode.allSource.srcDirs)
-            classDirectories.from(mainCode.output)
-        }
-    }
 }
 
 allprojects {
@@ -109,18 +85,39 @@ allprojects {
     plugins.withType<JacocoPlugin> {
         the<JacocoPluginExtension>().toolVersion = BuildToolVersions.jacoco
 
-        tasks.withType<Test> {
-            jacocoMerge.dependsOn(this)
-            jacocoMerge.executionData(this)
+        val testTasks = tasks.withType<Test>()
+        testTasks.configureEach {
             extensions.configure<JacocoTaskExtension> {
                 // We don't want to collect coverage for third-party classes
                 includes?.add("org.apache.jmeter.*")
             }
         }
+
+        jacocoReport {
+            // Note: this creates a lazy collection
+            // Some of the projects might fail to create a file (e.g. no tests or no coverage),
+            // So we check for file existence. Otherwise JacocoMerge would fail
+            val execFiles = files(testTasks).filter { it.exists() && it.name.endsWith(".exec") }
+            executionData(execFiles)
+        }
+
         tasks.withType<JacocoReport> {
             reports {
                 html.isEnabled = reportsForHumans()
                 xml.isEnabled = !reportsForHumans()
+            }
+        }
+        // Add each project to combined report
+        configure<SourceSetContainer> {
+            val mainCode = main.get()
+            jacocoReport.configure {
+                additionalSourceDirs.from(mainCode.allJava.srcDirs)
+                sourceDirectories.from(mainCode.allSource.srcDirs)
+                // IllegalStateException: Can't add different class with same name: module-info
+                // https://github.com/jacoco/jacoco/issues/858
+                classDirectories.from(mainCode.output.asFileTree.matching {
+                    exclude("module-info.class")
+                })
             }
         }
     }
