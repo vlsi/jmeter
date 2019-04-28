@@ -127,7 +127,7 @@ allprojects {
             executionData(execFiles)
         }
 
-        tasks.withType<JacocoReport> {
+        tasks.withType<JacocoReport>().configureEach {
             reports {
                 html.isEnabled = reportsForHumans()
                 xml.isEnabled = !reportsForHumans()
@@ -148,7 +148,7 @@ allprojects {
         }
     }
 
-    tasks.withType<AbstractArchiveTask> {
+    tasks.withType<AbstractArchiveTask>().configureEach  {
         // Ensure builds are reproducible
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true
@@ -181,10 +181,10 @@ allprojects {
         }
 
         tasks {
-            withType<JavaCompile> {
+            withType<JavaCompile>().configureEach {
                 options.encoding = "UTF-8"
             }
-            withType<ProcessResources> {
+            withType<ProcessResources>().configureEach  {
                 // apply native2ascii conversion since Java 8 expects properties to have ascii symbols only
                 from(source) {
                     include("**/*.properties")
@@ -192,7 +192,7 @@ allprojects {
                     filter(org.apache.tools.ant.filters.EscapeUnicode::class)
                 }
             }
-            withType<Jar> {
+            withType<Jar>().configureEach  {
                 into("META-INF") {
                     from("$rootDir/LICENSE")
                     from("$rootDir/NOTICE")
@@ -205,21 +205,21 @@ allprojects {
                     attributes["Implementation-Version"] = project.version
                 }
             }
-            withType<Test> {
+            withType<Test>().configureEach  {
                 testLogging {
                     exceptionFormat = TestExceptionFormat.FULL
                 }
                 // Pass the property to tests
                 systemProperty("java.awt.headless", System.getProperty("java.awt.headless"))
             }
-            withType<SpotBugsTask> {
+            withType<SpotBugsTask>().configureEach  {
                 reports {
                     html.isEnabled = reportsForHumans()
                     xml.isEnabled = !reportsForHumans()
                 }
                 enabled = enableSpotBugs()
             }
-            withType<Javadoc> {
+            withType<Javadoc>().configureEach  {
                 (options as StandardJavadocDocletOptions).apply {
                     noTimestamp.value = true
                     showFromProtected()
