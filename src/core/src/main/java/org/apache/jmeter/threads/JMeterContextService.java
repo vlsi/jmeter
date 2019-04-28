@@ -70,10 +70,7 @@ public final class JMeterContextService {
     }
 
     /**
-     * Replace Thread Context by the parameter. Currently only used by the
-     * private class <code>ASyncSample</code> in
-     * {@link org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase
-     * HTTPSamplerBase}
+     * Replace Thread Context by the parameter.
      *
      * @param context
      *            {@link JMeterContext}

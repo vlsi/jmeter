@@ -94,9 +94,7 @@ import org.slf4j.LoggerFactory;
  * {@link org.apache.jmeter.reporters.ResultCollector ResultCollector} as well
  * and modify the {@link #configure(TestElement)},
  * {@link #modifyTestElement(TestElement)}, and {@link #createTestElement()}
- * methods to create and modify your alternate ResultCollector. For an example
- * of this, see the
- * {@link org.apache.jmeter.visualizers.MailerVisualizer MailerVisualizer}.
+ * methods to create and modify your alternate ResultCollector.
  */
 public abstract class AbstractVisualizer
     extends AbstractListenerGui

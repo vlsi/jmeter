@@ -83,9 +83,6 @@ public class SampleEvent implements Serializable {
 
     /**
      * Creates SampleEvent without saving any variables.
-     * <p>
-     * Use by {@link org.apache.jmeter.protocol.http.proxy.ProxyControl
-     * ProxyControl} and {@link StatisticalSampleSender}.
      *
      * @param result
      *            The SampleResult to be associated with this event
