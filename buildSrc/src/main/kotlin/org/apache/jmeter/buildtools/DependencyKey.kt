@@ -24,13 +24,13 @@ import org.gradle.api.artifacts.ModuleDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 
 data class DependencyKey(val dependencyNotation: String) : Comparable<DependencyKey> {
-    constructor(compId: ModuleComponentIdentifier, classifier: String?, ext: String):
+    constructor(compId: ModuleComponentIdentifier, classifier: String?, ext: String) :
             this(compId.toString().with(classifier, ext))
 
     constructor(dependency: Dependency) : this(dependency.toStr())
 
     override fun compareTo(other: DependencyKey): Int =
-            dependencyNotation.compareTo(other.dependencyNotation)
+        dependencyNotation.compareTo(other.dependencyNotation)
 
     override fun toString() = dependencyNotation
 }
@@ -50,7 +50,7 @@ private fun String.with(classifier: String?, ext: String): String {
 fun Dependency.toStr(): String {
     val result = "$group:$name:$version"
     if (this is ModuleDependency) {
-        for(artifact in this.artifacts) {
+        for (artifact in this.artifacts) {
             return result.with(artifact.classifier, artifact.extension)
         }
     }

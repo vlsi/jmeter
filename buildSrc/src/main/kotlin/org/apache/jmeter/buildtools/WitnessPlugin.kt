@@ -61,8 +61,12 @@ class WitnessPlugin @Inject constructor(val workerExecutor: WorkerExecutor) : Pl
                 }
                 workerExecutor.await()
                 if (allHashes.isEmpty()) {
-                    println("The following artifacts are not longer present in project dependencies," +
-                            " however the checksums are registered: ${allHashes.sorted().joinToString("\n")}")
+                    println(
+                        "The following artifacts are not longer present in project dependencies," +
+                                " however the checksums are registered: ${allHashes.sorted().joinToString(
+                                    "\n"
+                                )}"
+                    )
                 }
             }
         }
@@ -72,12 +76,12 @@ class WitnessPlugin @Inject constructor(val workerExecutor: WorkerExecutor) : Pl
             doLast {
                 val allDependencies = project.collectFiles()
                 val hashSums = allDependencies
-                        .entries
-                        .parallelStream()
-                        .map({ e -> e.key.dependencyNotation to e.value.sha512() })
-                        .sorted(Comparator.comparing({ e -> e.first.toLowerCase(Locale.ROOT) }))
-                        .map({ e -> """sha256("${e.first}", "${e.second}")""" })
-                        .collect(Collectors.joining("\n"))
+                    .entries
+                    .parallelStream()
+                    .map({ e -> e.key.dependencyNotation to e.value.sha512() })
+                    .sorted(Comparator.comparing({ e -> e.first.toLowerCase(Locale.ROOT) }))
+                    .map({ e -> """sha256("${e.first}", "${e.second}")""" })
+                    .collect(Collectors.joining("\n"))
                 println(hashSums)
             }
         }
@@ -87,10 +91,10 @@ class WitnessPlugin @Inject constructor(val workerExecutor: WorkerExecutor) : Pl
 private fun Project.collectFiles(): Map<DependencyKey, File> {
     val result = sortedMapOf<DependencyKey, File>()
     for (it in allprojects
-            .filter { !it.repositories.isEmpty() }
-            .flatMap { it.buildscript.configurations + it.configurations }
-            .filter { it.isCanBeResolved }
-            .flatMap { it.resolvedConfiguration.resolvedArtifacts }) {
+        .filter { !it.repositories.isEmpty() }
+        .flatMap { it.buildscript.configurations + it.configurations }
+        .filter { it.isCanBeResolved }
+        .flatMap { it.resolvedConfiguration.resolvedArtifacts }) {
         val compId = it.id.componentIdentifier
         if (compId is ModuleComponentIdentifier) {
             result[DependencyKey(compId, it.classifier, it.extension)] = it.file
@@ -114,7 +118,10 @@ private fun File.sha512(): String {
     return BigInteger(1, md.digest()).toString(16).toUpperCase()
 }
 
-class CalculateSHA512 @Inject constructor(private val file: File, private val expectedHash: String) : Runnable {
+class CalculateSHA512 @Inject constructor(
+    private val file: File,
+    private val expectedHash: String
+) : Runnable {
     override fun run() {
         val actualHash = file.sha512()
         if (expectedHash.isBlank()) {
@@ -127,7 +134,7 @@ class CalculateSHA512 @Inject constructor(private val file: File, private val ex
 }
 
 class HashMissingException(file: File, actualHash: String) :
-        java.lang.RuntimeException("Was not specified, current has is $actualHash, file: $file")
+    java.lang.RuntimeException("Was not specified, current has is $actualHash, file: $file")
 
 class HashMismatchException(file: File, actualHash: String, expectedHash: String) :
-        java.lang.RuntimeException("Hash mismatch. Expected: $expectedHash, actual: $actualHash, file: $file")
+    java.lang.RuntimeException("Hash mismatch. Expected: $expectedHash, actual: $actualHash, file: $file")

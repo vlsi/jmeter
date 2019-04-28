@@ -25,8 +25,9 @@ import org.gradle.kotlin.dsl.filter
 
 enum class LineEndings(val value: String) {
     CRLF("dos"), LF("unix");
+
     companion object {
-        fun current() = when(val sep = System.lineSeparator()){
+        fun current() = when (val sep = System.lineSeparator()) {
             "\n" -> LF
             "\r\n" -> CRLF
             else -> throw IllegalStateException("Unexpected line separator: ${sep.toByteArray()}")
@@ -35,11 +36,19 @@ enum class LineEndings(val value: String) {
 }
 
 fun ContentFilterable.filter(eol: LineEndings) =
-    filter(FixCrLfFilter::class, mapOf("eol" to FixCrLfFilter.CrLf.newInstance(eol.value),
+    filter(
+        FixCrLfFilter::class, mapOf(
+            "eol" to FixCrLfFilter.CrLf.newInstance(eol.value),
             "fixlast" to false,
-            "ctrlz" to FixCrLfFilter.AddAsisRemove.newInstance("asis")))
+            "ctrlz" to FixCrLfFilter.AddAsisRemove.newInstance("asis")
+        )
+    )
 
-fun CopySpec.includeShell(src: Any, vararg scriptName: String, action: (CopySpec.() -> Unit)? = null) {
+fun CopySpec.includeShell(
+    src: Any,
+    vararg scriptName: String,
+    action: (CopySpec.() -> Unit)? = null
+) {
     if (scriptName.isEmpty()) {
         return
     }
@@ -64,7 +73,7 @@ fun CopySpec.excludeShell(vararg scriptName: String) {
     }
 }
 
-private fun MutableList<String>.exceptStar() = filter { !it.endsWith("/*") && !it.endsWith("/*.*")}
+private fun MutableList<String>.exceptStar() = filter { !it.endsWith("/*") && !it.endsWith("/*.*") }
 
 fun CopySpec.from(sourcePath: Any, textEol: LineEndings, action: AutoClassifySpec.() -> Unit) {
     val spec = AutoClassifySpec()
