@@ -19,10 +19,13 @@
 package org.apache.jmeter.buildtools.release
 
 import org.gradle.api.Project
+import org.gradle.api.model.ObjectFactory
 import org.gradle.kotlin.dsl.listProperty
 import org.gradle.kotlin.dsl.mapProperty
+import org.gradle.kotlin.dsl.newInstance
 import org.gradle.kotlin.dsl.property
 import java.net.URI
+import javax.inject.Inject
 
 /**
  * Setting up local release environment:
@@ -38,37 +41,84 @@ import java.net.URI
  * cd asflike-release-environment && vagrant up
  * ```
  */
-open class ApacheReleaseExtension(private val project: Project) {
+open class ReleaseExtension @Inject constructor(
+    private val project: Project,
+    private val objects: ObjectFactory
+) {
     internal val repositoryIdStore = NexusRepositoryIdStore(project)
 
-    val repositoryType = project.objects.property<RepositoryType>()
+    val repositoryType = objects.property<RepositoryType>()
         .convention(RepositoryType.TEST)
-    val distRepository = project.objects.property<URI>()
+    val tlp = objects.property<String>()
+    val tlpUrl
+        get() = tlp.get().toLowerCase()
+    val voteText = objects.property<(ReleaseParams) -> String>()
+    val tag = objects.property<String>()
+        .convention(project.provider { "v${project.version}" })
+
+    val archives = objects.listProperty<Any>()
+    val previewSiteContents = objects.listProperty<Any>()
+
+    val svnDist = objects.newInstance<SvnDistConfig>(this, project)
+
+    fun svnDist(action: SvnDistConfig.() -> Unit) {
+        svnDist.action()
+    }
+
+    val nexus = objects.newInstance<NexusConfig>(this, project)
+
+    fun nexus(action: NexusConfig.() -> Unit) {
+        nexus.action()
+    }
+}
+
+open class SvnDistConfig @Inject constructor(
+    private val ext: ReleaseExtension,
+    private val project: Project,
+    private val objects: ObjectFactory
+) {
+    val url = objects.property<URI>()
         .convention(
-            repositoryType.map {
+            ext.repositoryType.map {
                 when (it) {
                     RepositoryType.PROD -> project.uri("https://dist.apache.org/repos/dist")
                     RepositoryType.TEST -> project.uri("http://127.0.0.1/svn/dist")
                 }
             })
-    val tlp = project.objects.property<String>()
-    val tlpUrl
-        get() = tlp.get().toLowerCase()
-    val voteText = project.objects.property<(ReleaseParams) -> String>()
-    val archives = project.objects.listProperty<Any>()
-    val tag = project.objects.property<String>().convention("v${project.version}")
 
-    val releaseStageFolder = project.objects.property<String>()
+    val stageFolder = objects.property<String>()
         .convention(project.provider {
-            "dev/$tlpUrl/${tag.get()}"
+            "dev/${ext.tlpUrl}/${ext.tag.get()}"
         })
 
-    val releaseFinalFolder = project.objects.property<String>()
+    val finalFolder = objects.property<String>()
         .convention(project.provider {
-            "release/$tlpUrl"
+            "release/${ext.tlpUrl}"
         })
 
-    val releaseSubfolder = project.objects.mapProperty<Regex, String>()
+    val releaseSubfolder = objects.mapProperty<Regex, String>()
+}
+
+open class NexusConfig @Inject constructor(
+    private val ext: ReleaseExtension,
+    private val project: Project,
+    private val objects: ObjectFactory
+) {
+    val url = objects.property<URI>()
+        .convention(
+            ext.repositoryType.map {
+                when (it) {
+                    RepositoryType.PROD -> project.uri("https://repository.apache.org")
+                    RepositoryType.TEST -> project.uri("http://127.0.0.1:8080")
+                }
+            })
+    val username = objects.property<String>()
+    val password = objects.property<String>()
+    val packageGroup = objects.property<String>().convention(
+        project.provider {
+            project.group.toString()
+        })
+    val stagingProfileId = objects.property<String>()
 }
 
 class ReleaseArtifact(
@@ -82,8 +132,8 @@ class ReleaseParams(
     val gitSha: String,
     val tag: String,
     val artifacts: List<ReleaseArtifact>,
-    val stagingRepositoryUri: URI,
-    val stagingRepositoryId: String
+    val svnStagingUri: URI,
+    val nexusRepositoryUri: URI
 ) {
     val shortGitSha
         get() = gitSha.subSequence(0, 10)

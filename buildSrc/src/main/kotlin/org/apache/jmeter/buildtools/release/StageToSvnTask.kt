@@ -14,14 +14,14 @@ abstract class StageToSvnTask() : SvnmuccTask() {
     val files = project.files()
 
     @get:Input
-    val folder = project.the<ApacheReleaseExtension>().releaseStageFolder
+    val folder = project.the<ReleaseExtension>().svnDist.stageFolder
 
     init {
         dependsOn(files)
     }
 
     override fun message() =
-        project.the<ApacheReleaseExtension>().run {
+        project.the<ReleaseExtension>().run {
             "Uploading release candidate ${tlp.get()} ${tag.get()} to dev area"
         }
 

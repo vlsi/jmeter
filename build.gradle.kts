@@ -50,27 +50,6 @@ apply(from = "$rootDir/gradle/release.gradle.kts")
 fun Project.enableSpotBugs() = hasProperty("enableSpotBugs") || hasProperty("enableSpotbugs")
 fun reportsForHumans() = !(System.getenv()["CI"]?.toBoolean() ?: false)
 
-// See https://github.com/vlsi/asflike-release-environment
-val nexusApi = if (true) "http://127.0.0.1:8080" else "https://repository.apache.org"
-
-nexusStaging {
-    packageGroup = "org.apache.jmeter"
-    username = project.property("asfNexusUsername").toString()
-    password = project.property("asfNexusPassword").toString()
-    serverUrl = "$nexusApi/service/local/"
-}
-
-nexusPublishing {
-    serverUrl.set(uri("$nexusApi/service/local/"))
-    snapshotRepositoryUrl.set(uri("$nexusApi/content/repositories/snapshots/"))
-}
-
-if (false) {
-    nexusStaging {
-        stagingProfileId = "4d29c092016673" //when not defined will be got from server using "packageGroup"
-    }
-}
-
 val lastEditYear by extra {
     file("$rootDir/NOTICE")
             .readLines()

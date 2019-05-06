@@ -16,10 +16,11 @@
  *
  */
 
+import org.ajoberstar.grgit.Grgit
 import org.apache.jmeter.buildtools.LineEndings
 import org.apache.jmeter.buildtools.filter
 import org.apache.jmeter.buildtools.from
-import org.apache.jmeter.buildtools.release.ApacheReleaseExtension
+import org.apache.jmeter.buildtools.release.ReleaseExtension
 import versions.BuildTools
 import versions.Libs
 
@@ -470,7 +471,7 @@ for (type in listOf("binary", "source")) {
         tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure {
             dependsOn(archiveTask)
         }
-        rootProject.configure<ApacheReleaseExtension> {
+        rootProject.configure<ReleaseExtension> {
             archives.addAll(archiveTask)
         }
     }
@@ -492,3 +493,18 @@ val cleanWs by tasks.registering() {
     }
 }
 
+rootProject.configure<ReleaseExtension> {
+    previewSiteContents.add(
+        copySpec {
+            into("site")
+            with(printableDocumentation(LineEndings.LF))
+        })
+}
+
+val previewSite by tasks.registering {
+    doLast {
+        Grgit.init(mapOf("dir" to "$buildDir/previewSite/repo.git")).use {grgit ->
+            println(grgit.head())
+        }
+    }
+}

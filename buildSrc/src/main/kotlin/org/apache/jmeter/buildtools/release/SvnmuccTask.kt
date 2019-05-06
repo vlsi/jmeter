@@ -16,7 +16,7 @@ abstract class SvnmuccTask @Inject constructor() : DefaultTask() {
     @Input
     var repository = project.objects.property<URI>()
         .convention(project.provider {
-            project.the<ApacheReleaseExtension>().distRepository.get()
+            project.the<ReleaseExtension>().svnDist.url.get()
         })
 
     abstract fun operations(inputChanges: InputChanges): List<SvnOperation>

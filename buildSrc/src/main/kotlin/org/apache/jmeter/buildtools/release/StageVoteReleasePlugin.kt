@@ -2,7 +2,6 @@ package org.apache.jmeter.buildtools.release
 
 import de.marcphilipp.gradle.nexus.InitializeNexusStagingRepository
 import de.marcphilipp.gradle.nexus.NexusPublishExtension
-import io.codearte.gradle.nexus.BaseStagingTask
 import io.codearte.gradle.nexus.NexusStagingExtension
 import org.ajoberstar.grgit.Grgit
 import org.gradle.api.Plugin
@@ -16,10 +15,10 @@ import org.gradle.kotlin.dsl.*
 import java.net.URI
 import javax.inject.Inject
 
-class ApacheReleasePlugin @Inject constructor(private val instantiator: Instantiator) :
+class StageVoteReleasePlugin @Inject constructor(private val instantiator: Instantiator) :
     Plugin<Project> {
     companion object {
-        const val EXTENSION_NAME = "apacheRelease"
+        const val EXTENSION_NAME = "releaseParams"
 
         const val GENERATE_VOTE_TEXT_TASK_NAME = "generateVoteText"
         const val PREPARE_VOTE_TASK_NAME = "prepareVote"
@@ -37,6 +36,107 @@ class ApacheReleasePlugin @Inject constructor(private val instantiator: Instanti
 
     private fun configureRoot(project: Project) {
         project.pluginManager.apply("org.ajoberstar.grgit")
+
+        // Save stagingRepoId. We don't know which
+        val releaseExt = project.extensions.create<ReleaseExtension>(EXTENSION_NAME, project)
+
+        configureNexusPublish(project, releaseExt)
+
+        configureNexusStaging(project, releaseExt)
+
+        val stageSvnDist = project.tasks.register<StageToSvnTask>(STAGE_SVN_DIST_TASK_NAME) {
+            description = "Stage release artifacts to SVN dist repository"
+            group = "release"
+            files.from(releaseExt.archives.get())
+//            project.files(releaseExt.archives.get())
+//            dependsOn.addAll(releaseExt.archives.get())
+        }
+
+        val publishSvnDist = project.tasks.register<PromoteSvnRelease>(PUBLISH_SVN_DIST_TASK_NAME) {
+            description = "Publish release artifacts to SVN dist repository"
+            group = "release"
+            files.from(releaseExt.archives.get())
+        }
+
+        val closeRepository = project.tasks.named("closeRepository")
+
+        // closeRepository does not wait all publications by default, so we add that dependency
+        project.allprojects {
+            plugins.withType<PublishingPlugin> {
+                closeRepository.configure {
+                    dependsOn(tasks.named(PublishingPlugin.PUBLISH_LIFECYCLE_TASK_NAME))
+                }
+            }
+        }
+
+        val stageDist = project.tasks.register(STAGE_DIST_TASK_NAME) {
+            description = "Stage release artifacts to SVN and Nexus"
+            group = "release"
+            dependsOn(stageSvnDist)
+            dependsOn(closeRepository)
+        }
+
+        val publishDist = project.tasks.register(PUBLISH_DIST_TASK_NAME) {
+            description = "Publish release artifacts to SVN and Nexus"
+            group = "release"
+            dependsOn(publishSvnDist)
+            // Task from NexusStagingPlugin
+            dependsOn(project.tasks.named("closeAndReleaseRepository"))
+        }
+
+        // prepareVote depends on all the publish tasks
+        // prepareVote depends on publish SVN
+        val generateVote = generateVoteText(project, stageDist, releaseExt)
+        val prepareVote = project.tasks.register(PREPARE_VOTE_TASK_NAME) {
+            description = "Prepare text for vote mail"
+            group = "release"
+            dependsOn(generateVote)
+            doLast {
+                val voteText = generateVote.get().outputs.files.singleFile.readText()
+                println(voteText)
+            }
+        }
+    }
+
+    private fun configureNexusStaging(
+        project: Project,
+        releaseExt: ReleaseExtension
+    ) {
+        // The fields of releaseExt are not configured yet (the extension is not yet used in build scripts),
+        // so we populate NexusStaging properties after the project is configured
+        project.afterEvaluate {
+            project.configure<NexusStagingExtension> {
+                val nexus = releaseExt.nexus
+                packageGroup = nexus.packageGroup.get()
+                username = nexus.username.get()
+                password = nexus.password.get()
+                val nexusPublish = project.the<NexusPublishExtension>()
+                serverUrl =
+                    nexusPublish.run { if (useStaging.get()) serverUrl else snapshotRepositoryUrl }
+                        .get().toString()
+            }
+        }
+    }
+
+    private fun URI.replacePath(path: String) = URI(
+        scheme,
+        userInfo,
+        host,
+        port,
+        path,
+        query,
+        fragment
+    )
+
+    private fun configureNexusPublish(
+        project: Project,
+        releaseExt: ReleaseExtension
+    ) {
+        project.configure<NexusPublishExtension> {
+            serverUrl.set(releaseExt.nexus.url.map { it.replacePath("/service/local/") })
+            snapshotRepositoryUrl.set(releaseExt.nexus.url.map { it.replacePath("/content/repositories/snapshots/") })
+        }
+        // Use the same settings for all subprojects that apply MavenPublishPlugin
         project.subprojects {
             plugins.withType<MavenPublishPlugin> {
                 apply(plugin = "de.marcphilipp.nexus-publish")
@@ -51,11 +151,9 @@ class ApacheReleasePlugin @Inject constructor(private val instantiator: Instanti
             }
         }
 
-        // Save stagingRepoId. We don't know which
-        val releaseExt = project.extensions.create<ApacheReleaseExtension>(EXTENSION_NAME, project)
-
         // We don't know which project will be the first to initialize the staging repository,
         // so we watch all the projects
+        // The goal of this block is to fetch and save the Id of newly created staging repository
         project.allprojects {
             plugins.withId("de.marcphilipp.nexus-publish") {
                 tasks.withType<InitializeNexusStagingRepository>().configureEach {
@@ -69,64 +167,12 @@ class ApacheReleasePlugin @Inject constructor(private val instantiator: Instanti
                 }
             }
         }
-
-        val stageSvnDist = project.tasks.register<StageToSvnTask>(STAGE_SVN_DIST_TASK_NAME) {
-            description = "Stage release artifacts to SVN dist.apache.org repository"
-            group = "release"
-            files.from(releaseExt.archives.get())
-//            project.files(releaseExt.archives.get())
-//            dependsOn.addAll(releaseExt.archives.get())
-        }
-
-        val publishSvnDist = project.tasks.register<PromoteSvnRelease>(PUBLISH_SVN_DIST_TASK_NAME) {
-            description = "Publish release artifacts to SVN dist.apache.org repository"
-            group = "release"
-            files.from(releaseExt.archives.get())
-        }
-
-        val closeRepository = project.tasks.named<BaseStagingTask>("closeRepository")
-
-        val stageDist = project.tasks.register(STAGE_DIST_TASK_NAME) {
-            description = "Stage release artifacts to SVN and Nexus"
-            group = "release"
-            dependsOn(stageSvnDist)
-            dependsOn(closeRepository)
-        }
-
-        project.allprojects {
-            plugins.withType<PublishingPlugin> {
-                closeRepository.configure {
-                    dependsOn(tasks.named(PublishingPlugin.PUBLISH_LIFECYCLE_TASK_NAME))
-                }
-            }
-        }
-
-        val publishDist = project.tasks.register(PUBLISH_DIST_TASK_NAME) {
-            description = "Publish release artifacts to SVN and Nexus"
-            group = "release"
-            dependsOn(publishSvnDist)
-            // Task from NexusStagingPlugin
-            dependsOn(project.tasks.named("closeAndReleaseRepository"))
-        }
-
-        // prepareVote depends on all the publish tasks
-        // prepareVote depends on publish SVN
-        val generateVote = prepareVote(project, stageDist, releaseExt)
-        val prepareVote = project.tasks.register(PREPARE_VOTE_TASK_NAME) {
-            description = "Prepare text for vote mail"
-            group = "release"
-            dependsOn(generateVote)
-            doLast {
-                val voteText = generateVote.get().outputs.files.singleFile.readText()
-                println(voteText)
-            }
-        }
     }
 
-    private fun prepareVote(
+    private fun generateVoteText(
         project: Project,
         prepareDist: TaskProvider<*>,
-        releaseExt: ApacheReleaseExtension
+        releaseExt: ReleaseExtension
     ): TaskProvider<Task> {
         return project.tasks.register(GENERATE_VOTE_TEXT_TASK_NAME) {
             dependsOn(prepareDist)
@@ -138,32 +184,22 @@ class ApacheReleasePlugin @Inject constructor(private val instantiator: Instanti
             val voteMailFile = "${project.buildDir}/$PREPARE_VOTE_TASK_NAME/mail.txt"
             outputs.file(project.file(voteMailFile))
             doLast {
-                val tag = "v$projectVersion"
-
                 val nexusPublish = project.the<NexusPublishExtension>()
                 val nexusRepoName = nexusPublish.repositoryName.get()
                 val repositoryId = releaseExt.repositoryIdStore[nexusRepoName]
 
-                val repoUri = nexusPublish.serverUrl.get()
-                    .run {
-                        URI(
-                            scheme,
-                            null,
-                            host,
-                            port,
-                            "/content/repositories/$repositoryId",
-                            null,
-                            null
-                        )
-                    }
+                val repoUri =
+                    nexusPublish.serverUrl.get().replacePath("/content/repositories/$repositoryId")
 
                 val grgit: Grgit by project
+
+                val svnDist = releaseExt.svnDist
 
                 val releaseParams = ReleaseParams(
                     tlp = releaseExt.tlp.get(),
                     version = projectVersion,
                     gitSha = grgit.head().id,
-                    tag = tag,
+                    tag = releaseExt.tag.get(),
                     artifacts = project.files(releaseExt.archives.get())
                         .sortedBy { it.name }
                         .map {
@@ -172,8 +208,8 @@ class ApacheReleasePlugin @Inject constructor(private val instantiator: Instanti
                                 project.file(it.absolutePath + ".sha512").readText().trim()
                             )
                         },
-                    stagingRepositoryUri = repoUri,
-                    stagingRepositoryId = repositoryId ?: "unknownStagingRepositoryId"
+                    svnStagingUri = svnDist.url.get().let { it.replacePath(it.path + "/" + svnDist.stageFolder.get()) },
+                    nexusRepositoryUri = repoUri
                 )
                 val voteText = releaseExt.voteText.get().invoke(releaseParams)
                 project.file(voteMailFile).writeText(voteText)

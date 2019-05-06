@@ -1,6 +1,7 @@
-import org.apache.jmeter.buildtools.release.ApacheReleaseExtension
-import org.apache.jmeter.buildtools.release.ApacheReleasePlugin
+import org.apache.jmeter.buildtools.release.ReleaseExtension
+import org.apache.jmeter.buildtools.release.StageVoteReleasePlugin
 import org.apache.jmeter.buildtools.release.ReleaseParams
+import org.apache.jmeter.buildtools.release.RepositoryType
 
 /**
  * Release steps:
@@ -12,14 +13,23 @@ import org.apache.jmeter.buildtools.release.ReleaseParams
  *  6.
  */
 
-apply<ApacheReleasePlugin>()
+apply<StageVoteReleasePlugin>()
 
-configure<ApacheReleaseExtension> {
+configure<ReleaseExtension> {
     tlp.set("JMeter")
     voteText.set { it.voteTextGen() }
-    releaseSubfolder.apply {
-        put(Regex("_src\\."), "sources")
-        put(Regex("."), "binaries")
+    svnDist {
+        releaseSubfolder.apply {
+            put(Regex("_src\\."), "sources")
+            put(Regex("."), "binaries")
+        }
+    }
+    nexus {
+        username.set(project.property("asfNexusUsername").toString())
+        password.set(project.property("asfNexusPassword").toString())
+        if (repositoryType.get() == RepositoryType.PROD) {
+            stagingProfileId.set("4d29c092016673")
+        }
     }
 }
 
@@ -30,7 +40,7 @@ prepared, and your votes are solicited.
 This release is mainly a bugfix
 
 Please, test this release candidate (with load tests and/or functional
-tests) using Java 8+ on Linux/Windows/Mac OS, especially on the changes.
+tests) using Java 8+ on Linux/Windows/macOS, especially on the changes.
 Feedback is very welcome within the next 72 hours.
 
 You can read the New and Noteworthy section with some screenshots to
@@ -42,8 +52,8 @@ behavior and measure performance. The current version targets Java 8+
 
 Download - Archives/hashes/sigs:
 
-https://dist.apache.org/repos/dist/dev/$tlpUrl/$tag/
-(dist revision $gitSha)
+$svnStagingUri
+(dist revision TBD:SVN revision of svnmucc stage result)
 
 RAT report:
 
@@ -55,7 +65,7 @@ Site Docs are here:
 http://home.apache.org/~milamber/$tlpUrl-$tag/docs/
 
 Maven staging repository is accessible here:
-$stagingRepositoryUri/org/apache/$tlpUrl/
+$nexusRepositoryUri/org/apache/$tlpUrl/
 
 Tag:
 https://svn.apache.org/repos/asf/$tlpUrl/tags/$tag/

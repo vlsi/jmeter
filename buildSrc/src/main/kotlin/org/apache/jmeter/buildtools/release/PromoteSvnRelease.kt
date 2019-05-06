@@ -16,17 +16,18 @@ abstract class PromoteSvnRelease : SvnmuccTask() {
     }
 
     override fun message() =
-        project.the<ApacheReleaseExtension>().run {
+        project.the<ReleaseExtension>().run {
             "Promoting release candidate ${tlp.get()} ${tag.get()} to release area"
         }
 
     override fun operations(inputChanges: InputChanges): List<SvnOperation> {
         return mutableListOf<SvnOperation>().apply {
-            val ext = project.the<ApacheReleaseExtension>()
-            val stageFolder = ext.releaseStageFolder.get()
-            val releaseFolder = ext.releaseFinalFolder.get()
+            val ext = project.the<ReleaseExtension>()
+            val svnDist = ext.svnDist
+            val stageFolder = svnDist.stageFolder.get()
+            val releaseFolder = svnDist.finalFolder.get()
 
-            val subfolders = ext.releaseSubfolder.get()
+            val subfolders = svnDist.releaseSubfolder.get()
             for (f in files) {
                 val stagedFile = "$stageFolder/${f.name}"
                 val subfolder = subfolders.entries.firstOrNull { f.name.contains(it.key) }?.value
