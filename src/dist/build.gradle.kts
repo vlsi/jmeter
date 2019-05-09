@@ -15,12 +15,14 @@
  * limitations under the License.
  *
  */
-
 import org.ajoberstar.grgit.Grgit
 import org.apache.jmeter.buildtools.LineEndings
 import org.apache.jmeter.buildtools.filter
 import org.apache.jmeter.buildtools.from
+import org.apache.jmeter.buildtools.jgit.dsl.gitClone
 import org.apache.jmeter.buildtools.release.ReleaseExtension
+import org.eclipse.jgit.api.AddCommand
+import org.eclipse.jgit.api.Git
 import versions.BuildTools
 import versions.Libs
 
@@ -501,10 +503,34 @@ rootProject.configure<ReleaseExtension> {
         })
 }
 
+fun Git.add(action: AddCommand.() -> Unit) = add().apply { action() }.call()
+
+val prepareSiteRepo by tasks.registering {
+    doLast {
+        gitClone {
+
+        }.use { git ->
+
+        }
+//       Git.cloneRepository {
+//           setBare(true)
+//           setBranch("Asdfa")
+//       }
+        Git.cloneRepository()
+            .setBare(true)
+            .call()
+    }
+}
+
+
 val previewSite by tasks.registering {
     doLast {
-        Grgit.init(mapOf("dir" to "$buildDir/previewSite/repo.git")).use {grgit ->
-            println(grgit.head())
+        Grgit.init(mapOf("dir" to "$buildDir/previewSite/repo.git")).use { grgit ->
+            val list = grgit.remote.list()
         }
+//        Git::class.ini
+//        Git.init(directory = file("$buildDir/previewSite/repo.git")).use {
+//
+//        }
     }
 }
