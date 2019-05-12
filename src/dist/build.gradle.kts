@@ -18,16 +18,9 @@
 import org.apache.jmeter.buildtools.CrLfSpec
 import org.apache.jmeter.buildtools.LineEndings
 import org.apache.jmeter.buildtools.release.ReleaseExtension
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.api.GitCommand
 import org.gradle.api.internal.TaskOutputsInternal
 import versions.BuildTools
 import versions.Libs
-import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
-import kotlin.reflect.full.isSuperclassOf
-import kotlin.reflect.full.memberFunctions
-import kotlin.reflect.full.staticFunctions
 
 var jars = arrayOf(
         ":src:launcher",
