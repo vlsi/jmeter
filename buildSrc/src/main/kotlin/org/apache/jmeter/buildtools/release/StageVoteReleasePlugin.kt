@@ -26,9 +26,11 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.api.publish.plugins.PublishingPlugin
+import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.internal.reflect.Instantiator
 import org.gradle.kotlin.dsl.*
+import java.io.File
 import java.net.URI
 import javax.inject.Inject
 
@@ -60,6 +62,8 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
         configureNexusPublish(project, releaseExt)
 
         configureNexusStaging(project, releaseExt)
+
+        project.addPreviewSiteTasks(releaseExt)
 
         val stageSvnDist = project.tasks.register<StageToSvnTask>(STAGE_SVN_DIST_TASK_NAME) {
             description = "Stage release artifacts to SVN dist repository"
@@ -112,6 +116,40 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
                 val voteText = generateVote.get().outputs.files.singleFile.readText()
                 println(voteText)
             }
+        }
+    }
+
+    private fun Project.addPreviewSiteTasks(releaseExt: ReleaseExtension) {
+        val preparePreviewSiteRepo by tasks.registering(GitPrepareRepo::class) {
+            repository.set(releaseExt.sitePreview)
+        }
+
+        val syncPreviewSiteRepo by tasks.registering(Sync::class) {
+            dependsOn(preparePreviewSiteRepo)
+
+            val repo = releaseExt.sitePreview.get()
+            val repoDir = File(buildDir, repo.name)
+            into(repoDir)
+            // Just reuse .gitattributes for text/binary and crlf/lf attributes
+            from("${rootProject.rootDir}/.gitattributes")
+        }
+
+        // previewSiteContents can be populated from different places, so we defer to afterEvaluate
+        afterEvaluate {
+            syncPreviewSiteRepo.configure {
+                for (c in releaseExt.previewSiteContents.get()) {
+                    with(c)
+                }
+            }
+        }
+
+        val pushPreviewSite by tasks.registering(GitCommitAndPush::class) {
+            group = PublishingPlugin.PUBLISH_TASK_GROUP
+            description = "Builds and publishes site preview"
+            commitMessage.set("Update preview for ${rootProject.version}")
+            repository.set(rootProject.the<ReleaseExtension>().sitePreview)
+
+            dependsOn(syncPreviewSiteRepo)
         }
     }
 

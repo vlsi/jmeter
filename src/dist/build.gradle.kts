@@ -17,14 +17,9 @@
  */
 import org.apache.jmeter.buildtools.CrLfSpec
 import org.apache.jmeter.buildtools.LineEndings
-import org.apache.jmeter.buildtools.jgit.dsl.*
-import org.apache.jmeter.buildtools.release.GitConfig
-import org.apache.jmeter.buildtools.release.GitPrepareRepo
 import org.apache.jmeter.buildtools.release.ReleaseExtension
-import org.eclipse.jgit.api.*
-import org.eclipse.jgit.api.errors.EmptyCommitException
-import org.eclipse.jgit.transport.URIish
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.GitCommand
 import org.gradle.api.internal.TaskOutputsInternal
 import versions.BuildTools
 import versions.Libs
@@ -576,83 +571,4 @@ rootProject.configure<ReleaseExtension> {
                 }
             }
         })
-}
-
-val generateGitWrappers by tasks.registering {
-    doLast {
-        fun KFunction<*>.isGitCommand(): Boolean {
-            val returnClass = returnType.classifier as KClass<*>
-            return GitCommand::class.isSuperclassOf(returnClass) or Callable::class.isSuperclassOf(returnClass)
-        }
-
-        val gitClass = Git::class
-        for (m in gitClass.staticFunctions.filter { it.isGitCommand() }.sortedBy { it.name }) {
-            val returnClass = m.returnType.classifier as KClass<*>
-            println("fun git${m.name.capitalize()}(action: ${returnClass.qualifiedName}.() -> Unit) = Git.${m.name}().apply { action() }.call()")
-        }
-        for (m in gitClass.memberFunctions.filter { it.isGitCommand() }.sortedBy { it.name }) {
-            val returnClass = m.returnType.classifier as KClass<*>
-            println("fun Git.${m.name}(action: ${returnClass.qualifiedName}.() -> Unit) = ${m.name}().apply { action() }.call()")
-        }
-    }
-}
-
-val preparePreviewSiteRepo by tasks.registering(GitPrepareRepo::class) {
-    repository.set(rootProject.the<ReleaseExtension>().sitePreview)
-}
-
-val syncPreviewSiteRepo by tasks.registering(Sync::class) {
-    dependsOn(preparePreviewSiteRepo)
-
-    val releaseExt = rootProject.the<ReleaseExtension>()
-    val repo = releaseExt.sitePreview.get()
-    val repoDir = File(buildDir, repo.name)
-    into(repoDir)
-    // Just reuse .gitattributes for text/binary and crlf/lf attributes
-    from("${rootProject.rootDir}/.gitattributes")
-}
-
-val pushPreviewSite by tasks.registering {
-    group = PublishingPlugin.PUBLISH_TASK_GROUP
-    description = "Builds and publishes site preview"
-
-    dependsOn(syncPreviewSiteRepo)
-    doLast {
-        val releaseExt = rootProject.the<ReleaseExtension>()
-        val repo = releaseExt.sitePreview.get()
-        val repoDir = File(buildDir, repo.name)
-        Git.open(repoDir).use {
-            it.add {
-                // Add new files
-                addFilepattern(".")
-            }
-            it.add {
-                // Remove removed files
-                addFilepattern(".")
-                setUpdate(true)
-            }
-            try {
-                it.commit {
-                    setMessage("Update preview for ${rootProject.version}")
-                    setAllowEmpty(false)
-                }
-                println("Pushing site preview to $repo")
-                it.push {
-                    setCredentials(repo)
-                    setRemote(repo.remote.get())
-                }
-            } catch (e: EmptyCommitException) {
-                /* ignore */
-            }
-        }
-    }
-}
-
-// previewSiteContents can be populated from different places, so we defer to afterEvaluate
-afterEvaluate {
-    syncPreviewSiteRepo.configure {
-        for (c in rootProject.the<ReleaseExtension>().previewSiteContents.get()) {
-            with(c)
-        }
-    }
 }
