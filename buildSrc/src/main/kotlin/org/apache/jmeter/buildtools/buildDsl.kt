@@ -19,7 +19,6 @@
 package org.apache.jmeter.buildtools
 
 import org.apache.tools.ant.filters.FixCrLfFilter
-import org.gradle.api.Project
 import org.gradle.api.file.ContentFilterable
 import org.gradle.api.file.CopySpec
 import org.gradle.kotlin.dsl.filter

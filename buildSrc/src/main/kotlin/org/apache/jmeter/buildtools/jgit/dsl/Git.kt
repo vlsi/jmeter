@@ -21,7 +21,6 @@ import org.apache.jmeter.buildtools.release.GitConfig
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.TransportCommand
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
-import java.io.File
 
 fun TransportCommand<*, *>.setCredentials(repo: GitConfig) =
     setCredentialsProvider(

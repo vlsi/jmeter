@@ -18,13 +18,9 @@
 
 package org.apache.jmeter.buildtools.release
 
-import org.eclipse.jgit.api.TransportCommand
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.gradle.api.Project
 import org.gradle.api.file.CopySpec
 import org.gradle.api.model.ObjectFactory
-import org.gradle.api.plugins.ExtensionAware
-import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.*
 import java.net.URI
 import javax.inject.Inject
