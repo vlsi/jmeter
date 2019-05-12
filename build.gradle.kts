@@ -34,6 +34,7 @@ plugins {
     // Automatic publish to Nexus repository. Versions are specified in `apache-release` plugin
     id("io.codearte.nexus-staging")
     id("de.marcphilipp.nexus-publish")
+    `stage-vote-release`
 }
 
 with(version as io.ehdev.version.Version) {
@@ -61,8 +62,15 @@ val lastEditYear by extra {
             }
 }
 
-tasks.withType<org.nosphere.apache.rat.RatTask>().configureEach {
+val rat by tasks.getting(org.nosphere.apache.rat.RatTask::class) {
     excludes.set(rootDir.resolve("rat-excludes.txt").readLines())
+}
+
+releaseParams {
+    previewSiteContents.add(copySpec {
+        into("rat")
+        from(rat)//project.files(rat))
+    })
 }
 
 val jacocoReport by tasks.registering(JacocoReport::class) {

@@ -19,6 +19,7 @@
 package org.apache.jmeter.buildtools
 
 import org.apache.tools.ant.filters.FixCrLfFilter
+import org.gradle.api.Project
 import org.gradle.api.file.ContentFilterable
 import org.gradle.api.file.CopySpec
 import org.gradle.kotlin.dsl.filter
@@ -99,4 +100,16 @@ fun CopySpec.from(sourcePath: Any, textEol: LineEndings, action: AutoClassifySpe
             excludeShell(*shellScripts)
         }
     }
+}
+
+class CrLfSpec(val textEol: LineEndings = LineEndings.current()) {
+    fun CopySpec.textFrom(o: Any, eol: LineEndings = textEol) =
+        from(o) {
+            filter(eol)
+        }
+
+    fun CopySpec.textFrom(o: Any, action: AutoClassifySpec.() -> Unit) =
+        from(o, textEol) {
+            action()
+        }
 }

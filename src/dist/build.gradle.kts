@@ -15,16 +15,24 @@
  * limitations under the License.
  *
  */
-import org.ajoberstar.grgit.Grgit
+import org.apache.jmeter.buildtools.CrLfSpec
 import org.apache.jmeter.buildtools.LineEndings
-import org.apache.jmeter.buildtools.filter
-import org.apache.jmeter.buildtools.from
-import org.apache.jmeter.buildtools.jgit.dsl.gitClone
+import org.apache.jmeter.buildtools.jgit.dsl.*
+import org.apache.jmeter.buildtools.release.GitConfig
+import org.apache.jmeter.buildtools.release.GitPrepareRepo
 import org.apache.jmeter.buildtools.release.ReleaseExtension
-import org.eclipse.jgit.api.AddCommand
-import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.*
+import org.eclipse.jgit.api.errors.EmptyCommitException
+import org.eclipse.jgit.transport.URIish
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.gradle.api.internal.TaskOutputsInternal
 import versions.BuildTools
 import versions.Libs
+import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
+import kotlin.reflect.full.isSuperclassOf
+import kotlin.reflect.full.memberFunctions
+import kotlin.reflect.full.staticFunctions
 
 var jars = arrayOf(
         ":src:launcher",
@@ -159,19 +167,19 @@ val createDist by tasks.registering {
 }
 
 
-fun licenseNotice(textEol: LineEndings) = copySpec {
+fun CrLfSpec.licenseNotice() = copySpec {
     from(rootDir) {
-        filter(textEol)
+        filter()
         include("LICENSE")
         include("NOTICE")
     }
 }
 
-fun commonFiles(textEol: LineEndings) = copySpec {
+fun CrLfSpec.commonFiles() = copySpec {
     filteringCharset = "UTF-8"
-    with(licenseNotice(textEol))
+    with(licenseNotice())
     into("bin") {
-        from("$rootDir/bin", textEol) {
+        textFrom("$rootDir/bin") {
             text("*.bshrc", "*.properties", "*.parameters", "*.xml", "*.conf")
             text("utility.groovy")
             exclude("*.log", "*.jmx")
@@ -189,30 +197,30 @@ fun commonFiles(textEol: LineEndings) = copySpec {
                     "threaddump")
         }
         into("templates") {
-            from("$rootDir/bin/templates", textEol) {
+            textFrom("$rootDir/bin/templates") {
                 text("*.jmx", "*.dtd", "*.xml")
             }
         }
         into("examples") {
-            from("$rootDir/bin/examples", textEol) {
+            textFrom("$rootDir/bin/examples") {
                 text("**/*.jmx", "**/*.jsp", "**/*.csv")
                 binary("**/*.png")
             }
         }
         into("report-template") {
-            from("$rootDir/bin/report-template", textEol) {
+            textFrom("$rootDir/bin/report-template") {
                 text("**/*") // all except binary
                 binary("**/*.png", "**/*.ttf", "**/*.woff", "**/*.woff2", "**/*.eot", "**/*.otf")
             }
         }
     }
     into("lib/ext") {
-        from("$rootDir/lib/ext", textEol) {
+        textFrom("$rootDir/lib/ext") {
             text("readme.txt")
         }
     }
     into("extras") {
-        from("$rootDir/extras", textEol) {
+        textFrom("$rootDir/extras") {
             shell("proxycert", "schematic")
             text("*.json", "*.jmx", "*.txt", "*.xml", "*.bsh", "*.xsl")
             binary("*.jar", "*.png")
@@ -282,40 +290,40 @@ fun createAnakiaTask(taskName: String,
 
 val xdocs = "$rootDir/xdocs"
 
-fun docCssAndImages(textEol: LineEndings) = copySpec {
+fun CrLfSpec.docCssAndImages() = copySpec {
     filteringCharset = "UTF-8"
 
     into("css") {
-        from("$xdocs/css")
-        filter(textEol)
+        textFrom("$xdocs/css")
     }
     into("images") {
         from("$xdocs/images")
     }
 }
 
-fun printableDocumentation(textEol: LineEndings) = copySpec {
+fun CrLfSpec.manuals() = copySpec {
+    into("demos") {
+        textFrom("$xdocs/demos")
+    }
+    into("extending") {
+        from("$xdocs/extending/jmeter_tutorial.pdf")
+    }
+    into("usermanual") {
+        from("$xdocs/usermanual") {
+            include("*.pdf")
+        }
+    }
+}
+
+fun CrLfSpec.printableDocumentation() = copySpec {
     filteringCharset = "UTF-8"
 
     into("docs") {
-        with(docCssAndImages(textEol))
+        with(docCssAndImages())
     }
     into("printable_docs") {
-        from(buildPrintableDoc) {
-            filter(textEol)
-        }
-        into("demos") {
-            from("$xdocs/demos")
-            filter(textEol)
-        }
-        into("extending") {
-            from("$xdocs/extending/jmeter_tutorial.pdf")
-        }
-        into("usermanual") {
-            from("$xdocs/usermanual") {
-                include("*.pdf")
-            }
-        }
+        textFrom(buildPrintableDoc)
+        with(manuals())
     }
 }
 
@@ -330,16 +338,81 @@ val previewPrintableDocs by tasks.registering(Copy::class) {
     group = JavaBasePlugin.DOCUMENTATION_GROUP
     description = "Creates preview of a printable documentation to build/docs/printable_preview"
     into("$buildDir/docs/printable_preview")
-    with(printableDocumentation(LineEndings.current()))
+    with(CrLfSpec().printableDocumentation())
+}
+
+val lastEditYear: String by rootProject.extra
+
+fun xslt(subdir: String,
+         outputDir: String,
+         includes: Array<String> = arrayOf("*.xml"),
+         excludes: Array<String> = arrayOf("extending.xml")) {
+
+    val relativePath = if (subdir.isEmpty()) "." else ".."
+    ant.withGroovyBuilder {
+        "xslt"("style" to "$xdocs/stylesheets/website-style.xsl",
+            "basedir" to "$xdocs/$subdir",
+            "destdir" to "$outputDir/$subdir",
+            "excludes" to excludes.joinToString(" "),
+            "includes" to includes.joinToString(" ")
+        ) {
+            "param"("name" to "relative-path", "expression" to relativePath)
+            "param"("name" to "subdir", "expression" to subdir)
+            "param"("name" to "year", "expression" to lastEditYear)
+        }
+    }
+}
+
+val processSiteXslt by tasks.registering {
+    val outputDir = "$buildDir/siteXslt"
+    inputs.files(xdocs)
+    inputs.properties["year"] = lastEditYear
+    outputs.dir(outputDir)
+
+    doLast {
+        for(f in (outputs as TaskOutputsInternal).previousOutputFiles) {
+            f.delete()
+        }
+        for(i in arrayOf("", "usermanual", "localising")) {
+            xslt(i, outputDir)
+        }
+    }
+}
+
+fun CrLfSpec.siteLayout() = copySpec {
+    // TODO: certain files contain </br>, however it should probably be removed in the source files,
+    //       not after conversion to html
+    // TODO: generate doap_JMeter.rdf
+    textFrom("$xdocs/download_jmeter.cgi", eol = LineEndings.LF)
+    into("api") {
+        with(javadocs())
+    }
+    from(processSiteXslt)
+    with(docCssAndImages())
+    with(manuals())
+}
+
+val previewSite by tasks.registering(Copy::class) {
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+    description = "Creates preview of a site to build/docs/site"
+    into("$buildDir/site")
+    with(CrLfSpec().siteLayout())
 }
 
 val distributionGroup = "distribution"
 val baseFolder = "apache-jmeter-${rootProject.version}"
 
-fun binaryLayout(textEol: LineEndings) = copySpec {
+fun CrLfSpec.javadocs() = copySpec {
+    textFrom(javadocAggregate) {
+        text("**/*") // all except binary
+        binary("**/*.zip", "**/*.png")
+    }
+}
+
+fun CrLfSpec.binaryLayout() = copySpec {
     into(baseFolder) {
-        with(licenseNotice(textEol))
-        with(commonFiles(textEol))
+        with(licenseNotice())
+        with(commonFiles())
         into("bin") {
             with(binLibs)
         }
@@ -349,52 +422,49 @@ fun binaryLayout(textEol: LineEndings) = copySpec {
                 with(libsExt)
             }
         }
-        with(printableDocumentation(textEol))
+        with(printableDocumentation())
         into("docs/api") {
-            from(javadocAggregate, textEol) {
-                text("**/*") // all except binary
-                binary("**/*.zip", "**/*.png")
-            }
+            with(javadocs())
         }
     }
 }
 
-fun sourceLayout(textEol: LineEndings) = copySpec {
+fun CrLfSpec.sourceLayout() = copySpec {
     into(baseFolder + "_src") {
-        with(commonFiles(textEol))
+        with(commonFiles())
         into("gradle") {
-            from("$rootDir/gradle", textEol) {
+            textFrom("$rootDir/gradle") {
                 text("**/*.kts", "**/*.properties")
                 binary("wrapper/gradle-wrapper.jar")
             }
         }
-        from(rootDir, textEol) {
+        textFrom(rootDir) {
             text("*.kts", "*.md", "*.yml", "*.xml", "*.xsl")
             text("rat-excludes.txt")
             shell("gradlew")
         }
         into("buildSrc") {
-            from("$rootDir/buildSrc", textEol) {
+            textFrom("$rootDir/buildSrc") {
                 text("**/*.kts", "**/*.kt", "**/*.properties")
                 exclude("build", ".gradle")
             }
         }
         into("config") {
-            from("$rootDir/config", textEol) {
+            textFrom("$rootDir/config") {
                 text("**/*.xml")
                 text("**/*.regex")
             }
         }
         into("src") {
             filteringCharset = "Cp1252"
-            from("$rootDir/src", textEol) {
+            textFrom("$rootDir/src") {
                 text("**/*cp1252*")
                 exclude("*/build", "*/out")
                 exclude("protocol/*/build", "protocol/*/out")
             }
         }
         into("bin/testfiles") {
-            from("$rootDir/bin/testfiles", textEol) {
+            textFrom("$rootDir/bin/testfiles") {
                 text("**/*.xml", "**/*.xsd", "**/*.dtd", "**/*.csv", "**/*.txt", "**/*.tsv", "**/*.json")
                 text("**/*.html", "**/*.htm")
                 text("**/*.jmx", "**/*.jtl")
@@ -404,7 +474,7 @@ fun sourceLayout(textEol: LineEndings) = copySpec {
             }
         }
         into("src") {
-            from("$rootDir/src", textEol) {
+            textFrom("$rootDir/src") {
                 text("**/*.java", "**/*.groovy", "**/*.kts")
                 // resources
                 text("**/*.properties")
@@ -424,7 +494,7 @@ fun sourceLayout(textEol: LineEndings) = copySpec {
             }
         }
         into("xdocs") {
-            from("$rootDir/xdocs", textEol) {
+            textFrom("$rootDir/xdocs") {
                 text("**/*.html", "**/*.htm", "**/*.css", "**/*.svg")
                 text("**/*.xml", "**/*.dtd", "**/*.csv", "**/*.txt", "**/*.jmx")
                 text("**/*.txt", "**/*.TXT")
@@ -460,8 +530,10 @@ for (type in listOf("binary", "source")) {
             // Gradle defaults to the following pattern, and JMeter was using apache-jmeter-5.1_src.zip
             // [baseName]-[appendix]-[version]-[classifier].[extension]
             archiveBaseName.set("apache-jmeter-${rootProject.version}${if (type == "source") "_src" else ""}")
-            with(licenseNotice(eol))
-            with(if (type == "source") sourceLayout(eol) else binaryLayout(eol))
+            CrLfSpec(eol).run {
+                with(licenseNotice())
+                with(if (type == "source") sourceLayout() else binaryLayout())
+            }
             doLast {
                 ant.withGroovyBuilder {
                     "checksum"("file" to archiveFile.get(),
@@ -497,40 +569,90 @@ val cleanWs by tasks.registering() {
 
 rootProject.configure<ReleaseExtension> {
     previewSiteContents.add(
-        copySpec {
-            into("site")
-            with(printableDocumentation(LineEndings.LF))
+        CrLfSpec().run {
+            copySpec {
+                into("site") {
+                    with(siteLayout())
+                }
+            }
         })
 }
 
-fun Git.add(action: AddCommand.() -> Unit) = add().apply { action() }.call()
-
-val prepareSiteRepo by tasks.registering {
+val generateGitWrappers by tasks.registering {
     doLast {
-        gitClone {
-
-        }.use { git ->
-
+        fun KFunction<*>.isGitCommand(): Boolean {
+            val returnClass = returnType.classifier as KClass<*>
+            return GitCommand::class.isSuperclassOf(returnClass) or Callable::class.isSuperclassOf(returnClass)
         }
-//       Git.cloneRepository {
-//           setBare(true)
-//           setBranch("Asdfa")
-//       }
-        Git.cloneRepository()
-            .setBare(true)
-            .call()
+
+        val gitClass = Git::class
+        for (m in gitClass.staticFunctions.filter { it.isGitCommand() }.sortedBy { it.name }) {
+            val returnClass = m.returnType.classifier as KClass<*>
+            println("fun git${m.name.capitalize()}(action: ${returnClass.qualifiedName}.() -> Unit) = Git.${m.name}().apply { action() }.call()")
+        }
+        for (m in gitClass.memberFunctions.filter { it.isGitCommand() }.sortedBy { it.name }) {
+            val returnClass = m.returnType.classifier as KClass<*>
+            println("fun Git.${m.name}(action: ${returnClass.qualifiedName}.() -> Unit) = ${m.name}().apply { action() }.call()")
+        }
     }
 }
 
+val preparePreviewSiteRepo by tasks.registering(GitPrepareRepo::class) {
+    repository.set(rootProject.the<ReleaseExtension>().sitePreview)
+}
 
-val previewSite by tasks.registering {
+val syncPreviewSiteRepo by tasks.registering(Sync::class) {
+    dependsOn(preparePreviewSiteRepo)
+
+    val releaseExt = rootProject.the<ReleaseExtension>()
+    val repo = releaseExt.sitePreview.get()
+    val repoDir = File(buildDir, repo.name)
+    into(repoDir)
+    // Just reuse .gitattributes for text/binary and crlf/lf attributes
+    from("${rootProject.rootDir}/.gitattributes")
+}
+
+val pushPreviewSite by tasks.registering {
+    group = PublishingPlugin.PUBLISH_TASK_GROUP
+    description = "Builds and publishes site preview"
+
+    dependsOn(syncPreviewSiteRepo)
     doLast {
-        Grgit.init(mapOf("dir" to "$buildDir/previewSite/repo.git")).use { grgit ->
-            val list = grgit.remote.list()
+        val releaseExt = rootProject.the<ReleaseExtension>()
+        val repo = releaseExt.sitePreview.get()
+        val repoDir = File(buildDir, repo.name)
+        Git.open(repoDir).use {
+            it.add {
+                // Add new files
+                addFilepattern(".")
+            }
+            it.add {
+                // Remove removed files
+                addFilepattern(".")
+                setUpdate(true)
+            }
+            try {
+                it.commit {
+                    setMessage("Update preview for ${rootProject.version}")
+                    setAllowEmpty(false)
+                }
+                println("Pushing site preview to $repo")
+                it.push {
+                    setCredentials(repo)
+                    setRemote(repo.remote.get())
+                }
+            } catch (e: EmptyCommitException) {
+                /* ignore */
+            }
         }
-//        Git::class.ini
-//        Git.init(directory = file("$buildDir/previewSite/repo.git")).use {
-//
-//        }
+    }
+}
+
+// previewSiteContents can be populated from different places, so we defer to afterEvaluate
+afterEvaluate {
+    syncPreviewSiteRepo.configure {
+        for (c in rootProject.the<ReleaseExtension>().previewSiteContents.get()) {
+            with(c)
+        }
     }
 }
