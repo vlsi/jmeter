@@ -45,6 +45,8 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
         const val PUBLISH_SVN_DIST_TASK_NAME = "publishSvnDist"
         const val STAGE_DIST_TASK_NAME = "stageDist"
         const val PUBLISH_DIST_TASK_NAME = "publishDist"
+
+        const val PUSH_PREVIEW_SITE_TASK_NAME = "pushPreviewSite"
     }
 
     override fun apply(project: Project) {
@@ -63,7 +65,7 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
 
         configureNexusStaging(project, releaseExt)
 
-        project.addPreviewSiteTasks(releaseExt)
+        val pushPreviewSite = project.addPreviewSiteTasks(releaseExt)
 
         val stageSvnDist = project.tasks.register<StageToSvnTask>(STAGE_SVN_DIST_TASK_NAME) {
             description = "Stage release artifacts to SVN dist repository"
@@ -90,14 +92,14 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
             }
         }
 
-        val stageDist = project.tasks.register(STAGE_DIST_TASK_NAME) {
+        project.tasks.register(STAGE_DIST_TASK_NAME) {
             description = "Stage release artifacts to SVN and Nexus"
             group = "release"
             dependsOn(stageSvnDist)
             dependsOn(closeRepository)
         }
 
-        val publishDist = project.tasks.register(PUBLISH_DIST_TASK_NAME) {
+        project.tasks.register(PUBLISH_DIST_TASK_NAME) {
             description = "Publish release artifacts to SVN and Nexus"
             group = "release"
             dependsOn(publishSvnDist)
@@ -107,8 +109,9 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
 
         // prepareVote depends on all the publish tasks
         // prepareVote depends on publish SVN
-        val generateVote = generateVoteText(project, stageDist, releaseExt)
-        val prepareVote = project.tasks.register(PREPARE_VOTE_TASK_NAME) {
+        val generateVote = project.generateVoteText(pushPreviewSite)
+
+        project.tasks.register(PREPARE_VOTE_TASK_NAME) {
             description = "Prepare text for vote mail"
             group = "release"
             dependsOn(generateVote)
@@ -119,7 +122,7 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
         }
     }
 
-    private fun Project.addPreviewSiteTasks(releaseExt: ReleaseExtension) {
+    private fun Project.addPreviewSiteTasks(releaseExt: ReleaseExtension): TaskProvider<GitCommitAndPush> {
         val preparePreviewSiteRepo by tasks.registering(GitPrepareRepo::class) {
             repository.set(releaseExt.sitePreview)
         }
@@ -143,7 +146,7 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
             }
         }
 
-        val pushPreviewSite by tasks.registering(GitCommitAndPush::class) {
+        return tasks.register(PUSH_PREVIEW_SITE_TASK_NAME, GitCommitAndPush::class) {
             group = PublishingPlugin.PUBLISH_TASK_GROUP
             description = "Builds and publishes site preview"
             commitMessage.set("Update preview for ${rootProject.version}")
@@ -224,20 +227,18 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
         }
     }
 
-    private fun generateVoteText(
-        project: Project,
-        prepareDist: TaskProvider<*>,
-        releaseExt: ReleaseExtension
-    ): TaskProvider<Task> {
-        return project.tasks.register(GENERATE_VOTE_TEXT_TASK_NAME) {
-            dependsOn(prepareDist)
+    private fun Project.generateVoteText(pushPreviewSite: TaskProvider<GitCommitAndPush>): TaskProvider<Task> {
+        val releaseExt = the<ReleaseExtension>()
+        return tasks.register(GENERATE_VOTE_TEXT_TASK_NAME) {
+            dependsOn(tasks.named(STAGE_DIST_TASK_NAME))
+            dependsOn(pushPreviewSite)
 
-            val projectVersion = project.version.toString()
+            val projectVersion = version.toString()
             inputs.property("version", projectVersion)
             inputs.files(releaseExt.archives.get())
 
-            val voteMailFile = "${project.buildDir}/$PREPARE_VOTE_TASK_NAME/mail.txt"
-            outputs.file(project.file(voteMailFile))
+            val voteMailFile = "${buildDir}/$PREPARE_VOTE_TASK_NAME/mail.txt"
+            outputs.file(file(voteMailFile))
             doLast {
                 val nexusPublish = project.the<NexusPublishExtension>()
                 val nexusRepoName = nexusPublish.repositoryName.get()
@@ -255,19 +256,21 @@ class StageVoteReleasePlugin @Inject constructor(private val instantiator: Insta
                     version = projectVersion,
                     gitSha = grgit.head().id,
                     tag = releaseExt.tag.get(),
-                    artifacts = project.files(releaseExt.archives.get())
+                    artifacts = files(releaseExt.archives.get())
                         .sortedBy { it.name }
                         .map {
                             ReleaseArtifact(
                                 it.name,
-                                project.file(it.absolutePath + ".sha512").readText().trim()
+                                file(it.absolutePath + ".sha512").readText().trim()
                             )
                         },
                     svnStagingUri = svnDist.url.get().let { it.replacePath(it.path + "/" + svnDist.stageFolder.get()) },
-                    nexusRepositoryUri = repoUri
+                    nexusRepositoryUri = repoUri,
+                    previewSiteUri = pushPreviewSite.get().repository.get().urls.get().pagesUri,
+                    sourceCodeTagUrl = releaseExt.source.get().urls.get().tagUri(releaseExt.tag.get())
                 )
                 val voteText = releaseExt.voteText.get().invoke(releaseParams)
-                project.file(voteMailFile).writeText(voteText)
+                file(voteMailFile).writeText(voteText)
             }
         }
     }

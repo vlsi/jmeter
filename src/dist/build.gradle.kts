@@ -156,10 +156,9 @@ val createDist by tasks.registering {
 
 
 fun CrLfSpec.licenseNotice() = copySpec {
-    from(rootDir) {
-        filter()
-        include("LICENSE")
-        include("NOTICE")
+    textFrom(rootDir) {
+        text("LICENSE")
+        text("NOTICE")
     }
 }
 

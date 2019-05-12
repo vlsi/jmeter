@@ -69,7 +69,7 @@ val rat by tasks.getting(org.nosphere.apache.rat.RatTask::class) {
 releaseParams {
     previewSiteContents.add(copySpec {
         into("rat")
-        from(rat)//project.files(rat))
+        from(rat)
     })
 }
 

@@ -45,9 +45,6 @@ configure<ReleaseExtension> {
             stagingProfileId.set("4d29c092016673")
         }
     }
-//    sitePreview {
-//
-//    }
 }
 
 fun ReleaseParams.voteTextGen(): String = """
@@ -62,30 +59,31 @@ Feedback is very welcome within the next 72 hours.
 
 You can read the New and Noteworthy section with some screenshots to
 illustrate improvements and full list of changes at:
-http://home.apache.org/~milamber/$tlpUrl-$tag/docs/changes.html
+$previewSiteUri/site/changes.html
 
 JMeter is a Java desktop application designed to load test functional
 behavior and measure performance. The current version targets Java 8+
 
 Download - Archives/hashes/sigs:
-
 $svnStagingUri
 (dist revision TBD:SVN revision of svnmucc stage result)
 
 RAT report:
-
-http://home.apache.org/~milamber/$tlpUrl-$tag/dist/rat-report-$tlpUrl-$tag.txt
+$previewSiteUri/rat/rat-report.txt
 
 SHA512 hashes of archives for this vote: see footnote [1]
 
-Site Docs are here:
-http://home.apache.org/~milamber/$tlpUrl-$tag/docs/
+Site preview is here:
+$previewSiteUri/site/
+
+JavaDoc API preview is here:
+$previewSiteUri/site/api
 
 Maven staging repository is accessible here:
 $nexusRepositoryUri/org/apache/$tlpUrl/
 
 Tag:
-https://svn.apache.org/repos/asf/$tlpUrl/tags/$tag/
+$sourceCodeTagUrl
 
 Keys are here:
 https://www.apache.org/dist/$tlpUrl/KEYS
@@ -96,7 +94,7 @@ To create the jars and test $tlp: "./gradlew build".
 $tlp $version requires Java 8 or later to run.
 
 Some known issues and incompatible changes are listed on changes page.
-http://home.apache.org/~milamber/$tlpUrl-$tag/docs/changes.html#Known%20problems%20and%20workarounds
+$previewSiteUri/site/changes.html#Known%20problems%20and%20workarounds
 
 
 All feedback and vote are welcome.
@@ -115,9 +113,6 @@ Note: If the vote passes, the intention is to release the archive files
 and rename the RC tag as the release tag.
 
 Thanks in advance!
-
-Milamber
-
 
 ===
 [1] SHA512 hashes of archives for this vote:

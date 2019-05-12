@@ -33,14 +33,8 @@ import javax.inject.Inject
  * Setting up local release environment:
  *
  * ```
- * docker run -d --name svn-server -p 80:80 -p 3960:3960 elleflorio/svn-server
- * docker exec -t svn-server htpasswd -b /etc/subversion/passwd test test
- * docker exec -t svn-server svnadmin create /home/svn/dist
- * ```
- * or
- * ```
  * git clone https://github.com/vlsi/asflike-release-environment.git
- * cd asflike-release-environment && vagrant up
+ * cd asflike-release-environment && docker-compose up
  * ```
  */
 open class ReleaseExtension @Inject constructor(
@@ -80,28 +74,28 @@ open class ReleaseExtension @Inject constructor(
         objects.newInstance(it, this)
     }
 
-    private fun gitUrlConvention(suffix: String = ""): Provider<URI> {
-        return repositoryType.map {
+    private fun GitConfig.gitUrlConvention(suffix: String = "") {
+        urls.convention(repositoryType.map {
             when (it) {
-                RepositoryType.PROD -> project.uri("https://github.com/apache/$tlpUrl$suffix.git")
-                RepositoryType.TEST -> project.uri("git://127.0.0.1/$tlpUrl$suffix.git")
+                RepositoryType.PROD -> GitHub("apache", "$tlpUrl$suffix")
+                RepositoryType.TEST -> GitDaemon("127.0.0.1", "$tlpUrl$suffix")
             }
-        }
+        })
     }
 
     val source by git.registering {
         branch.convention("master")
-        url.convention(gitUrlConvention())
+        gitUrlConvention()
     }
 
     val sitePreview by git.registering {
         branch.convention("asf-site")
-        url.convention(gitUrlConvention("-site"))
+        gitUrlConvention("-site")
     }
 
     val site by git.registering {
         branch.convention("asf-site")
-        url.convention(gitUrlConvention("-preview"))
+        gitUrlConvention("-preview")
     }
 }
 
@@ -164,7 +158,7 @@ open class GitConfig @Inject constructor(
     private val ext: ReleaseExtension,
     objects: ObjectFactory
 ) {
-    val url = objects.property<URI>()
+    val urls = objects.property<GitUrlConventions>()
     val remote = objects.property<String>()
         .convention(ext.repositoryType.map {
             when (it) {
@@ -176,7 +170,7 @@ open class GitConfig @Inject constructor(
 
     val credentials = objects.newInstance<Credentials>(name.capitalize(), ext)
 
-    override fun toString() = "${url.get()}, branch: ${branch.get()}"
+    override fun toString() = "${urls.get().pushUrl}, branch: ${branch.get()}"
 }
 
 open class Credentials @Inject constructor(
@@ -205,7 +199,9 @@ class ReleaseParams(
     val tag: String,
     val artifacts: List<ReleaseArtifact>,
     val svnStagingUri: URI,
-    val nexusRepositoryUri: URI
+    val nexusRepositoryUri: URI,
+    val previewSiteUri: URI,
+    val sourceCodeTagUrl: URI
 ) {
     val shortGitSha
         get() = gitSha.subSequence(0, 10)

@@ -24,12 +24,15 @@ import org.apache.jmeter.buildtools.jgit.dsl.setCredentials
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.errors.EmptyCommitException
 import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.property
 import java.io.File
 
 abstract class GitCommitAndPush : DefaultTask() {
+    @Input
     val repository = project.objects.property<GitConfig>()
+    @Input
     val commitMessage = project.objects.property<String>()
 
     @TaskAction

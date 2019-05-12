@@ -22,11 +22,13 @@ import org.eclipse.jgit.api.CreateBranchCommand
 import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.transport.URIish
 import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.property
 import java.io.File
 
 abstract class GitPrepareRepo: DefaultTask() {
+    @Input
     val repository = project.objects.property<GitConfig>()
 
     @TaskAction
@@ -40,12 +42,12 @@ abstract class GitPrepareRepo: DefaultTask() {
             if (remoteName !in it.repository.remoteNames) {
                 it.remoteAdd {
                     setName(remoteName)
-                    setUri(URIish(repo.url.get().toString()))
+                    setUri(URIish(repo.urls.get().pushUrl))
                 }
             } else {
                 it.remoteSetUrl {
                     setRemoteName(remoteName)
-                    setRemoteUri(URIish(repo.url.get().toString()))
+                    setRemoteUri(URIish(repo.urls.get().pushUrl))
                 }
             }
             it.fetch {
