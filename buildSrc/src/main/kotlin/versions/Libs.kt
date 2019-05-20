@@ -60,7 +60,7 @@ object Libs {
     const val commons_lang = "commons-lang:commons-lang:2.6"
     const val commons_net = "commons-net:commons-net:3.6"
     const val dnsjava = "dnsjava:dnsjava:2.1.8"
-    const val darcula = "bulenkov:darcula:e208efb96f70e4be9dc362fbb46f6e181ef501dd"
+    const val darcula = "com.github.bulenkov.darcula:darcula:e208efb96f70e4be9dc362fbb46f6e181ef501dd"
     const val javax_activation_api = "javax.activation:javax.activation-api:1.2.0"
     const val mail = "javax.mail:mail:1.5.0-b01"
     const val jcharts = "jcharts:jcharts:0.7.5"

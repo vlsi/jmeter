@@ -110,16 +110,18 @@ allprojects {
     // JMeter ClassFinder parses "class.path" and tries to find jar names there,
     // so we should produce jars without versions names for now
     // version = rootProject.version
-    apply<CheckstylePlugin>()
-    apply<SigningPlugin>()
-    apply<SpotBugsPlugin>()
+    plugins.withType<JavaPlugin> {
+        apply<CheckstylePlugin>()
+        apply<SigningPlugin>()
+        apply<SpotBugsPlugin>()
 
-    checkstyle {
-        toolVersion = BuildToolVersions.checkstyle
-    }
+        checkstyle {
+            toolVersion = BuildToolVersions.checkstyle
+        }
 
-    spotbugs {
-        toolVersion = BuildToolVersions.spotbugs
+        spotbugs {
+            toolVersion = BuildToolVersions.spotbugs
+        }
     }
 
     plugins.withType<JacocoPlugin> {
@@ -192,7 +194,7 @@ allprojects {
             ivy {
                 url = uri("https://github.com/bulenkov/Darcula/raw/")
                 content {
-                    includeModule("bulenkov", "darcula")
+                    includeModule("com.github.bulenkov.darcula", "darcula")
                 }
                 patternLayout {
                     artifact("[revision]/build/[module].[ext]")

@@ -16,22 +16,26 @@
  *
  */
 
-plugins {
-    `kotlin-dsl`
-}
+import java.io.FileOutputStream
 
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
+val generateLicense by tasks.registering {
+    group = "License"
+    description = "Generates license file for source distribution (AL2.0 + summary for dependencies)"
 
-dependencies {
-    compile("de.marcphilipp.gradle:nexus-publish-plugin:0.2.0")
-    compile("io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.20.0")
-    compile("org.ajoberstar.grgit:grgit-gradle:3.1.1")
-    compile("com.github.jk1:gradle-license-report:1.6")
-}
+    val licenseDir = File(buildDir, "reports/license")
+    val rootLicense = File(rootDir, "licenses/apache2.txt")
+    val jsDependenciesLicenses = File(rootDir, "licenses/license.for.third.party.dependencies.txt")
+    val result = File(licenseDir, "LICENSE")
 
-kotlinDslPluginOptions {
-    experimentalWarning.set(false)
+    inputs.file(rootLicense)
+    inputs.file(jsDependenciesLicenses)
+    outputs.file(result)
+
+    doLast {
+        rootLicense.copyTo(result, overwrite = true)
+        FileOutputStream(result, /*append=*/true).use {
+            it.write("\n".toByteArray())
+            it.write(jsDependenciesLicenses.readBytes())
+        }
+    }
 }

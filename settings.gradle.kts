@@ -28,6 +28,8 @@ include(
         "src:functions",
         "src:generator",
         "src:jorphan",
+        "src:license-binary",
+        "src:license-source",
         "src:protocol:ftp",
         "src:protocol:http",
         "src:protocol:java",

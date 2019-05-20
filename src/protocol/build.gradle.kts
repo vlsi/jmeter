@@ -37,8 +37,14 @@ project("http") {
         compile(project(":src:components"))
         testCompile(project(":src:components", "testClasses"))
         compile(Libs.commons_net)
-        compile(Libs.ph_commons)
-        compile(Libs.ph_css)
+        compile(Libs.ph_commons) {
+            // We don't really need to use/distribute jsr305
+            exclude("com.google.code.findbugs", "jsr305")
+        }
+        compile(Libs.ph_css) {
+            // We don't really need to use/distribute jsr305
+            exclude("com.google.code.findbugs", "jsr305")
+        }
         compile(Libs.dnsjava)
         compile(Libs.httpmime)
         compile(Libs.dec)

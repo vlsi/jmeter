@@ -149,17 +149,29 @@ val createDist by tasks.registering {
     dependsOn(copyBinLibs)
 }
 
-
-fun CrLfSpec.licenseNotice() = copySpec {
+fun CrLfSpec.licenseNotice(licenseType: String) = copySpec {
     textFrom(rootDir) {
-        text("LICENSE")
         text("NOTICE")
+    }
+    // Project :src:license-* might not be evaluated yet, so "generateLicense" task might not yet exist
+    // So we provide the file via "provider" that just delays the evaluation
+    textFrom(provider { project(":src:license-$licenseType").tasks["generateLicense"] })
+    into("licenses") {
+        textFrom("$rootDir/licenses/README.txt")
+        into("src") {
+            textFrom("$rootDir/licenses/src")
+        }
+        if (licenseType == "binary") {
+            into("bin") {
+                textFrom(provider { project(":src:license-$licenseType").tasks["generateLicenseReport"] })
+            }
+        }
     }
 }
 
-fun CrLfSpec.commonFiles() = copySpec {
+fun CrLfSpec.commonFiles(layoutType: String) = copySpec {
     filteringCharset = "UTF-8"
-    with(licenseNotice())
+    with(licenseNotice(layoutType))
     into("bin") {
         textFrom("$rootDir/bin") {
             text("*.bshrc", "*.properties", "*.parameters", "*.xml", "*.conf")
@@ -393,8 +405,7 @@ fun CrLfSpec.javadocs() = copySpec {
 
 fun CrLfSpec.binaryLayout() = copySpec {
     into(baseFolder) {
-        with(licenseNotice())
-        with(commonFiles())
+        with(commonFiles(layoutType = "binary"))
         into("bin") {
             with(binLibs)
         }
@@ -413,7 +424,7 @@ fun CrLfSpec.binaryLayout() = copySpec {
 
 fun CrLfSpec.sourceLayout() = copySpec {
     into(baseFolder + "_src") {
-        with(commonFiles())
+        with(commonFiles(layoutType = "source"))
         into("gradle") {
             textFrom("$rootDir/gradle") {
                 text("**/*.kts", "**/*.properties")
@@ -502,7 +513,8 @@ val javadocAggregate by tasks.registering(Javadoc::class) {
 // The archives and checksums are put to build/distributions
 for (type in listOf("binary", "source")) {
     for (archive in listOf(Zip::class, Tar::class)) {
-        val archiveTask = tasks.register("dist${archive.simpleName}${type.replace("binary", "").capitalize()}", archive) {
+        val taskName = "dist${archive.simpleName}${type.replace("binary", "").capitalize()}"
+        val archiveTask = tasks.register(taskName, archive) {
             val eol = if (archive == Zip::class) LineEndings.LF else LineEndings.CRLF
             group = distributionGroup
             description = "Creates $type distribution with $eol line endings for text files"
@@ -513,7 +525,7 @@ for (type in listOf("binary", "source")) {
             // [baseName]-[appendix]-[version]-[classifier].[extension]
             archiveBaseName.set("apache-jmeter-${rootProject.version}${if (type == "source") "_src" else ""}")
             CrLfSpec(eol).run {
-                with(licenseNotice())
+                with(commonFiles(type))
                 with(if (type == "source") sourceLayout() else binaryLayout())
             }
             doLast {
