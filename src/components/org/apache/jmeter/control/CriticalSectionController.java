@@ -188,6 +188,7 @@ public class CriticalSectionController extends GenericController implements
     @Override
     public void testStarted(String host) {
         // NOOP
+        if (true) { throw new RuntimeException("bsftimertestfail"); }
     }
 
     @Override
@@ -198,5 +199,6 @@ public class CriticalSectionController extends GenericController implements
     @Override
     public void testEnded(String host) {
         testEnded();
+        if (true) { throw new RuntimeException("bsftimertestfail"); }
     }
 }
