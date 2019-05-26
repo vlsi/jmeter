@@ -2,6 +2,8 @@
 /backups/
 /build/
 /buildSrc/build/
+/buildSrc/subprojects/*/build/**
+/buildSrc/subprojects/*/out/**
 /src/*/build/
 /src/*/out/
 /src/protocol/*/build/

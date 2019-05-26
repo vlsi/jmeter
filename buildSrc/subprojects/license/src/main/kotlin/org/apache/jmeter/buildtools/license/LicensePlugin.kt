@@ -16,36 +16,14 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
+package org.apache.jmeter.buildtools.license
 
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+import org.gradle.kotlin.dsl.apply
 
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
-        }
-    }
-}
-
-dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
+open class LicensePlugin: Plugin<Project> {
+    override fun apply(project: Project) {
+        project.apply(plugin = "com.github.jk1.dependency-license-report")
     }
 }

@@ -22,6 +22,8 @@ bin/testfiles/**
 build/**
 buildSrc/.gradle/**
 buildSrc/build/**
+buildSrc/subprojects/*/build/**
+buildSrc/subprojects/*/out/**
 src/*/build/**
 src/*/out/**
 src/protocol/*/build/**
@@ -37,8 +39,9 @@ extras/Test.jtl
 **/images/**
 lib/aareadme.txt
 lib/opt/**
-licenses/bin/**
 licenses/src/**
+licenses/apache2.txt
+licenses/license.for.third.party.dependencies.txt
 local/**
 printable_docs/**
 reports/**

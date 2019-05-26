@@ -22,7 +22,7 @@ import org.apache.jmeter.buildtools.license.BriefLicenseRenderer
 import java.io.FileOutputStream
 
 plugins {
-    id("com.github.jk1.dependency-license-report")
+    jmeterbuild.license
 }
 
 val licenseDir = File(buildDir, "reports/license")

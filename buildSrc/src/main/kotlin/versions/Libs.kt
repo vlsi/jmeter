@@ -60,7 +60,8 @@ object Libs {
     const val commons_lang = "commons-lang:commons-lang:2.6"
     const val commons_net = "commons-net:commons-net:3.6"
     const val dnsjava = "dnsjava:dnsjava:2.1.8"
-    const val darcula = "com.github.bulenkov.darcula:darcula:e208efb96f70e4be9dc362fbb46f6e181ef501dd"
+    const val darcula =
+        "com.github.bulenkov.darcula:darcula:e208efb96f70e4be9dc362fbb46f6e181ef501dd"
     const val javax_activation_api = "javax.activation:javax.activation-api:1.2.0"
     const val mail = "javax.mail:mail:1.5.0-b01"
     const val jcharts = "jcharts:jcharts:0.7.5"
@@ -70,14 +71,6 @@ object Libs {
     const val jtidy = "net.sf.jtidy:jtidy:r938"
     const val Saxon_HE = "net.sf.saxon:Saxon-HE:9.9.1-1"
     const val bsh = "org.apache-extras.beanshell:bsh:2.0b6"
-    // activemq-all should not be used as it provides secondary slf4j binding
-    val activemq = arrayOf(
-        "org.apache.activemq:activemq-broker:${Versions.activemq}",
-        "org.apache.activemq:activemq-client:${Versions.activemq}",
-        "org.apache.activemq:activemq-spring:${Versions.activemq}",
-        "org.springframework:spring-context:4.3.17.RELEASE",
-        "org.springframework:spring-beans:4.3.17.RELEASE"
-    )
     const val commons_dbcp2 = "org.apache.commons:commons-dbcp2:2.5.0"
     const val commons_jexl3 = "org.apache.commons:commons-jexl3:3.1"
     const val commons_jexl = "org.apache.commons:commons-jexl:2.1.1"
@@ -133,5 +126,16 @@ object Libs {
     const val xml_apis = "xml-apis:xml-apis:1.4.01"
     const val xmlpull = "xmlpull:xmlpull:1.1.3.1"
     const val xpp3_min = "xpp3:xpp3_min:1.1.4c"
+    // activemq-all should not be used as it provides secondary slf4j binding
+    val activemq = arrayOf(
+        "org.apache.activemq:activemq-broker:${Versions.activemq}",
+        "org.apache.activemq:activemq-client:${Versions.activemq}",
+        "org.apache.activemq:activemq-spring:${Versions.activemq}",
+        "org.springframework:spring-context:4.3.17.RELEASE",
+        "org.springframework:spring-beans:4.3.17.RELEASE",
+        jackson_databind, // ensure we have the same version
+        jackson_annotations,
+        commons_pool2
+    )
 }
 

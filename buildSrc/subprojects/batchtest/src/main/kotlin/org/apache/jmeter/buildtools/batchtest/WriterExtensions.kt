@@ -16,36 +16,23 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
+package org.apache.jmeter.buildtools.batchtest
 
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
+import org.gradle.internal.io.LineBufferingOutputStream
+import org.gradle.internal.io.TextStream
+import java.io.Writer
 
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
+fun Writer.withPrefix(prefix: String) =
+    LineBufferingOutputStream(object : TextStream {
+        override fun text(text: String?) {
+            write(prefix)
+            write(text)
+            flush()
         }
-    }
-}
 
-dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
-    }
-}
+        override fun endOfStream(failure: Throwable?) {
+            if (failure != null) {
+                throw failure
+            }
+        }
+    })

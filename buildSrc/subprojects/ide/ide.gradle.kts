@@ -16,36 +16,15 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
-
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
-
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
-        }
-    }
-}
-
 dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
+    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:0.5")
+}
+
+gradlePlugin {
+    plugins {
+        register("ide") {
+            id = "jmeterbuild.ide"
+            implementationClass = "org.apache.jmeter.buildtools.ide.IdePlugin"
+        }
     }
 }

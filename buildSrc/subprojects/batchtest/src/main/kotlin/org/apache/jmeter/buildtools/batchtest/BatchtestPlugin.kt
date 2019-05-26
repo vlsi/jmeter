@@ -16,36 +16,12 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
+package org.apache.jmeter.buildtools.batchtest
 
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
+import org.gradle.api.Plugin
+import org.gradle.api.Project
 
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
-        }
-    }
-}
-
-dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
+open class BatchtestPlugin: Plugin<Project> {
+    override fun apply(target: Project) {
     }
 }

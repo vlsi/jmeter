@@ -19,6 +19,10 @@ import org.apache.jmeter.buildtools.batchtest.BatchTest
 import org.apache.jmeter.buildtools.batchtest.BatchTestServer
 import versions.Libs
 
+plugins {
+    jmeterbuild.batchtest
+}
+
 val extraTestDependencies by configurations.creating
 val loggingClasspath by configurations.creating
 

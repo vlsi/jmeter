@@ -16,7 +16,7 @@
  *
  */
 
-package org.apache.jmeter.buildtools
+package org.apache.jmeter.buildtools.witness
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -101,16 +101,31 @@ data class DependencyAndProject(val file: File, val uses: MutableSet<DependencyU
 
 private fun Project.collectFiles(): Map<DependencyKey, DependencyAndProject> {
     val result = sortedMapOf<DependencyKey, DependencyAndProject>()
+
     for (p: Project in allprojects
-             .filter { !it.repositories.isEmpty() }) {
+             .filter { !it.repositories.isEmpty() }
+    )   {
         for(conf in p.let { it.buildscript.configurations + it.configurations }
                 .filter { it.isCanBeResolved }) {
             for (art in conf.resolvedConfiguration.resolvedArtifacts) {
                 val compId = art.id.componentIdentifier
                 if (compId is ModuleComponentIdentifier) {
-                    val dependencyKey = DependencyKey(compId, art.classifier, art.extension)
-                    result.computeIfAbsent(dependencyKey) { DependencyAndProject(art.file) }
-                        .uses.add(DependencyUse(p.path, conf.name))
+                    val dependencyKey = DependencyKey(
+                        compId,
+                        art.classifier,
+                        art.extension
+                    )
+                    result.computeIfAbsent(dependencyKey) {
+                        DependencyAndProject(
+                            art.file
+                        )
+                    }
+                        .uses.add(
+                        DependencyUse(
+                            p.path,
+                            conf.name
+                        )
+                    )
                 }
             }
         }
@@ -144,7 +159,12 @@ class CalculateSHA512 @Inject constructor(
             throw HashMissingException(uses, file, actualHash)
         }
         if (expectedHash != actualHash) {
-            throw HashMismatchException(uses, file, actualHash = actualHash, expectedHash = expectedHash)
+            throw HashMismatchException(
+                uses,
+                file,
+                actualHash = actualHash,
+                expectedHash = expectedHash
+            )
         }
     }
 }

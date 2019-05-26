@@ -16,15 +16,24 @@
  *
  */
 
-package org.apache.jmeter.buildtools
+include("batchtest")
+include("ide")
+include("license")
+include("release")
+include("witness")
 
-import org.gradle.api.Project
+val upperCaseLetters = "\\p{Upper}".toRegex()
 
-open class WitnessExtension(private val project: Project) {
-    val hashes = mutableMapOf<DependencyKey, String>()
+fun String.toKebabCase() =
+    replace(upperCaseLetters) { "-${it.value.toLowerCase()}" }
 
-    fun sha256(dependency: Any, hash: String) {
-        val dep = project.dependencies.create(dependency)
-        hashes[DependencyKey(dep)] = hash
-    }
+fun buildFileNameFor(projectDirName: String) =
+    "$projectDirName.gradle.kts"
+
+for (project in rootProject.children) {
+    val projectDirName = project.name.toKebabCase()
+    project.projectDir = file("subprojects/$projectDirName")
+    project.buildFileName = buildFileNameFor(projectDirName)
+    assert(project.projectDir.isDirectory)
+    assert(project.buildFile.isFile)
 }

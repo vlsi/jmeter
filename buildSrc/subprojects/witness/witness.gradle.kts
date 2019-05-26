@@ -16,36 +16,11 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
-
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
-
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
+gradlePlugin {
+    plugins {
+        register("witness") {
+            id = "jmeterbuild.witness"
+            implementationClass = "org.apache.jmeter.buildtools.witness.WitnessPlugin"
         }
-    }
-}
-
-dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
     }
 }

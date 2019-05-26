@@ -16,36 +16,15 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
-
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
-
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
-        }
-    }
-}
-
 dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
+    compile("com.github.jk1:gradle-license-report:1.6")
+}
+
+gradlePlugin {
+    plugins {
+        register("license") {
+            id = "jmeterbuild.license"
+            implementationClass = "org.apache.jmeter.buildtools.license.LicensePlugin"
+        }
     }
 }

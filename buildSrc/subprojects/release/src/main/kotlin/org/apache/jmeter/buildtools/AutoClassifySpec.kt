@@ -16,36 +16,27 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
+package org.apache.jmeter.buildtools
 
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
+class AutoClassifySpec {
+    val text = mutableListOf<String>()
+    val binary = mutableListOf<String>()
+    val shell = mutableListOf<String>()
+    val exclude = mutableListOf(".DS_Store") // default excludes
 
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
+    fun text(vararg fileName: String) {
+        text.addAll(fileName)
     }
-    applyKotlinProjectConventions()
-}
 
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
-        }
+    fun binary(vararg fileName: String) {
+        binary.addAll(fileName)
     }
-}
 
-dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
+    fun shell(vararg fileName: String) {
+        shell.addAll(fileName)
+    }
+
+    fun exclude(vararg fileName: String) {
+        exclude.addAll(fileName)
     }
 }

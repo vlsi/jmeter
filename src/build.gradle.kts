@@ -19,18 +19,24 @@
 import versions.Libs
 
 subprojects {
+    val groovyUsed = file("src/main/groovy").isDirectory || file("src/test/groovy").isDirectory
+
     apply<JavaPlugin>()
-    apply<GroovyPlugin>()
+    if (groovyUsed) {
+        apply<GroovyPlugin>()
+    }
     apply<MavenPublishPlugin>()
     apply<JacocoPlugin>()
 
     dependencies {
         val testImplementation by configurations
         testImplementation(Libs.junit)
-        testImplementation(Libs.groovy_all) {
-            because("We want to enable Groovy-based tests")
+        if (groovyUsed) {
+            testImplementation(Libs.groovy_all) {
+                because("We want to enable Groovy-based tests")
+            }
+            testImplementation(Libs.spock_core)
         }
-        testImplementation(Libs.spock_core)
         testImplementation(Libs.cglib_nodep) {
             because("""
                 org.spockframework.mock.CannotCreateMockException: Cannot create mock for

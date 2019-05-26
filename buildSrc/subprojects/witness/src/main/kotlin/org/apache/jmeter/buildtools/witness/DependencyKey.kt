@@ -16,7 +16,7 @@
  *
  */
 
-package org.apache.jmeter.buildtools
+package org.apache.jmeter.buildtools.witness
 
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.DependencyArtifact

@@ -16,36 +16,15 @@
  *
  */
 
-plugins {
-    `java`
-    `kotlin-dsl` apply false
-}
-
-repositories {
-    jcenter()
-    gradlePluginPortal()
-}
-
-allprojects {
-    repositories {
-        jcenter()
-        gradlePluginPortal()
-    }
-    applyKotlinProjectConventions()
-}
-
-fun Project.applyKotlinProjectConventions() {
-    apply(plugin = "org.gradle.kotlin.kotlin-dsl")
-
-    plugins.withType<KotlinDslPlugin> {
-        configure<KotlinDslPluginOptions> {
-            experimentalWarning.set(false)
-        }
-    }
-}
-
 dependencies {
-    subprojects.forEach {
-        runtimeOnly(project(it.path))
+    compile("org.ajoberstar.grgit:grgit-gradle:3.1.1")
+}
+
+gradlePlugin {
+    plugins {
+        register("batchtest") {
+            id = "jmeterbuild.batchtest"
+            implementationClass = "org.apache.jmeter.buildtools.batchtest.BatchtestPlugin"
+        }
     }
 }

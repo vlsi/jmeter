@@ -16,13 +16,10 @@
  *
  */
 
-import org.gradle.plugins.ide.idea.model.IdeaModel
-import org.jetbrains.gradle.ext.ProjectSettings
-import org.jetbrains.gradle.ext.TaskTriggersConfig
 import versions.*
 
 plugins {
-    id("org.jetbrains.gradle.plugin.idea-ext")
+    jmeterbuild.ide
 }
 
 dependencies {
@@ -92,22 +89,6 @@ val versionClass by tasks.registering(Sync::class) {
     into(generatedVersionDir)
 }
 
-sourceSets.main.get().java.srcDir(versionClass)
-
-configure<IdeaModel> {
-    module.generatedSourceDirs.add(generatedVersionDir)
-}
-
-rootProject.configure<IdeaModel> {
-    project {
-        (this as ExtensionAware).configure<ProjectSettings> {
-            doNotDetectFrameworks("android", "web")
-            (this as ExtensionAware).configure<TaskTriggersConfig> {
-                // Build the `customInstallation` after the initial import to:
-                // 1. ensure generated code is available to the IDE
-                // 2. allow integration tests to be executed
-                afterSync(versionClass.get())
-            }
-        }
-    }
+ide {
+    generatedJavaSources(versionClass.get(), generatedVersionDir)
 }
