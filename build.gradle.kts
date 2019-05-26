@@ -19,13 +19,18 @@
 import com.github.spotbugs.SpotBugsPlugin
 import com.github.spotbugs.SpotBugsTask
 import org.apache.jmeter.buildtools.CrLfSpec
-import org.apache.jmeter.buildtools.filter
 import org.apache.jmeter.buildtools.LineEndings
+import org.apache.jmeter.buildtools.filter
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.plugins.ide.idea.model.IdeaModel
+import org.jetbrains.gradle.ext.CopyrightConfiguration
+import org.jetbrains.gradle.ext.ProjectSettings
 import versions.BuildToolVersions
 
 plugins {
     java
+    id("org.jetbrains.gradle.plugin.idea-ext") version "0.5"
+    eclipse
     jacoco
     checkstyle
     id("org.nosphere.apache.rat") version "0.4.0"
@@ -80,6 +85,46 @@ val jacocoReport by tasks.registering(JacocoReport::class) {
     description = "Generates an aggregate report from all subprojects"
 }
 
+// IDE integration
+
+val asl2Header = """
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    (the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+""".trimIndent()
+
+rootProject.configure<IdeaModel> {
+    project {
+        (this as ExtensionAware).configure<ProjectSettings> {
+            doNotDetectFrameworks("android", "web")
+            (this as ExtensionAware).configure<CopyrightConfiguration> {
+                useDefault = "ASL2"
+                profiles {
+                    create("ASL2") {
+                        keyword = "Copyright"
+                        notice = asl2Header
+                    }
+                }
+            }
+        }
+    }
+}
+
+eclipse {
+
+}
+
 allprojects {
     if (project.path != ":src") {
         tasks.register<DependencyInsightReportTask>("allDepInsight") {
@@ -114,6 +159,8 @@ allprojects {
     // so we should produce jars without versions names for now
     // version = rootProject.version
     plugins.withType<JavaPlugin> {
+        apply<IdeaPlugin>()
+        apply<EclipsePlugin>()
         apply<CheckstylePlugin>()
         apply<SigningPlugin>()
         apply<SpotBugsPlugin>()
