@@ -48,6 +48,10 @@ subprojects {
         }
     }
 
+    // Note: jars below do not normalize line endings.
+    // Those jars, however are not included to source/binary distributions
+    // so the normailzation is not that important
+
     val testJar by tasks.registering(Jar::class) {
         val sourceSets: SourceSetContainer by project
         archiveClassifier.set("test")

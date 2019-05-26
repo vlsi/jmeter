@@ -18,7 +18,7 @@
 
 val lastEditYear: String by rootProject.extra
 
-tasks.named<Copy>(JavaPlugin.PROCESS_RESOURCES_TASK_NAME) {
+tasks.withType<ProcessResources>().configureEach {
     val version = rootProject.version.toString()
     inputs.property("@VERSION@", version)
     inputs.property("@YEAR@", lastEditYear)

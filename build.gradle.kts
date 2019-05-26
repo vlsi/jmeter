@@ -18,6 +18,9 @@
 
 import com.github.spotbugs.SpotBugsPlugin
 import com.github.spotbugs.SpotBugsTask
+import org.apache.jmeter.buildtools.CrLfSpec
+import org.apache.jmeter.buildtools.filter
+import org.apache.jmeter.buildtools.LineEndings
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import versions.BuildToolVersions
 
@@ -210,24 +213,41 @@ allprojects {
                 options.encoding = "UTF-8"
             }
             withType<ProcessResources>().configureEach {
-                // apply native2ascii conversion since Java 8 expects properties to have ascii symbols only
                 from(source) {
                     include("**/*.properties")
                     filteringCharset = "UTF-8"
+                    // apply native2ascii conversion since Java 8 expects properties to have ascii symbols only
                     filter(org.apache.tools.ant.filters.EscapeUnicode::class)
+                    filter(LineEndings.LF)
+                }
+                // Text-like resources are normalized to LF (just for consistency purposes)
+                // This makes to produce exactly the same jar files no matter which OS is used for the build
+                from(source) {
+                    include("**/*.dtd")
+                    include("**/*.svg")
+                    include("**/*.txt")
+                    // Test resources have files in CP1252, and we don't want to parse them as UTF-8
+                    exclude("**/*cp1252*")
+                    filteringCharset = "UTF-8"
+                    filter(LineEndings.LF)
                 }
             }
             withType<Jar>().configureEach {
-                into("META-INF") {
-                    from("$rootDir/LICENSE")
-                    from("$rootDir/NOTICE")
+                CrLfSpec(LineEndings.LF).run {
+                    into("META-INF") {
+                        filteringCharset = "UTF-8"
+                        textFrom(rootDir) {
+                            text("LICENSE")
+                            text("NOTICE")
+                        }
+                    }
                 }
                 manifest {
                     attributes["Specification-Title"] = "Apache JMeter"
                     attributes["Specification-Vendor"] = "Apache Software Foundation"
                     attributes["Implementation-Vendor"] = "Apache Software Foundation"
                     attributes["Implementation-Vendor-Id"] = "org.apache"
-                    attributes["Implementation-Version"] = project.version
+                    attributes["Implementation-Version"] = rootProject.version
                 }
             }
             withType<Test>().configureEach {
