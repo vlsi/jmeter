@@ -41,10 +41,11 @@ matrix:
         - LC_ALL=fr_FR.UTF-8
       script:
         - ./gradlew -Duser.language=fr -Duser.country=FR $SKIP_DIST_TASKS -PskipCheckstyle -PskipSpotless build javadocAggregate createDist
-    - name: Tests with OpenJDK 12
+    - name: Tests with Gradle 6.0 and Java 13
       # Might switch to openjdk-ea when https://github.com/gradle/gradle/issues/10248 is fixed
-      jdk: openjdk12
+      jdk: openjdk13
       script:
-        - ./gradlew $SKIP_DIST_TASKS -PskipCheckstyle -PskipSpotless build createDist
+        - gradle wrapper --gradle-version=6.0-20190929230024+0000 -PchecksumFailOn=never
+        - ./gradlew $GRADLE_ARGS build createDist javadocAggregate jacocoReport
   allow_failures:
-    - jdk: openjdk12
+    - jdk: openjdk13
