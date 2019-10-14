@@ -279,7 +279,9 @@ public class TestSampleResult implements JMeterSerialTest {
         long maxDiff = nanoTime ? 10 : 16; // TimeMillis has granularity of 10-20
         if (diff < 0 || diff > maxDiff) {
             fail("ParentElapsed: " + parentElapsedTotal + " - " + " sum(samples): " + sumSamplesTimes
-                    + " => " + diff + " not in [0," + maxDiff + "]; nanotime=" + nanoTime);
+                    + " => " + diff + " not in [0," + maxDiff + "]; nanotime=" + nanoTime
+                    + ", parentElapsed: " + parentElapsed + ", child1Elapsed: " + child1Elapsed
+                    + ", actualPause: " + actualPause + ", child2Elapsed: " + child2Elapsed);
         }
 
         // The overall time to run the test must be no less than,

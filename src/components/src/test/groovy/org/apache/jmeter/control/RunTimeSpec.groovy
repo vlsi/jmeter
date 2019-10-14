@@ -33,6 +33,7 @@ class RunTimeSpec extends Specification {
 
             def runTimeMillis = 1000
             def expectedLoops = 5
+            def clockTolerance = 30
             def tolerance = Math.ceil(0.1f * expectedLoops)
             int samplerWaitTime = runTimeMillis / expectedLoops
             TestSampler samp1 = new TestSampler("Sample 1", samplerWaitTime)
@@ -58,18 +59,18 @@ class RunTimeSpec extends Specification {
         when:
             def sampler
             int loopCount = 0
-            long now = System.currentTimeMillis()
+            long now = System.nanoTime()
             while ((sampler = sut.next()) != null) {
                 loopCount++
                 sampler.sample(null)
             }
-            long elapsed = System.currentTimeMillis() - now
+            long elapsed = (long) ((System.nanoTime() - now) / 1_000_000)
         then:
             sut.getIterCount() == 1
-            loopCount >= expectedLoops
+            loopCount >= expectedLoops - tolerance
             loopCount <= expectedLoops + tolerance
-            elapsed >= runTimeMillis
-            elapsed <= runTimeMillis + (tolerance * samplerWaitTime)
+            elapsed >= runTimeMillis - clockTolerance
+            elapsed <= runTimeMillis + (tolerance * samplerWaitTime) + clockTolerance
             samp1.getSamples() == sampler1Loops
             samp2.getSamples() >= expectedLoops - sampler1Loops
             samp2.getSamples() <= expectedLoops - sampler1Loops + tolerance
