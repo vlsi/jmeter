@@ -20,41 +20,6 @@ env:
 
 matrix:
   include:
-    - name: Tests with OpenJDK 8 + code coverage
-      jdk: openjdk8
-      script:
-        - xvfb-run ./gradlew build jacocoReport $SKIP_TAR
-      after_success:
-        - bash <(curl -s https://codecov.io/bash)
-    - name: Tests with OpenJDK 11
-      jdk: openjdk11
-      addons:
-        apt:
-          packages:
-            - language-pack-fr
-      env:
-        - TZ=Pacific/Chatham # flips between +12:45 and +13:45
-        - LANG=fr_FR.UTF-8
-        - LC_ALL=fr_FR.UTF-8
-      script:
-        # This job verifies headless mode to ensure Apache JMeter is workable in headless as well
-        # Spotless and Checksyle are skipped here to save some time. They are verified anyway in Java 8 and Java 13 builds, so skipping them for Java 11 does not harm
-        - ./gradlew build -Djava.awt.headless=true -Duser.language=fr -Duser.country=FR -PskipCheckstyle -PskipSpotless $SKIP_TAR
-    # Java 12 is not here because it has been superceeded by Java 13
-    # Tests with Java 12 do not surface much new, so Java 11 (LTS) and Java 13 (non-LTS) are enough for "post Java 9" testing
-    - name: Tests with OpenJDK 13
-      jdk: openjdk13
-      addons:
-        apt:
-          packages:
-            - language-pack-fr
-      env:
-        - TZ=America/New_York # flips between −05:00 and −04:00
-        - LANG=fr_FR.UTF-8
-        - LC_ALL=fr_FR.UTF-8
-      script:
-        # Spotless, Checksyle, and JaCoCo are verified here to ensure they all work with the latest supported Java
-        - xvfb-run ./gradlew build jacocoReport -Duser.language=fr -Duser.country=FR $SKIP_TAR
     - name: jmeter-maven-plugin tests
       jdk: openjdk8
       script:
