@@ -70,10 +70,10 @@ jobs:
 #          testDisableCaching=${{ matrix.testDisableCaching }}
     - name: Test
       run:
-        (while true ; do sleep 30; jps -v; top -l 1 -o mem -n 20; done; ) &
-        ./gradlew -i --scan --no-parallel build -x distTar -x distTarSource -x distTarSha512 -x distTarSourceSha512 ${{ matrix.extraGradleArgs }}
+        (while true ; do sleep 30; jps -v; top -l 1 -o mem -n 20;top -l 1 -o instrs -n 10; done; ) &
+        ./gradlew --scan --no-parallel build -x distTar -x distTarSource -x distTarSha512 -x distTarSourceSha512 ${{ matrix.extraGradleArgs }}
       env:
-        _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }} -Xlog:gc*=info:stdout
+        _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }}
 
   errorprone:
     name: 'Error Prone (JDK 11)'
