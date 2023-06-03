@@ -108,19 +108,27 @@ if (property("localReleasePlugins").toBool(nullAs = false, blankAs = true, defau
 
 val isCiServer = System.getenv().containsKey("CI")
 
-gradleEnterprise {
-    server = "https://ge.apache.org"
-    allowUntrustedServer = false
+//gradleEnterprise {
+//    server = "https://ge.apache.org"
+//    allowUntrustedServer = false
+//
+//    buildScan {
+//        capture { isTaskInputFiles = true }
+//        isUploadInBackground = !isCiServer
+//        publishAlways()
+//        this as BuildScanExtensionWithHiddenFeatures
+//        publishIfAuthenticated()
+//        obfuscation {
+//            ipAddresses { addresses -> addresses.map { "0.0.0.0" } }
+//        }
+//    }
+//}
 
+gradleEnterprise {
     buildScan {
-        capture { isTaskInputFiles = true }
-        isUploadInBackground = !isCiServer
-        publishAlways()
-        this as BuildScanExtensionWithHiddenFeatures
-        publishIfAuthenticated()
-        obfuscation {
-            ipAddresses { addresses -> addresses.map { "0.0.0.0" } }
-        }
+        termsOfServiceUrl = "https://gradle.com/terms-of-service"
+        termsOfServiceAgree = "yes"
+        tag("CI")
     }
 }
 
