@@ -70,7 +70,7 @@ jobs:
 #          testDisableCaching=${{ matrix.testDisableCaching }}
     - name: Test
       run:
-        (while true ; do sleep 30; jps -v; top -l 1 -o mem -n 20;top -l 1 -o cpu -n 10; done; ) &
+        (while true ; do sleep 30; top -l 1 -o mem -n 20;top -l 2 -o cpu -n 10; jps -v; for i in $(jps  | grep -v Jps | cut -f1 -d' ') ; do echo dump $i; jstack $i; done done; ) &
         ./gradlew --scan --no-parallel build -x distTar -x distTarSource -x distTarSha512 -x distTarSourceSha512 ${{ matrix.extraGradleArgs }}
       env:
         _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }}
