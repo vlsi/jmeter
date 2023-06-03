@@ -70,7 +70,7 @@ jobs:
 #          testDisableCaching=${{ matrix.testDisableCaching }}
     - name: Test
       run:
-        (watch -n 10 jps -v) &
+        (while true ; do sleep 30; jps -v; top -l 1 -o mem -n 20; done; ) &
         ./gradlew -i --scan --no-parallel build -x distTar -x distTarSource -x distTarSha512 -x distTarSourceSha512 ${{ matrix.extraGradleArgs }}
       env:
         _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }} -Xlog:gc*=info:stdout

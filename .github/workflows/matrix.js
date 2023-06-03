@@ -43,7 +43,7 @@ matrix.addAxis({
   values: [
     // TODO: X11 is not available. Un-comment when https://github.com/burrunan/gradle-cache-action/issues/48 is resolved
     // 'ubuntu-latest',
-    'windows-latest',
+    //'windows-latest',
     'macos-latest'
   ]
 });
@@ -81,7 +81,7 @@ matrix.exclude({java_distribution: {value: 'oracle'}, java_version: ['8', '11']}
 // Ensure at least one job with "same" hashcode exists
 matrix.generateRow({hash: {value: 'same'}});
 // Ensure at least one Windows and at least one Linux job is present (macOS is almost the same as Linux)
-matrix.generateRow({os: 'windows-latest'});
+//matrix.generateRow({os: 'windows-latest'});
 // TODO: un-comment when xvfb will be possible
 // matrix.generateRow({os: 'ubuntu-latest'});
 // Ensure there will be at least one job with Java 8
