@@ -47,6 +47,7 @@ tasks.configureEach<Test> {
     }.forEach {
         systemProperty(it.key.toString().substring("jmeter.properties.".length), it.value)
     }
+    jvmArgs("-Xmx512m")
     props.string("testExtraJvmArgs").trim().takeIf { it.isNotBlank() }?.let {
         jvmArgs(it.split(" ::: "))
     }

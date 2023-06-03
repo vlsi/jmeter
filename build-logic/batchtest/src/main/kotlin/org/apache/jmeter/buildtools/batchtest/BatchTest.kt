@@ -120,7 +120,7 @@ open class BatchTest @Inject constructor(objects: ObjectFactory) : JavaExec() {
         // This does not depend on the task configuration, so the properties are initialized early
         // It enables to override the properties later (e.g. in the build script)
         maxHeapSize = "128m"
-        jvmArgs("-Xss256k", "-XX:MaxMetaspaceSize=128m")
+        jvmArgs("-Xss256k", "-XX:MaxMetaspaceSize=256m")
         systemProperty("java.rmi.server.hostname", InetAddress.getLocalHost().canonicalHostName)
         systemProperty("java.awt.headless", "true")
     }

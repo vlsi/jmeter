@@ -113,7 +113,7 @@ open class BatchTestServer @Inject constructor(objects: ObjectFactory) : BatchTe
                 standardOutput = System.out.writer().withPrefix("[server] ")
                 errorOutput = System.err.writer().withPrefix("[server] ")
                 maxHeapSize = client.maxHeapSize
-                jvmArgs("-Xss256k", "-XX:MaxMetaspaceSize=128m")
+                jvmArgs("-Xss256k", "-XX:MaxMetaspaceSize=256m")
                 if (jvmarg != null) {
                     jvmArgs(jvmarg)
                 }
