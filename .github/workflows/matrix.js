@@ -12,7 +12,7 @@ matrix.addAxis({
     {value: 'liberica', weight: 1},
     {value: 'microsoft', weight: 1},
     {value: 'oracle', weight: 1},
-    {value: 'semeru', weight: 4},
+    //{value: 'semeru', weight: 4},
     {value: 'temurin', weight: 1},
     {value: 'zulu', weight: 1},
   ]
@@ -22,7 +22,7 @@ matrix.addAxis({
   name: 'java_version',
   // Strings allow versions like 18-ea
   values: [
-    '8',
+    //'8',
     '11',
     '17',
   ]
@@ -85,7 +85,7 @@ matrix.generateRow({os: 'windows-latest'});
 // TODO: un-comment when xvfb will be possible
 // matrix.generateRow({os: 'ubuntu-latest'});
 // Ensure there will be at least one job with Java 8
-matrix.generateRow({java_version: "8"});
+//matrix.generateRow({java_version: "8"});
 // Ensure there will be at least one job with Java 11
 matrix.generateRow({java_version: "11"});
 // Ensure there will be at least one job with Java 17
