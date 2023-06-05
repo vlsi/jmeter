@@ -69,7 +69,7 @@ jobs:
           testExtraJvmArgs=${{ matrix.testExtraJvmArgs }}
           testDisableCaching=${{ matrix.testDisableCaching }}
       env:
-        _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }}
+        _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }} -XX:GCTimeLimit=70 -XX:GCHeapFreeLimit=60
         GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
   errorprone:
