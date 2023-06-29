@@ -115,6 +115,7 @@ public class HtmlReportGenerator {
         String jmeterBinDir = JMeterUtils.getJMeterBinDir();
         List<String> arguments = new ArrayList<>();
         String java = System.getProperty("java.home") + "/bin/java";
+        arguments.add("-Xmx128m");
         arguments.add(java);
         arguments.add("-jar");
         arguments.add(jmeterBinDir + "/ApacheJMeter.jar");
