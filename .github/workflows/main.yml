@@ -85,7 +85,23 @@ jobs:
       env:
         _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }} -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics
         GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
-
+    - uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: Upload crash dumps
+        path: |
+          bin/core.*.dmp
+          bin/heapdump.*.dmp
+          bin/javacore.*.txt
+          bin/Snap.*.trc
+          bin/*.hprof
+          bin/js_err*.log
+          core.*.dmp
+          heapdump.*.dmp
+          javacore.*.txt
+          Snap.*.trc
+          *.hprof
+          js_err*.log
   errorprone:
     name: 'Error Prone (JDK 11)'
     runs-on: ubuntu-latest
