@@ -83,7 +83,7 @@ jobs:
           # We provision JDKs with GitHub Actions for caching purposes, so Gradle should rather fail in case JDK is not found
           org.gradle.java.installations.auto-download=false
       env:
-        _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }}
+        _JAVA_OPTIONS: ${{ matrix.extraJvmArgs }} -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics
         GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
   errorprone:
