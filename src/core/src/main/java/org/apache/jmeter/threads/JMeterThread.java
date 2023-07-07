@@ -33,6 +33,7 @@ import org.apache.jmeter.engine.StandardJMeterEngine;
 import org.apache.jmeter.engine.event.LoopIterationEvent;
 import org.apache.jmeter.engine.event.LoopIterationListener;
 import org.apache.jmeter.gui.GuiPackage;
+import org.apache.jmeter.gui.MainFrame;
 import org.apache.jmeter.processor.PostProcessor;
 import org.apache.jmeter.processor.PreProcessor;
 import org.apache.jmeter.samplers.Interruptible;
@@ -777,7 +778,10 @@ public class JMeterThread implements Runnable, Interruptible {
         threadGroup.decrNumberOfThreads();
         GuiPackage gp = GuiPackage.getInstance();
         if (gp != null){// check there is a GUI
-            gp.getMainFrame().updateCounts();
+            MainFrame mainFrame = gp.getMainFrame();
+            if (mainFrame != null) {
+                mainFrame.updateCounts();
+            }
         }
         if (iterationListener != null) { // probably not possible, but check anyway
             threadGroupLoopController.removeIterationListener(iterationListener);
