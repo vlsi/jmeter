@@ -5,6 +5,7 @@
   ],
   "labels": ["dependencies"],
   "schedule": ["every 3 weeks on Monday"],
+  "forkProcessing": "enabled",
   "packageRules": [
     {
       "matchPackagePrefixes": ["com.fasterxml.jackson.core"],
