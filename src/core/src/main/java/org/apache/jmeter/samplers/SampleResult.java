@@ -25,9 +25,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import org.apache.jmeter.assertions.AssertionResult;
 import org.apache.jmeter.gui.Searchable;
@@ -94,6 +97,13 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
     public static final String BINARY = "bin"; // $NON-NLS-1$
 
     private static final boolean DISABLE_SUBRESULTS_RENAMING = JMeterUtils.getPropDefault("subresults.disable_renaming", false);
+
+    /**
+     * Registry of response decoders by content-encoding type.
+     * Allows HTTP module to register decompression handlers without creating circular dependencies.
+     * @since 6.0
+     */
+    private static final Map<String, Function<byte[], byte[]>> RESPONSE_DECODERS = new ConcurrentHashMap<>();
 
     // List of types that are known to be binary
     private static final String[] BINARY_TYPES = {
@@ -276,6 +286,20 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
      */
     private transient volatile String responseDataAsString;
 
+    /**
+     * The Content-Encoding header value from the response (e.g., "gzip", "deflate", "br").
+     * If null or empty, the response is not compressed.
+     * @since 6.0
+     */
+    private String responseContentEncoding;
+
+    /**
+     * Cache for decompressed response data to avoid repeated decompression.
+     * Only used when responseContentEncoding is not null/empty.
+     * @since 6.0
+     */
+    private transient volatile byte[] decompressedResponseData;
+
     public SampleResult() {
         this(USE_NANO_TIME, NANOTHREAD_SLEEP);
     }
@@ -322,6 +346,8 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
         responseCode = res.responseCode;//OK
         responseData = res.responseData;//OK
         responseDataAsString = null;
+        responseContentEncoding = res.responseContentEncoding;//OK
+        decompressedResponseData = null;
         responseHeaders = res.responseHeaders;//OK
         responseMessage = res.responseMessage;//OK
 
@@ -736,6 +762,7 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
      */
     public void setResponseData(byte[] response) {
         responseDataAsString = null;
+        decompressedResponseData = null;
         responseData = response == null ? EMPTY_BA : response;
     }
 
@@ -783,15 +810,90 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
     /**
      * Gets the responseData attribute of the SampleResult object.
      * <p>
+     * If the response data is compressed (indicated by {@link #getResponseContentEncoding()}),
+     * this method will lazily decompress it using the registered decoder for that encoding.
+     * The decompressed result is cached to avoid repeated decompression.
+     * </p>
+     * <p>
      * Note that some samplers may not store all the data, in which case
      * getResponseData().length will be incorrect.
      *
      * Instead, always use {@link #getBytes()} to obtain the sample result byte count.
      * </p>
-     * @return the responseData value (cannot be null)
+     * @return the responseData value (cannot be null), decompressed if necessary
      */
     public byte[] getResponseData() {
+        // If no content encoding, return raw data
+        if (responseContentEncoding == null || responseContentEncoding.isEmpty()) {
+            return responseData;
+        }
+
+        // Check if we've already decompressed
+        if (decompressedResponseData != null) {
+            return decompressedResponseData;
+        }
+
+        // Attempt to decompress
+        String encoding = responseContentEncoding.toLowerCase(Locale.ENGLISH).trim();
+        Function<byte[], byte[]> decoder = RESPONSE_DECODERS.get(encoding);
+
+        if (decoder != null) {
+            try {
+                decompressedResponseData = decoder.apply(responseData);
+                return decompressedResponseData;
+            } catch (Exception e) {
+                log.warn("Failed to decompress response data with encoding '{}': {}",
+                        responseContentEncoding, e.getMessage(), e);
+                // Fall through to return raw data
+            }
+        } else {
+            log.warn("No decoder registered for content encoding: {}", responseContentEncoding);
+        }
+
+        // If decompression failed or no decoder available, return raw data
         return responseData;
+    }
+
+    /**
+     * Register a decoder function for a specific content-encoding type.
+     * This allows the HTTP module to provide decompression capabilities without
+     * creating circular dependencies with the core module.
+     *
+     * @param contentEncoding the content-encoding name (e.g., "gzip", "deflate", "br")
+     * @param decoder the function that decompresses byte[] to byte[]
+     * @since 6.0
+     */
+    public static void registerResponseDecoder(String contentEncoding, Function<byte[], byte[]> decoder) {
+        if (contentEncoding != null && decoder != null) {
+            String key = contentEncoding.toLowerCase(Locale.ENGLISH).trim();
+            RESPONSE_DECODERS.put(key, decoder);
+            log.debug("Registered response decoder for content-encoding: {}", contentEncoding);
+        }
+    }
+
+    /**
+     * Get the response content encoding (e.g., "gzip", "deflate", "br").
+     * When set, indicates that the response data stored via {@link #setResponseData(byte[])}
+     * is in compressed format and will be lazily decompressed when {@link #getResponseData()} is called.
+     *
+     * @return the content encoding, or null if the response is not compressed
+     * @since 6.0
+     */
+    public String getResponseContentEncoding() {
+        return responseContentEncoding;
+    }
+
+    /**
+     * Set the response content encoding (e.g., "gzip", "deflate", "br").
+     * This should be set when storing compressed response data to enable lazy decompression.
+     * Clear the decompressed data cache when changing the encoding.
+     *
+     * @param contentEncoding the content encoding value from the Content-Encoding header
+     * @since 6.0
+     */
+    public void setResponseContentEncoding(String contentEncoding) {
+        this.responseContentEncoding = contentEncoding;
+        this.decompressedResponseData = null;
     }
 
     /**
@@ -1598,6 +1700,7 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
      */
     public void cleanAfterSample() {
         this.responseDataAsString = null;
+        this.decompressedResponseData = null;
     }
 
     @Override

@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.io.input.CountingInputStream;
 import org.apache.jmeter.protocol.http.control.AuthManager;
@@ -239,16 +238,17 @@ public class HTTPJavaImpl extends HTTPAbstractImpl {
             return NULL_BA;
         }
 
-        // works OK even if ContentEncoding is null
-        boolean gzipped = HTTPConstants.ENCODING_GZIP.equals(conn.getContentEncoding());
+        // Store content encoding for lazy decompression
+        String contentEncoding = conn.getContentEncoding();
+        if (contentEncoding != null && !contentEncoding.isEmpty()) {
+            res.setResponseContentEncoding(contentEncoding);
+        }
+
         CountingInputStream instream = null;
         try {
+            // Read raw (possibly compressed) data for lazy decompression
             instream = new CountingInputStream(conn.getInputStream());
-            if (gzipped) {
-                in = new GZIPInputStream(instream);
-            } else {
-                in = instream;
-            }
+            in = instream;
         } catch (IOException e) {
             if (! (e.getCause() instanceof FileNotFoundException))
             {
@@ -276,11 +276,8 @@ public class HTTPJavaImpl extends HTTPAbstractImpl {
                 log.info("Error Response Code: {}", conn.getResponseCode());
             }
 
-            if (gzipped) {
-                in = new GZIPInputStream(errorStream);
-            } else {
-                in = errorStream;
-            }
+            // Read raw error stream for lazy decompression
+            in = errorStream;
         } catch (Exception e) {
             log.error("readResponse: {}", e.toString());
             Throwable cause = e.getCause();

@@ -673,8 +673,16 @@ public class HTTPHC4Impl extends HTTPHCAbstractImpl {
                 res.setContentType(ct);
                 res.setEncodingAndType(ct);
             }
+
+            // Extract Content-Encoding for lazy decompression
+            Header contentEncoding = httpResponse.getLastHeader(HTTPConstants.HEADER_CONTENT_ENCODING);
+            if (contentEncoding != null) {
+                res.setResponseContentEncoding(contentEncoding.getValue());
+            }
+
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
+                // Read raw (possibly compressed) data for lazy decompression
                 res.setResponseData(readResponse(res, entity.getContent(), entity.getContentLength()));
             }
 
@@ -1157,7 +1165,8 @@ public class HTTPHC4Impl extends HTTPHCAbstractImpl {
                 }
                 builder.setDefaultCredentialsProvider(credsProvider);
             }
-            builder.disableContentCompression().addInterceptorLast(RESPONSE_CONTENT_ENCODING);
+            // Disable content compression to store raw compressed data for lazy decompression
+            builder.disableContentCompression();
             if(BASIC_AUTH_PREEMPTIVE) {
                 builder.addInterceptorFirst(PREEMPTIVE_AUTH_INTERCEPTOR);
             } else {
