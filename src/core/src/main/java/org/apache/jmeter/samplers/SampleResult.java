@@ -1600,6 +1600,57 @@ public class SampleResult implements Serializable, Cloneable, Searchable {
         this.responseDataAsString = null;
     }
 
+    /**
+     * Clears heavy data fields from this SampleResult to reduce memory consumption.
+     * This is useful for transaction controllers where sub-results need to be kept
+     * for metrics aggregation but don't need the full response data.
+     * <p>
+     * This method clears:
+     * <ul>
+     *   <li>Response data (body)</li>
+     *   <li>Response headers</li>
+     *   <li>Request headers</li>
+     *   <li>Sampler data (request details)</li>
+     *   <li>Assertion results</li>
+     * </ul>
+     * <p>
+     * Preserved fields include:
+     * <ul>
+     *   <li>Timing metrics (elapsed time, latency, connect time)</li>
+     *   <li>Success/failure status</li>
+     *   <li>Response code and message</li>
+     *   <li>Byte counts (for bandwidth calculation)</li>
+     *   <li>Thread information</li>
+     *   <li>Sample label</li>
+     * </ul>
+     * <p>
+     * Note: This operation is irreversible. Once called, the detailed data cannot be recovered.
+     *
+     * @since 5.7
+     */
+    public void clearHeavyDataForTransaction() {
+        // Clear large data fields
+        this.responseData = EMPTY_BA;
+        this.responseDataAsString = null;
+        this.responseHeaders = "";
+        this.requestHeaders = "";
+        this.samplerData = null;
+
+        // Clear assertion results but keep the success/failure state
+        if (this.assertionResults != null) {
+            this.assertionResults.clear();
+            this.assertionResults = null;
+        }
+
+        // Note: We preserve:
+        // - bytes (for bandwidth calculation)
+        // - elapsedTime, latency, connectTime (for timing aggregation)
+        // - success (for failure counting)
+        // - responseCode, responseMessage (for transaction status)
+        // - label, threadName (for identification)
+        // - subResults are NOT cleared as they may contain nested transactions
+    }
+
     @Override
     public Object clone() {
         try {

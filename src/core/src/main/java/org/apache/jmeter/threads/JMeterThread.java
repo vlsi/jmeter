@@ -88,6 +88,13 @@ public class JMeterThread implements Runnable, Interruptible {
 
     private static final boolean APPLY_TIMER_FACTOR = Float.compare(TIMER_FACTOR,ONE_AS_FLOAT) != 0;
 
+    /**
+     * Whether to clear heavy data from sub-results in transaction controllers.
+     * This reduces memory consumption by clearing response data, headers, etc. after listeners have processed them.
+     */
+    private static final boolean CLEAR_TRANSACTION_SUBRESULT_DATA =
+            JMeterUtils.getPropDefault("transaction_controller.clear_subresult_data", true); // $NON-NLS-1$
+
     private final Controller threadGroupLoopController;
 
     private final HashTree testTree;
@@ -488,6 +495,10 @@ public class JMeterThread implements Runnable, Interruptible {
                         threadContext.setCurrentSampler(prev);
                         current = null;
                         if (res != null) {
+                            // Clear heavy data to reduce memory consumption in nested transactions
+                            if (CLEAR_TRANSACTION_SUBRESULT_DATA) {
+                                res.clearHeavyDataForTransaction();
+                            }
                             transactionSampler.addSubSamplerResult(res);
                         }
                     }
@@ -591,6 +602,11 @@ public class JMeterThread implements Runnable, Interruptible {
                 compiler.done(pack);
                 // Add the result as subsample of transaction if we are in a transaction
                 if (transactionSampler != null && !result.isIgnore()) {
+                    // Clear heavy data after listeners have been notified to reduce memory consumption
+                    // This is safe because listeners were already notified at line 589
+                    if (CLEAR_TRANSACTION_SUBRESULT_DATA) {
+                        result.clearHeavyDataForTransaction();
+                    }
                     transactionSampler.addSubSamplerResult(result);
                 }
             } else {
