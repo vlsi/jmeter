@@ -16,39 +16,40 @@
  */
 
 plugins {
-    id("org.openrewrite.rewrite")
+    id("build-logic.openrewrite-base")
 }
 
 dependencies {
-    // rewrite-kotlin, rewrite-java, rewrite-groovy and the other language parsers
-    // ship with the Gradle plugin, so only the recipe modules are declared here.
-    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
-    rewrite("org.openrewrite.recipe:rewrite-static-analysis")
-    rewrite("org.openrewrite.recipe:rewrite-testing-frameworks")
+    // rewrite-core, rewrite-java, rewrite-kotlin and the other parsers arrive transitively
+    // with the recipe modules below; the isolated worker resolves everything from here.
+    "openrewrite"(platform("org.openrewrite.recipe:rewrite-recipe-bom:3.34.0"))
+    "openrewrite"("org.openrewrite.recipe:rewrite-static-analysis")
+    "openrewrite"("org.openrewrite.recipe:rewrite-testing-frameworks")
+    // JavaParser.fromJavaVersion() picks the parser backend matching the worker JVM, so the
+    // version-specific parsers must be on the recipe classpath.
+    "openrewrite"("org.openrewrite:rewrite-java-17")
+    "openrewrite"("org.openrewrite:rewrite-java-21")
+    "openrewrite"("org.openrewrite:rewrite-java-25")
 }
 
-rewrite {
-    configFile = rootProject.file("config/openrewrite/rewrite.yml")
-    // Report violations instead of failing the dry run so the aggregate
-    // styleCheck task can collect the reports from every module.
-    failOnDryRunResults = false
+openrewrite {
+    configFile.set(rootProject.file("config/openrewrite/rewrite.yml"))
+    // Report violations instead of failing the dry run so the aggregate styleCheck task can
+    // collect the reports from every module.
+    failOnDryRunResults.set(false)
 
-    activeStyle("org.apache.jmeter.style.Style")
+    activeStyles.add("org.apache.jmeter.style.Style")
 
-    // See config/openrewrite/rewrite.yml
-    // These static-analysis recipes run cleanly on both Java and Kotlin sources.
-    activeRecipe("org.apache.jmeter.staticanalysis.CodeCleanup")
-    activeRecipe("org.apache.jmeter.staticanalysis.CommonStaticAnalysis")
+    // See config/openrewrite/rewrite.yml. These static-analysis recipes run on Java and Kotlin.
+    activeRecipes.add("org.apache.jmeter.staticanalysis.CodeCleanup")
+    activeRecipes.add("org.apache.jmeter.staticanalysis.CommonStaticAnalysis")
 
-    // The JUnit 5 recipes from rewrite-testing-frameworks are Java-only: their
-    // JavaTemplate-based rewrites throw on Kotlin test sources, e.g.
-    // AssertThrowsOnLastStatement fails on jorphan's RandomStringGeneratorTest.kt
-    // with "Expected a template that would generate exactly one statement ...".
-    // Enable them only for modules whose tests are pure Java.
+    // The JUnit 5 recipes are Java-only: their JavaTemplate rewrites throw on Kotlin test
+    // sources, so enable them only for modules whose tests are pure Java.
     if (!file("src/test/kotlin").isDirectory) {
         plugins.withId("build-logic.test-junit5") {
-            activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
-            activeRecipe("org.openrewrite.java.testing.junit5.CleanupAssertions")
+            activeRecipes.add("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
+            activeRecipes.add("org.openrewrite.java.testing.junit5.CleanupAssertions")
         }
     }
 }
