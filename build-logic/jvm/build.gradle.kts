@@ -28,4 +28,5 @@ dependencies {
     api("org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:2.2.21")
     api("org.jetbrains.kotlin.kapt:org.jetbrains.kotlin.kapt.gradle.plugin:2.2.21")
     api("org.jetbrains.dokka-javadoc:org.jetbrains.dokka-javadoc.gradle.plugin:2.1.0")
+    api("org.openrewrite.rewrite:org.openrewrite.rewrite.gradle.plugin:7.35.0")
 }
