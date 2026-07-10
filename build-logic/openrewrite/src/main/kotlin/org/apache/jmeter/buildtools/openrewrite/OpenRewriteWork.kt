@@ -110,8 +110,15 @@ interface OpenRewriteParameters : WorkParameters {
     /** Unified diff of the proposed changes, written in dry-run mode. */
     val patchFile: RegularFileProperty
 
+    /** When true, run each leaf recipe on its own and report which ones fail or make changes. */
+    val diagnose: Property<Boolean>
+
     val configFile: RegularFileProperty
     val activeRecipes: SetProperty<String>
+
+    /** Fully qualified recipe names to prune from the active recipe tree before running. */
+    val disabledRecipes: SetProperty<String>
+
     val activeStyles: SetProperty<String>
     val sourceSets: SetProperty<SourceSetSnapshot>
     val rewriteClasspath: SetProperty<File>
@@ -125,26 +132,18 @@ abstract class OpenRewriteWork : WorkAction<OpenRewriteParameters> {
     }
 
     override fun execute() {
-        val ctx: ExecutionContext = InMemoryExecutionContext { t -> logger.warn("Error while rewriting", t) }
-        val results = listResults(ctx)
-        if (parameters.applyChanges.get()) {
-            applyResults(results)
-        } else {
-            writePatch(results)
-        }
-    }
-
-    private fun listResults(ctx: ExecutionContext): List<Result> {
         val env = createEnvironment()
-        val recipe = env.activateRecipes(parameters.activeRecipes.get())
-        if (recipe.recipeList.isEmpty()) {
-            logger.warn(
-                "No recipes were activated. Add a recipe with openrewrite.activeRecipes in the build file."
-            )
-            return emptyList()
+        val activated = env.activateRecipes(parameters.activeRecipes.get())
+        val disabled = parameters.disabledRecipes.get()
+        val diagnose = parameters.diagnose.get()
+
+        if (activated.recipeList.isEmpty()) {
+            logger.warn("No recipes were activated. Add a recipe with openrewrite.activeRecipes in the build file.")
+            return
         }
         val styles = env.activateStyles(parameters.activeStyles.get())
 
+        val ctx: ExecutionContext = InMemoryExecutionContext { t -> logger.warn("Error while rewriting", t) }
         val sourceFiles = parse(ctx)
             .map { source ->
                 if (styles.isEmpty()) {
@@ -155,9 +154,87 @@ abstract class OpenRewriteWork : WorkAction<OpenRewriteParameters> {
             }
             .toList()
 
-        val recipeRun = recipe.run(InMemoryLargeSourceSet(sourceFiles), ctx)
-        return recipeRun.changeset.allResults
+        // In diagnose we test everything (disabled recipes are still reported, annotated) so the
+        // report is a complete picture. In normal runs we prune the disabled recipes from the tree.
+        if (diagnose) {
+            diagnose(activated, sourceFiles, disabled)
+            return
+        }
+
+        val recipe = if (disabled.isEmpty()) {
+            activated
+        } else {
+            val present = collectNames(activated).intersect(disabled)
+            logger.lifecycle("OpenRewrite disabled {} recipe(s): {}", present.size, present.sorted())
+            FilteringRecipe(activated, disabled)
+        }
+
+        val results = recipe.run(InMemoryLargeSourceSet(sourceFiles), ctx).changeset.allResults
+        if (parameters.applyChanges.get()) {
+            applyResults(results)
+        } else {
+            writePatch(results)
+        }
     }
+
+    private fun collectNames(recipe: org.openrewrite.Recipe): Set<String> {
+        val names = mutableSetOf<String>()
+        fun visit(r: org.openrewrite.Recipe) {
+            names.add(r.name)
+            r.recipeList.forEach { visit(it) }
+        }
+        visit(recipe)
+        return names
+    }
+
+    /** Runs each leaf recipe individually so a single failure does not hide the others. */
+    private fun diagnose(recipe: org.openrewrite.Recipe, sourceFiles: List<SourceFile>, disabled: Set<String>) {
+        fun leaves(r: org.openrewrite.Recipe): List<org.openrewrite.Recipe> =
+            if (r.recipeList.isEmpty()) listOf(r) else r.recipeList.flatMap { leaves(it) }
+
+        val leaves = leaves(recipe).distinctBy { it.name }
+        val report = StringBuilder()
+        var failed = 0
+        var changed = 0
+        var clean = 0
+        for (leaf in leaves) {
+            val tag = if (leaf.name in disabled) " [disabled]" else ""
+            val errors = mutableListOf<Throwable>()
+            val ctx: ExecutionContext = InMemoryExecutionContext { errors.add(it) }
+            val line = try {
+                val results = leaf.run(InMemoryLargeSourceSet(sourceFiles), ctx).changeset.allResults
+                when {
+                    errors.isNotEmpty() -> {
+                        failed++
+                        "FAILED    ${leaf.name}$tag -> ${errors.first().firstMessageLine()}"
+                    }
+                    results.isNotEmpty() -> {
+                        changed++
+                        "changes:${results.size.toString().padStart(3)} ${leaf.name}$tag"
+                    }
+                    else -> {
+                        clean++
+                        "ok        ${leaf.name}$tag"
+                    }
+                }
+            } catch (t: Throwable) {
+                failed++
+                "FAILED    ${leaf.name}$tag -> ${t.firstMessageLine()}"
+            }
+            report.appendLine(line)
+            logger.lifecycle(line)
+        }
+        val summary = "OpenRewrite diagnose: ${leaves.size} recipes -> " +
+            "$failed failed, $changed would change, $clean no-op"
+        report.appendLine().appendLine(summary)
+        logger.lifecycle(summary)
+        val out = parameters.patchFile.get().asFile
+        out.parentFile.mkdirs()
+        out.writeText(report.toString())
+    }
+
+    private fun Throwable.firstMessageLine(): String =
+        (message ?: this::class.java.simpleName).lineSequence().first().take(200)
 
     private fun applyResults(results: List<Result>) {
         val root = parameters.projectRoot.get().asFile.toPath()
@@ -325,4 +402,29 @@ abstract class OpenRewriteWork : WorkAction<OpenRewriteParameters> {
         }
         return res
     }
+}
+
+/**
+ * Wraps a recipe tree and hides recipes whose name is in [disabled], so a crashing or unwanted
+ * recipe can be switched off by name without editing the third-party composite that declares it.
+ * The compiled composites expose an immutable recipeList, so filtering by wrapping is the reliable
+ * way to remove a recipe from the run.
+ */
+private class FilteringRecipe(
+    private val delegate: org.openrewrite.Recipe,
+    private val disabled: Set<String>,
+) : org.openrewrite.Recipe() {
+    private val filtered: List<org.openrewrite.Recipe> by lazy {
+        delegate.recipeList
+            .filter { it.name !in disabled }
+            .map { FilteringRecipe(it, disabled) }
+    }
+
+    override fun getName(): String = delegate.name
+    override fun getDisplayName(): String = delegate.displayName
+    override fun getDescription(): String =
+        delegate.description?.takeIf { it.isNotBlank() } ?: delegate.displayName
+    override fun getVisitor(): org.openrewrite.TreeVisitor<*, org.openrewrite.ExecutionContext> =
+        delegate.visitor
+    override fun getRecipeList(): List<org.openrewrite.Recipe> = filtered
 }

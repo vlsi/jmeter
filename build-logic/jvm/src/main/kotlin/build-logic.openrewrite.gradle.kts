@@ -44,12 +44,13 @@ openrewrite {
     activeRecipes.add("org.apache.jmeter.staticanalysis.CodeCleanup")
     activeRecipes.add("org.apache.jmeter.staticanalysis.CommonStaticAnalysis")
 
-    // The JUnit 5 recipes are Java-only: their JavaTemplate rewrites throw on Kotlin test
-    // sources, so enable them only for modules whose tests are pure Java.
-    if (!file("src/test/kotlin").isDirectory) {
-        plugins.withId("build-logic.test-junit5") {
-            activeRecipes.add("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
-            activeRecipes.add("org.openrewrite.java.testing.junit5.CleanupAssertions")
-        }
+    plugins.withId("build-logic.test-junit5") {
+        activeRecipes.add("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
+        activeRecipes.add("org.openrewrite.java.testing.junit5.CleanupAssertions")
     }
+
+    // Recipes that crash or corrupt output are disabled by name here instead of dropping the
+    // whole composite. AssertThrowsOnLastStatement throws on Kotlin sources; see the fix in
+    // https://github.com/openrewrite/rewrite-testing-frameworks/pull/1048
+    disabledRecipes.add("org.openrewrite.java.testing.junit5.AssertThrowsOnLastStatement")
 }

@@ -50,6 +50,9 @@ abstract class OpenRewriteBaseTask @Inject constructor(
     abstract val activeRecipes: SetProperty<String>
 
     @get:Input
+    abstract val disabledRecipes: SetProperty<String>
+
+    @get:Input
     abstract val activeStyles: SetProperty<String>
 
     @get:Classpath
@@ -72,7 +75,7 @@ abstract class OpenRewriteBaseTask @Inject constructor(
     val sourceSets: NamedDomainObjectContainer<SourceSetConfig> =
         objects.domainObjectContainer(SourceSetConfig::class.java)
 
-    protected fun runRewrite(applyChanges: Boolean, patch: Provider<RegularFile>?) {
+    protected fun runRewrite(applyChanges: Boolean, patch: Provider<RegularFile>?, diagnose: Boolean = false) {
         val snapshots = sourceSets.map { it.toSnapshot() }
         val rewriteCp = rewriteClasspath.files
         val queue = executor.processIsolation {
@@ -80,10 +83,12 @@ abstract class OpenRewriteBaseTask @Inject constructor(
         }
         queue.submit(OpenRewriteWork::class) {
             this.applyChanges.set(applyChanges)
+            this.diagnose.set(diagnose)
             this.projectRoot.set(projectRootDir)
             patch?.let { this.patchFile.set(it) }
             this.configFile.set(this@OpenRewriteBaseTask.configFile)
             this.activeRecipes.set(this@OpenRewriteBaseTask.activeRecipes)
+            this.disabledRecipes.set(this@OpenRewriteBaseTask.disabledRecipes)
             this.activeStyles.set(this@OpenRewriteBaseTask.activeStyles)
             this.sourceSets.set(snapshots)
             this.rewriteClasspath.set(rewriteCp)
@@ -133,5 +138,20 @@ abstract class OpenRewriteDryRunTask @Inject constructor(
 
     companion object {
         const val PATCH_NAME = "rewrite.patch"
+    }
+}
+
+/** Runs each active leaf recipe on its own and reports which fail, change, or do nothing. */
+abstract class OpenRewriteDiagnoseTask @Inject constructor(
+    objects: ObjectFactory,
+    executor: WorkerExecutor,
+) : OpenRewriteBaseTask(objects, executor) {
+    @get:OutputDirectory
+    abstract val reportDir: DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        runRewrite(applyChanges = false, patch = reportDir.file("diagnose.txt"), diagnose = true)
+        logger.lifecycle("OpenRewrite diagnose report: {}", reportDir.file("diagnose.txt").get().asFile)
     }
 }

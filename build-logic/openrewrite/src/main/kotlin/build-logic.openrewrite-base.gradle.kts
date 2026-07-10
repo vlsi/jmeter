@@ -16,6 +16,7 @@
  */
 
 import org.apache.jmeter.buildtools.openrewrite.OpenRewriteBaseTask
+import org.apache.jmeter.buildtools.openrewrite.OpenRewriteDiagnoseTask
 import org.apache.jmeter.buildtools.openrewrite.OpenRewriteDryRunTask
 import org.apache.jmeter.buildtools.openrewrite.OpenRewriteExtension
 import org.apache.jmeter.buildtools.openrewrite.OpenRewriteRunTask
@@ -54,12 +55,18 @@ val openrewriteExtension = extensions.create<OpenRewriteExtension>(OpenRewriteEx
 fun configureCommon(task: OpenRewriteBaseTask) {
     task.group = "openrewrite"
     task.activeRecipes.set(openrewriteExtension.activeRecipes)
+    task.disabledRecipes.set(openrewriteExtension.disabledRecipes)
     task.activeStyles.set(openrewriteExtension.activeStyles)
     task.rewriteClasspath.from(openrewriteClasspath)
     task.configFile.set(openrewriteExtension.configFile)
     task.projectRootDir.set(layout.projectDirectory)
     task.logCompilationWarningsAndErrors.convention(false)
-    task.processKotlin.set(openrewriteExtension.processKotlin)
+    // Allow flipping Kotlin processing from the command line, e.g. -PopenrewriteKotlin=true
+    task.processKotlin.set(
+        providers.gradleProperty("openrewriteKotlin")
+            .map { it.toBoolean() }
+            .orElse(openrewriteExtension.processKotlin)
+    )
 }
 
 tasks.register<OpenRewriteRunTask>("rewriteRun") {
@@ -72,6 +79,12 @@ tasks.register<OpenRewriteDryRunTask>("rewriteDryRun") {
     configureCommon(this)
     reportDir.set(layout.buildDirectory.dir("reports/openrewrite"))
     failOnDryRunResults.set(openrewriteExtension.failOnDryRunResults)
+}
+
+tasks.register<OpenRewriteDiagnoseTask>("rewriteDiagnose") {
+    description = "Runs each active leaf recipe on its own and reports failures and no-ops"
+    configureCommon(this)
+    reportDir.set(layout.buildDirectory.dir("reports/openrewrite"))
 }
 
 plugins.withId("java") {

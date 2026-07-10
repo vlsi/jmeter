@@ -33,6 +33,9 @@ open class OpenRewriteExtension @Inject constructor(objects: ObjectFactory) {
 
     val activeRecipes = objects.setProperty<String>()
 
+    /** Fully qualified recipe names to prune from the active recipe tree, e.g. ones that crash. */
+    val disabledRecipes = objects.setProperty<String>()
+
     val failOnDryRunResults = objects.property<Boolean>().convention(true)
 
     /**
