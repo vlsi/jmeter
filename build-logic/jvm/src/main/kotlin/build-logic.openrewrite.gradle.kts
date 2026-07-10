@@ -53,4 +53,15 @@ openrewrite {
     // whole composite. AssertThrowsOnLastStatement throws on Kotlin sources; see the fix in
     // https://github.com/openrewrite/rewrite-testing-frameworks/pull/1048
     disabledRecipes.add("org.openrewrite.java.testing.junit5.AssertThrowsOnLastStatement")
+
+    // Kotlin processing is off by default (see build-logic.openrewrite-base). When it is enabled
+    // via -PopenrewriteKotlin=true, these Java recipes still corrupt Kotlin and must also be
+    // disabled — verified by applying them and compiling the result:
+    //   - ShortenFullyQualifiedTypeReferences drops a qualifier without adding the import
+    //     (`API.Status.EXPERIMENTAL` -> `Status.EXPERIMENTAL`);
+    //   - TypecastParenPad mangles `x as Foo` into `x asFoo` (root cause fixed in
+    //     https://github.com/openrewrite/rewrite/pull/8236);
+    //   - OperatorWrap moves a binary `+` to the start of the next line, which Kotlin parses as a
+    //     unary plus and breaks the expression.
+    // They are left active by default because they are safe and useful on the Java sources.
 }

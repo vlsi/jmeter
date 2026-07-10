@@ -56,6 +56,13 @@ fun configureCommon(task: OpenRewriteBaseTask) {
     task.group = "openrewrite"
     task.activeRecipes.set(openrewriteExtension.activeRecipes)
     task.disabledRecipes.set(openrewriteExtension.disabledRecipes)
+    // Additively disable more recipes from the command line, e.g.
+    // -PopenrewriteDisable=org.openrewrite.java.ShortenFullyQualifiedTypeReferences,org.openrewrite.staticanalysis.TypecastParenPad
+    task.disabledRecipes.addAll(
+        providers.gradleProperty("openrewriteDisable")
+            .map { prop -> prop.split(",").map { it.trim() }.filter { it.isNotEmpty() } }
+            .orElse(emptyList())
+    )
     task.activeStyles.set(openrewriteExtension.activeStyles)
     task.rewriteClasspath.from(openrewriteClasspath)
     task.configFile.set(openrewriteExtension.configFile)
