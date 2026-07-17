@@ -82,6 +82,8 @@ public class TargetRateChart : JPanel() {
                     addPoint = true
                     time += step.duration
                 }
+                // The chart shows the target rate only; the concurrency cap is not drawn yet
+                is ThreadScheduleStep.ConcurrencyStep -> Unit
             }
         }
         if (addPoint) {
