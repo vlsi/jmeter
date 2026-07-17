@@ -34,6 +34,12 @@ internal class ConcurrencyLimit private constructor(
     /** True when the schedule has no [ConcurrencyStep], so the number of threads is unlimited. */
     val isUnlimited: Boolean get() = breakpointTimes.isEmpty()
 
+    /** A point in time (seconds since the schedule start) where the limit changes to [limit]. */
+    data class Change(val timeSeconds: Double, val limit: Int)
+
+    /** The points where the limit changes, in schedule order. Empty when [isUnlimited]. */
+    val changes: List<Change> get() = breakpointTimes.indices.map { Change(breakpointTimes[it], limits[it]) }
+
     /**
      * The concurrency limit that applies at [elapsedSeconds] since the schedule start.
      * Returns [Int.MAX_VALUE] before the first [ConcurrencyStep] or when the schedule has none.
